@@ -113,6 +113,24 @@ public sealed class BoundedHandEffectsOracleTest {
     }
 
     [Test]
+    public void UnrestrictedModeRetainsIndependentLimitsAndOverlappingTargetSemantics() {
+        CategoryBase firstRole = new("A");
+        CategoryBase secondRole = new("B");
+        SearchEffectMode[] modes = [new(CardSelector.Any, 1), new(CardSelector.For(firstRole), 1)];
+        Card source = new([], 2, id: "source", search: new(SearchEffectPlan.ModeTargetUnion(modes), false, modes));
+        List<Card> deck = [source, new([firstRole], id: "a"), new([firstRole, secondRole], id: "ab"), new([secondRole], id: "b"), new([], id: "blank")];
+        List<OracleCombo> combos = [
+            DefineCombo("Distinct overlapping copies", "both", [new(firstRole, 1, 2), new(secondRole, 1, 2)]),
+            DefineCombo("No first role", "zero", [new(firstRole, 0, 0)], [new("b", 1, 1)]),
+            DefineCombo("Two second-role copies", "both", [new(secondRole, 2, 2)])
+        ];
+        List<ComboGroup> groups = [new("both", "Both"), new("zero", "Zero")];
+        OracleCounts oracle = EnumerateLabeledHands(deck, 2, combos, groups);
+        Rational[] expected = oracle.Wins.Select(win => new Rational(win, oracle.Outcomes)).ToArray();
+        AssertMatchesOracle(deck, 2, combos, groups, expected, "Unrestricted mode with independent limits");
+    }
+
+    [Test]
     public void NumericTwoActivationLimitDiffersFromUnlimitedForThreeCopiesInHand() {
         CategoryBase sourceKind = new("Kewl Tune Synchro source");
         CategoryBase targetKind = new("Kewl Tune target");

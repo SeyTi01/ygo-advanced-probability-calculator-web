@@ -1,6 +1,7 @@
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
@@ -10,6 +11,103 @@ using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public sealed class CalculatorEditorLocalizationTest : CalculatorEditorTestBase {
+    [TestCaseSource(nameof(ProductionLocales))]
+    public void OperatorControlsDescribeTheirMeaningWithoutReplacingTheirAction(string language) {
+        using PresentationLocale locale = new(language, production: true);
+        foreach (string operation in new[] { "+", "AND", "OR" }) {
+            bool added = false;
+            string? changed = null;
+            IRenderedComponent<ExpressionSeparator> separator = context.RenderComponent<ExpressionSeparator>(parameters => {
+                parameters.Add(component => component.Operator, operation);
+                if (operation == "+") {
+                    parameters.Add(component => component.OnAdd, () => added = true);
+                } else {
+                    parameters.Add(component => component.OnOperatorChanged, value => changed = value);
+                }
+            });
+            AngleSharp.Dom.IElement control = separator.Find("button, select");
+            if (operation == "+") {
+                string? hintId = control.GetAttribute("aria-describedby");
+                AngleSharp.Dom.IElement hint = separator.Find($"[id='{hintId}']");
+                string key = operation switch { "+" => "Separate", "AND" => "And", _ => "Or" };
+                Assert.Multiple(() => {
+                    Assert.That(control.GetAttribute("data-operator-hint"), Is.EqualTo(hintId));
+                    Assert.That(hint.GetAttribute("role"), Is.EqualTo("tooltip"));
+                    Assert.That(hint.HasAttribute("hidden"), Is.True);
+                    Assert.That(hint.TextContent, Is.EqualTo(UiText.Get($"Requirement.Hint{key}")));
+                });
+                } else {
+                Assert.That(control.HasAttribute("data-operator-hint"), Is.False);
+                Assert.That(separator.FindAll("[role=tooltip]"), Is.Empty);
+            }
+            if (operation == "+") {
+                control.Click();
+                Assert.That(added, Is.True);
+            } else {
+                control.Change(operation == "AND" ? "OR" : "AND");
+                Assert.That(changed, Is.EqualTo(operation == "AND" ? "OR" : "AND"));
+            }
+        }
+        IRenderedComponent<RequirementActions> actions = context.RenderComponent<RequirementActions>();
+        foreach (AngleSharp.Dom.IElement action in actions.FindAll("[data-operator-hint]")) {
+            Assert.That(actions.Find($"[id='{action.GetAttribute("aria-describedby")}']").GetAttribute("role"), Is.EqualTo("tooltip"));
+        }
+    }
+
+    [TestCaseSource(nameof(ProductionLocales))]
+    public void RequirementActionsUseCompactLocalizedLabels(string language) {
+        using PresentationLocale locale = new(language, production: true);
+        IRenderedComponent<RequirementActions> actions = context.RenderComponent<RequirementActions>();
+
+        string[] expectedLabels = [UiText.Get("Ui.AddOR"), UiText.Get("Ui.AddAND"), UiText.Get("Ui.Remove")];
+        Assert.That(actions.FindAll("button").Select(button => button.TextContent.Trim()), Is.EqualTo(expectedLabels));
+        Assert.That(actions.Find("button.btn-outline-danger").GetAttribute("aria-label"), Is.EqualTo(UiText.Get("Ui.RemoveRequirement")));
+    }
+
+    private static IEnumerable<TestCaseData> ProductionLocales() =>
+        LocalePreference.Available.Select(locale => new TestCaseData(locale.Id).SetName("{m}({0})"));
+
+    [Test]
+    public async Task JapaneseArchetypeLabelsTranslateAcrossPropertiesAndRequirementsWithoutChangingSavedNames() {
+        using PresentationLocale locale = new("ja", production: true);
+        CategoryBase archetype = new("Archetype: Vanquish Soul", CategorySource.Metadata, "archetype:vanquish%20soul");
+        CategoryBase custom = new("Archetype: Authored role");
+        SessionState original = new() {
+            Cards = [new([archetype, custom], 3, "Authored card")], Categories = [custom],
+            Combos = [new([new(archetype, 1, 3)])], HandSize = 1
+        };
+        ISessionService codec = context.Services.GetRequiredService<ISessionService>();
+        string saved = codec.SerializeSession(original);
+        SessionState restored = await codec.LoadSessionAsync(saved);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(restored);
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
+        card.Find(".accordion-button").Click();
+        Assert.That(card.Find(".detected-card-properties").TextContent, Does.Contain("テーマ: ＶＳ"));
+        IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
+        Assert.That(combo.Find(".combo-header-requirements").TextContent, Does.Contain("テーマ: ＶＳ"));
+        combo.Find(".accordion-button").Click();
+        OpenNewRequirement(combo);
+        Assert.That(combo.Find(".requirement-property-picker").TextContent,
+            Does.Contain("テーマ: ＶＳ").And.Contain(custom.Name));
+        Assert.That(restored.Cards[0].Categories.Select(category => category.Name),
+            Is.EqualTo(original.Cards[0].Categories.Select(category => category.Name)));
+        Assert.That(codec.SerializeSession(restored), Is.EqualTo(saved));
+    }
+
+    [Test]
+    public void JapaneseOperatorValidationUsesTheLocalizedEditorMessage() {
+        using PresentationLocale locale = new("ja", production: true);
+        ComboCategory category = new(new CategoryBase("Authored role"), 1, 1);
+        ComboCard card = new("card", 1, 1);
+        Combo combo = new([category], cards: [card]);
+        ComboRequirementPosition[] positions = [new(ComboRequirementKind.Category, 0), new(ComboRequirementKind.Card, 0)];
+        ComboGroupEdit edit = new("AND", [ComboAlternative.For(category), ComboAlternative.For(card)]);
+
+        ArgumentException error = Assert.Throws<ArgumentException>(() => ComboOperatorEditing.Apply(combo, positions, edit))!;
+
+        Assert.That(error.Message, Is.EqualTo(UiText.Get("OperatorEdit.CategoryOperandsRequired")));
+    }
+
     [Test]
     public async Task RestoredAutomaticNamesAreAbbreviatedAcrossPropertiesSelectorsAndComboReferences() {
         CategoryBase[] metadata = [

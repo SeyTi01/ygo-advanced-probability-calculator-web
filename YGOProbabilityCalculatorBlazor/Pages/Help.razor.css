@@ -33,11 +33,6 @@
     font-weight: 600;
 }
 
-.help-topic summary:focus-visible {
-    outline: 3px solid var(--bs-primary);
-    outline-offset: 2px;
-}
-
 .help-topic-body {
     padding: 1rem;
 }
@@ -84,3 +79,5 @@
     bottom: 0;
     left: 0;
 }
+
+.help-topic summary { --control-focus-width: 3px; }

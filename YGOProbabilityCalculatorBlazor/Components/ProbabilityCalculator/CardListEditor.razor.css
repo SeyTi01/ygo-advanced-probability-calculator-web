@@ -1,5 +1,5 @@
 .deck-header {
-    gap: .5rem;
+    flex-wrap: wrap;
 }
 
 .deck-loading-status {

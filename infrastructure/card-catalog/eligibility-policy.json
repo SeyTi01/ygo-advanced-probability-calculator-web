@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "excluded": [
+    {
+      "id": 10949074,
+      "name": "Anotherverse Stratios",
+      "type": "Normal Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Yu-Gi-Oh! Championship Series 2025 prize cards"
+      ]
+    },
+    {
+      "id": 20240828,
+      "name": "Decoy",
+      "type": "Normal Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "https://ygorganization.com/decoy-ocg"
+      ]
+    },
+    {
+      "id": 47484352,
+      "name": "Anotherverse Dragon",
+      "type": "Normal Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Yu-Gi-Oh! Championship Series 2022 prize card"
+      ]
+    },
+    {
+      "id": 63028558,
+      "name": "Anotherverse Solaria",
+      "type": "Normal Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "https://www.yugioh-card.com/eu/eu-wcq-2025-main-prizing/"
+      ]
+    },
+    {
+      "id": 68811206,
+      "name": "Tyler the Great Warrior",
+      "type": "Effect Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Make-A-Wish Foundation promotional card"
+      ]
+    },
+    {
+      "id": 86893702,
+      "name": "Anotherverse Gluttonia",
+      "type": "Normal Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Yu-Gi-Oh! Championship Series 2023 prize card"
+      ]
+    },
+    {
+      "id": 111000561,
+      "name": "Get Your Game On!",
+      "type": "Spell Card",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Yu-Gi-Oh! World Championship 2007 prize cards"
+      ]
+    },
+    {
+      "id": 149694341,
+      "name": "???",
+      "type": "Spell Card",
+      "reason": "deck-profile-placeholder",
+      "evidence": [
+        "Provider description identifies an unrevealed deck-profile placeholder."
+      ]
+    },
+    {
+      "id": 501000000,
+      "name": "Ulevo",
+      "type": "Effect Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Yu-Gi-Oh! World Championship 2004 prize cards"
+      ]
+    },
+    {
+      "id": 501000001,
+      "name": "Meteo the Matchless",
+      "type": "Effect Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Yu-Gi-Oh! World Championship 2004 prize cards"
+      ]
+    },
+    {
+      "id": 501000002,
+      "name": "King of Destruction - Xexex",
+      "type": "Effect Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Yu-Gi-Oh! World Championship 2005 prize cards"
+      ]
+    },
+    {
+      "id": 501000003,
+      "name": "Queen of Fate - Eternia",
+      "type": "Effect Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Yu-Gi-Oh! World Championship 2005 prize cards"
+      ]
+    },
+    {
+      "id": 501000004,
+      "name": "Testament of the Arcane Lords",
+      "type": "Effect Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Yu-Gi-Oh! World Championship 2006 prize cards"
+      ]
+    },
+    {
+      "id": 501000006,
+      "name": "Chimaera, the Master of Beasts",
+      "type": "Effect Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Yu-Gi-Oh! World Championship 2007 prize cards"
+      ]
+    },
+    {
+      "id": 501000007,
+      "name": "Emperor of Lightning",
+      "type": "Effect Monster",
+      "reason": "special-promotional-record",
+      "evidence": [
+        "Yu-Gi-Oh! World Championship 2007 prize cards"
+      ]
+    }
+  ]
+}

@@ -25,8 +25,8 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
 
     private static void DefineVs(IRenderedComponent<ProbabilityCalculatorComponent> cut) {
         OpenRule(cut);
-        cut.Find("[aria-label='Add rule alternative']").Change(Vs.Identity);
-        cut.Find("[aria-label='Add AND property to alternative 1']").Change(Monster.Identity);
+        cut.Find("select[aria-label='Add rule alternative']").Change(Vs.Identity);
+        cut.Find("select[aria-label='Add AND property to alternative 1']").Change(Monster.Identity);
     }
 
     [Test]
@@ -63,12 +63,12 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
         DefineVs(cut);
         Button(cut, "Apply rule").Click();
         OpenRule(cut);
-        cut.Find("[aria-label='Add rule alternative']").Change(Spell.Identity);
+        cut.Find("select[aria-label='Add rule alternative']").Change(Spell.Identity);
         Assert.That(cut.FindComponent<CategoryRuleEditor>().Markup, Does.Contain("3 matching entries (5 copies)"));
         Button(cut, "Cancel").Click();
         Assert.That(cut.FindComponent<CategoryListEditor>().Instance.CategoryBases[0].Rule!.Kind, Is.EqualTo(CardSelectorKind.AllOf));
         OpenRule(cut);
-        cut.Find("[aria-label='Add rule alternative']").Change(Spell.Identity);
+        cut.Find("select[aria-label='Add rule alternative']").Change(Spell.Identity);
         Button(cut, "Apply rule").Click();
         Assert.That(cut.FindComponents<CardEditor>().Last().Markup, Does.Contain("Automatic"));
         Assert.That(cut.FindComponents<CardEditor>().Last().Instance.Card.Categories, Does.Not.Contain(Role));
@@ -80,7 +80,7 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
         cut.Find("[aria-label='Edit category VS Monster']").Click();
         cut.Find("[aria-label='New name for category VS Monster']").Input("Draft role");
         Button(cut, "Define by properties").Click();
-        cut.Find("[aria-label='Add rule alternative']").Change(Monster.Identity);
+        cut.Find("select[aria-label='Add rule alternative']").Change(Monster.Identity);
         Button(cut, "Apply rule").Click();
         Assert.That(cut.Find("[aria-label='New name for category VS Monster']").GetAttribute("value"), Is.EqualTo("Draft role"));
         cut.Find("[aria-label='Save category name']").Click();
@@ -200,7 +200,7 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
         IRenderedComponent<CategoryRuleSummary> summary = categories.FindComponent<CategoryRuleSummary>();
         string savedExpression = summary.Markup;
         IRenderedComponent<CategoryRuleEditor> editor = categories.FindComponent<CategoryRuleEditor>();
-        editor.Find("[aria-label='Add rule alternative']").Change(Trap.Identity);
+        editor.Find("select[aria-label='Add rule alternative']").Change(Trap.Identity);
 
         Assert.That(editor.FindAll(".category-rule-term").Select(term => term.TextContent), Has.Some.Contains("Trap"));
         Assert.That(summary.Markup, Is.EqualTo(savedExpression));
@@ -213,7 +213,7 @@ public sealed class CalculatorEditorCategoryRulesTest : CalculatorEditorTestBase
         Assert.That(categories.Find(".category-chip").ClassName, Is.EqualTo(colorClass));
 
         Button(cut, "Edit rule").Click();
-        categories.FindComponent<CategoryRuleEditor>().Find("[aria-label='Add rule alternative']").Change(Trap.Identity);
+        categories.FindComponent<CategoryRuleEditor>().Find("select[aria-label='Add rule alternative']").Change(Trap.Identity);
         Button(cut, "Apply rule").Click();
 
         Assert.That(categories.Instance.CategoryBases.Single().Rule!.CategoryIdentities, Does.Contain(Trap.Identity));

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 
@@ -8,8 +9,11 @@ namespace YGOProbabilityCalculatorBlazor.Services.DeckImport;
 public class CardInfoService : ICardInfoService {
     private const string CardInfoApiUrl = "https://db.ygoprodeck.com/api/v7/cardinfo.php";
     private const string SingleApiTemplate = CardInfoApiUrl + "?id={0}";
-    // Register only reviewed, deployed name assets. English needs no additional data.
-    private static readonly IReadOnlyDictionary<string, string> LocalizedNameAssets = new Dictionary<string, string>();
+    // Only reviewed assets are listed in the shared locale manifest. English and
+    // UI-only locales intentionally have no card-name capability.
+    private static readonly IReadOnlyDictionary<string, string> LocalizedNameAssets = LocalePreference.Available
+        .Where(locale => locale.CardNames is not null)
+        .ToDictionary(locale => locale.Id, locale => locale.CardNames!.Asset, StringComparer.OrdinalIgnoreCase);
 
     private readonly HttpClient _httpClient;
     private readonly LocalCardCatalog _catalog;

@@ -6,13 +6,37 @@ using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBase {
     [Test]
+    public void SelectingAnotherConditionCancelsOnlyThePendingDraftAndRemovalKeepsSiblings() {
+        CategoryBase[] categories = [new("A"), new("B"), new("C"), new("D")];
+        CardSelector original = CardSelector.AnyOf(categories.Take(3).Select(category => category.Identity));
+        CardSelector current = original;
+        IRenderedComponent<SelectorExpressionEditor>? editor = null;
+        editor = context.RenderComponent<SelectorExpressionEditor>(parameters => parameters
+            .Add(component => component.Selector, current).Add(component => component.Available, categories)
+            .Add(component => component.OnChanged, value => {
+                current = value;
+                editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
+            }));
+        editor.FindAll(".expression-member").ToArray()[1].Click();
+        Assert.That(editor.FindAll("form .requirement-property-picker"), Has.Count.EqualTo(1));
+        editor.Find("form .requirement-property-picker select.requirement-options").Change(categories[3].Identity);
+        editor.FindAll(".expression-member").ToArray()[2].Click();
+        Assert.That(editor.Find("form .requirement-property-picker select.requirement-options").GetAttribute("value"), Is.EqualTo(categories[2].Identity));
+        Assert.That(current, Is.EqualTo(original));
+        Button(editor, "Remove requirement").Click();
+        Assert.That(current, Is.EqualTo(CardSelector.AnyOf(categories.Take(2).Select(category => category.Identity))));
+        Assert.That(editor.FindAll("form"), Is.Empty);
+    }
+
+    [Test]
     public void ThreeTermsEachOpenTheirOwnConditionFieldsAndOneOperator() {
-        Card source = SearchEffectsTest.Preset(92221402);
+        Card source = SearchCardFixtures.Preset(92221402);
         Card? saved = null;
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, source).Add(component => component.OnChanged, card => saved = card));
@@ -21,14 +45,14 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             "Edit Level >= 5", "Edit Attribute: LIGHT OR Attribute: DARK", "Edit Pyro OR Aqua"
         }));
         Assert.That(editor.Markup, Does.Not.Contain("Any condition"));
-        int[] expectedCounts = [1, 2, 2];
+        int[] expectedCounts = [1, 1, 1];
         int index = 0;
         foreach (IRenderedComponent<ExpressionRow> row in editor.FindComponents<ExpressionRow>().ToArray()) {
             row.Find(".requirement-edit").Click();
             Assert.That(editor.FindAll(".requirement-edit-grid .requirement-operand"), Has.Count.EqualTo(expectedCounts[index]));
             Assert.That(editor.FindAll(".requirement-inputs > .expression-separator select"), Has.Count.EqualTo(expectedCounts[index++] - 1));
             Assert.That(editor.FindAll(".requirement-form button[type=submit]"), Has.Count.EqualTo(1));
-            Assert.That(editor.Find(".requirement-context-actions button[type=submit]").TextContent, Is.EqualTo("Save"));
+            Assert.That(editor.Find(".requirement-form button[type=submit]").TextContent, Is.EqualTo("Save"));
             Assert.That(editor.Find(".requirement-form-heading button").TextContent, Is.EqualTo("Cancel"));
             SaveRow(editor);
         }
@@ -40,19 +64,19 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
     public void RenameKeepsFlatTermAndTheActiveConditionDraftWhenCanonicalOrderChanges() {
         CategoryBase[] categories = new[] { "A", "B", "C", "D", "E" }.Select(name => new CategoryBase(name)).ToArray();
         CardSelector original = CardSelector.AllOf(categories.Take(4).Select(category => category.Identity));
-        Card source = SearchEffectsTest.Rota().WithSearch(new(original, false));
+        Card source = SearchCardFixtures.Rota().WithSearch(new(original, false));
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, source).Add(component => component.CategoryBases, categories));
         editor.Find(".simulation-edit").Click();
         IRenderedComponent<SelectorExpressionEditor> first = editor.FindComponents<SelectorExpressionEditor>()
             .Single(component => component.Instance.Selector.CategoryIdentities.Contains("user:A"));
         first.Find(".requirement-edit").Click();
-        editor.Find(".requirement-operand .requirement-property-picker > select").Change("user:E");
+        editor.Find(".requirement-operand .requirement-property-picker select.requirement-options").Change("user:E");
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card,
             source.WithSearch(source.Search! with { Selector = original.RenameCategory("user:A", "user:Z") }))
             .Add(component => component.CategoryBases, categories.Skip(1).Append(new CategoryBase("Z")).ToArray())
             .Add(component => component.CategoryRename, new CategoryRenameNotice(1, "A", "Z")));
-        Assert.That(editor.Find(".requirement-operand .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo("user:E"));
+        Assert.That(editor.Find(".requirement-operand .requirement-property-picker select.requirement-options").GetAttribute("value"), Is.EqualTo("user:E"));
         Assert.That(editor.FindComponents<SelectorExpressionEditor>().Any(component => ReferenceEquals(component.Instance, first.Instance)), Is.True);
         SaveRow(editor);
         Assert.That(editor.Find(".selector-expression").TextContent, Does.Contain("E"));
@@ -64,6 +88,11 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             .OrderByDescending(component => component.Instance.IsRoot).Last();
 
     private static void OpenLevel(IRenderedFragment editor) {
+        IElement? member = editor.FindAll(".expression-member").FirstOrDefault(button => button.TextContent.Contains("Level"));
+        if (member is not null) {
+            member.Click();
+            return;
+        }
         Node(editor, CardSelectorKind.LevelAtLeast).Find(".requirement-edit").Click();
         for (int depth = 0; editor.FindAll("input[aria-label='Minimum Level']").Count == 0 && depth < CardSelector.MaximumDepth; depth++) {
             editor.FindAll(".requirement-operand button").Single(button => button.TextContent.Contains("Level")).Click();
@@ -74,7 +103,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
 
     [Test]
     public void CompactExpressionEditsThresholdAndGroupsWithPreviewSaveCancelAndRestore() {
-        Card source = SearchEffectsTest.Preset(92221402);
+        Card source = SearchCardFixtures.Preset(92221402);
         Card target = SelectorExpressionTest.Target();
         Card? saved = null;
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
@@ -88,7 +117,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.FindAll(".draw-selector-chip"), Has.Count.EqualTo(5));
         Assert.That(editor.FindAll(".selector-expression select:not(.expression-operator), .selector-expression input, .selector-extend"), Is.Empty);
         foreach (IElement separator in editor.FindAll(".selector-expression .requirement-and-separator, .selector-expression .alternative-separator")) {
-            Assert.That(separator.QuerySelector("select")!.GetAttribute("value"), Is.AnyOf("AND", "OR"));
+            Assert.That(separator.QuerySelector("select")?.GetAttribute("value") ?? "AND", Is.AnyOf("AND", "OR"));
         }
         SelectorExpressionEditor threshold = Node(editor, CardSelectorKind.LevelAtLeast).Instance;
         OpenLevel(editor);
@@ -115,12 +144,8 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(saved.Search!.Matches(target), Is.False);
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card, saved));
         editor.Find(".simulation-edit").Click();
-        Node(editor, CardSelectorKind.AnyOf).Find(".requirement-edit").Click();
-        editor.Find("[aria-label='Row operator']").Change("AND");
-        Assert.That(editor.FindAll(".selector-expression form"), Is.Empty);
-        editor.Find(".simulation-save").Click();
-        Assert.That(saved!.Search!.Selector.Signature, Does.Contain("AllOf"));
-        editor.SetParametersAndRender(parameters => parameters.Add(component => component.Card, saved));
+        Assert.That(editor.FindAll(".expression-operator"), Is.Not.Empty);
+        editor.Find(".simulation-cancel").Click();
         editor.Find(".simulation-restore").Click();
         Assert.That(saved!.EffectPlan, Is.EqualTo(source.EffectPlan));
         Assert.That(saved.EffectProfile.Revision, Is.EqualTo(3));
@@ -128,7 +153,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
 
     [Test]
     public void InvalidThresholdBlocksSaveAcrossOtherDraftEditsUntilCorrectedCanceledOrRemoved() {
-        Card source = SearchEffectsTest.Preset(92221402);
+        Card source = SearchCardFixtures.Preset(92221402);
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, source));
         editor.Find(".simulation-edit").Click();
@@ -159,7 +184,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
     public void ExistingFlatSelectorCanBecomeGroupedWithoutLosingDraftOnParentUpdate() {
         CategoryBase a = new("A");
         CategoryBase b = new("B");
-        Card source = SearchEffectsTest.Rota().WithSearch(new(CardSelector.For(a), false));
+        Card source = SearchCardFixtures.Rota().WithSearch(new(CardSelector.For(a), false));
         Card target = new([a, b], name: "Target");
         Card? saved = null;
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
@@ -167,20 +192,19 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
             .Add(component => component.Deck, new[] { source, target }).Add(component => component.OnChanged, card => saved = card));
         editor.Find(".simulation-edit").Click();
         Node(editor, CardSelectorKind.Category).Find(".requirement-edit").Click();
-        Button(editor, "Add alternative (OR)").Click();
-        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").Change(b.Identity);
+        Button(editor, "Add OR").Click();
+        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker select.requirement-options").Change(b.Identity);
         SaveRow(editor);
-        Node(editor, CardSelectorKind.AnyOf).Find(".requirement-edit").Click();
-        Button(editor, "Add property (AND)").Click();
-        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").Change("metadata:kind:monster");
+        Button(editor, "Add AND").Click();
+        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker select.requirement-options").Change("metadata:kind:monster");
         editor.SetParametersAndRender(parameters => parameters.Add(component => component.DrawEffectsEnabled, false));
-        Assert.That(editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo("metadata:kind:monster"));
+        Assert.That(editor.Find(".selector-expression form .requirement-operand .requirement-property-picker select.requirement-options").GetAttribute("value"), Is.EqualTo("metadata:kind:monster"));
         SaveRow(editor);
         Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(2));
         Assert.That(editor.Find(".simulation-targets").TextContent, Does.Contain("None"));
         editor.Find(".simulation-save").Click();
         Assert.That(saved!.Search!.Selector.Matches(new Card([a, new("Monster", CategorySource.Metadata, "kind:monster")])), Is.True);
-        Assert.That(saved.Search.Selector.Matches(target), Is.False);
+        Assert.That(saved.Search.Selector.Matches(target), Is.False, "Every AND row must match the same card.");
         Assert.That(saved.Search.ObjectiveMetadataOnly, Is.False);
         AssertRoundTrip(saved.Search.Selector);
     }
@@ -198,7 +222,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.FindComponents<ExpressionRow>(), Has.Count.EqualTo(2));
         Assert.That(editor.FindComponents<ExpressionForm>(), Has.Count.EqualTo(1));
         Assert.That(editor.FindComponents<ExpressionGroup>(), Has.Count.EqualTo(1));
-        Assert.That(editor.FindAll(".expanded-expression .expression-separator"), Has.Count.EqualTo(2));
+        Assert.That(editor.FindAll(".expanded-expression .expression-separator select"), Has.Count.EqualTo(2));
         Button(editor.FindComponent<ExpressionForm>(), "Cancel").Click();
         Assert.That(editor.FindAll(".requirement-row form"), Is.Empty);
     }
@@ -208,7 +232,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         CategoryBase a = new("A");
         CategoryBase renamed = new("Z");
         CardSelector selector = CardSelector.AllOfSelectors([CardSelector.For(a), CardSelector.LevelAtLeast(5)]);
-        Card source = SearchEffectsTest.Rota().WithSearch(new(selector, false));
+        Card source = SearchCardFixtures.Rota().WithSearch(new(selector, false));
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, source).Add(component => component.CategoryBases, new[] { a }));
         editor.Find(".simulation-edit").Click();
@@ -227,7 +251,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         Assert.That(editor.Find(".simulation-save").HasAttribute("disabled"), Is.False);
         Assert.That(editor.Find(".selector-expression").TextContent, Does.Contain("Z"));
         OpenLevel(editor);
-        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker > select").Change("numeric:level");
+        editor.Find(".selector-expression form .requirement-operand .requirement-property-picker select.requirement-options").Change("numeric:level");
         editor.Find("select[aria-label='Comparison']").Change("minimum");
         editor.Find(".requirement-operand input").Input("12");
         CategoryBase final = new("Final");
@@ -256,7 +280,7 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         IRenderedComponent<SelectorExpressionEditor> branch = editor.FindComponents<SelectorExpressionEditor>()
             .Single(component => !component.Instance.IsRoot && component.Instance.Selector.CategoryIdentities.Contains(a.Identity));
         branch.Find(".requirement-edit").Click();
-        editor.Find("form .requirement-operand .requirement-property-picker > select").Change("numeric:level");
+        editor.Find("form .requirement-operand .requirement-property-picker select.requirement-options").Change("numeric:level");
         editor.Find("select[aria-label='Comparison']").Change("minimum");
         editor.Find("input[aria-label='Minimum Level']").Input("6");
         SaveRow(editor);
@@ -267,18 +291,18 @@ public sealed class CalculatorEditorGroupedSelectorTest : CalculatorEditorTestBa
         IRenderedComponent<SelectorExpressionEditor> nested = editor.FindComponents<SelectorExpressionEditor>()
             .Single(component => !component.Instance.IsRoot && component.Instance.Selector.HasNumericPredicate);
         nested.Find(".requirement-edit").Click();
-        editor.Find("form .requirement-operand .requirement-property-picker > select").Change(a.Identity);
+        editor.Find("form .requirement-operand .requirement-property-picker select.requirement-options").Change(a.Identity);
         SaveRow(editor);
         Assert.That(current, Is.EqualTo(initial));
         editor.FindComponents<SelectorExpressionEditor>().Single(component => !component.Instance.IsRoot && component.Instance.Selector.CategoryIdentities.Contains(a.Identity)).Find(".requirement-edit").Click();
         Button(editor, "Remove requirement").Click();
-        Assert.That(current, Is.EqualTo(untouched), "Removing one OR branch promotes the remaining complete AND branch.");
+        Assert.That(current, Is.EqualTo(CardSelector.AnyOfSelectors([CardSelector.For(b), untouched])), "Removing one condition preserves its sibling and the other branch.");
         AssertRoundTrip(current);
     }
 
     [Test]
     public void SavingUntouchedRowPreservesObjectivePolicyAndBuiltInProvenance() {
-        Card source = SearchEffectsTest.Preset(92221402);
+        Card source = SearchCardFixtures.Preset(92221402);
         Card? saved = null;
         IRenderedComponent<CardSimulationEditor> editor = context.RenderComponent<CardSimulationEditor>(parameters => parameters
             .Add(component => component.Card, source).Add(component => component.OnChanged, card => saved = card));

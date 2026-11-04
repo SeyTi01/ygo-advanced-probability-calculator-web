@@ -7,7 +7,7 @@ const source = fs.readFileSync(new URL('../../YGOProbabilityCalculatorBlazor/www
 const preference = 'ygo-calculator:language:v1';
 const handoff = 'ygo-calculator:language-handoff:v1';
 const available = [{ id: 'en', name: 'English' }, { id: 'de', name: 'Test Deutsch' }, { id: 'fr', name: 'Test français' }];
-async function host({ saved, languages = ['de-DE'], local = new Map(), tab = new Map(), navigation = 'navigate', fail, silent } = {}) {
+async function host({ saved, languages = ['de-DE'], local = new Map(), tab = new Map(), navigation = 'navigate', fail, silent, registry = available } = {}) {
     if (saved !== undefined) local.set(preference, saved);
     const classes = new Set();
     let reloads = 0;
@@ -17,10 +17,13 @@ async function host({ saved, languages = ['de-DE'], local = new Map(), tab = new
             if (fail === kind) throw new Error('Storage denied');
             if (silent !== kind) map.set(key, value);
         },
-        removeItem: key => map.delete(key)
+        removeItem: key => {
+            if (fail === kind) throw new Error('Storage denied');
+            if (silent !== kind) map.delete(key);
+        }
     });
     const root = {
-        fetch: async () => ({ ok: true, json: async () => available }),
+        fetch: async () => ({ ok: true, json: async () => registry }),
         document: { querySelector: () => null, documentElement: { classList: { add: value => classes.add(value), remove: value => classes.delete(value) } } },
         localStorage: storage(local, 'local'), sessionStorage: storage(tab, 'tab'),
         navigator: { languages }, location: { href: 'https://example.test/#ygo-session=sentinel', reload: () => reloads++ },
@@ -37,6 +40,52 @@ test('saved English overrides a German browser, including a fresh browser contex
     assert.equal((await host({ local: first.local })).api.getStartup().locale, 'en');
     assert.equal(first.api.getStartup().numericCulture, 'de-DE');
 });
+
+test('System is the default preference while startup uses the supported browser language', async () => {
+    for (const saved of [undefined, 'system', 'stale']) {
+        const current = await host({ saved, languages: ['unknown', 'fr-CA', 'de-DE'] });
+        assert.equal(current.api.getPreference(), 'system');
+        assert.equal(current.api.getStartup().locale, 'fr');
+        assert.equal(current.api.getStartup().numericCulture, 'unknown');
+    }
+    assert.equal((await host({ languages: ['es-ES'] })).api.getStartup().locale, 'en');
+    assert.equal((await host({ saved: ' FR-ca ' })).api.getPreference(), 'fr');
+});
+
+test('returning to System clears the override and restores accepted work using the resolved language', async () => {
+    const first = await host({ saved: 'en', languages: ['fr-CA'] });
+    first.api.change('system', 'accepted workspace');
+    assert.equal(first.api.getPreference(), 'system');
+    assert.equal(first.local.has(preference), false);
+    assert.equal(JSON.parse(first.tab.get(handoff)).locale, 'fr');
+    assert.equal(first.reloads(), 1);
+    const next = await host({ local: first.local, tab: first.tab, languages: ['fr-CA'], navigation: 'reload' });
+    assert.equal(next.api.getPreference(), 'system');
+    assert.equal(next.api.getStartup().locale, 'fr');
+    assert.equal(next.api.getHandoff().workspace, 'accepted workspace');
+    next.api.complete('handoff-id');
+    assert.equal(next.tab.has(handoff), false);
+    assert.equal((await host({ local: next.local, languages: ['de-DE'] })).api.getStartup().locale, 'de');
+});
+
+test('an explicit choice equal to the System language still saves an override', async () => {
+    const first = await host({ languages: ['de-DE'] });
+    first.api.change('de', 'accepted workspace');
+    assert.equal(first.local.get(preference), 'de');
+    assert.equal(first.api.getPreference(), 'de');
+    assert.equal((await host({ local: first.local, languages: ['fr-FR'] })).api.getStartup().locale, 'de');
+});
+
+for (const mode of ['fail', 'silent']) {
+    test(`${mode} preference removal keeps the previous language and live workspace`, async () => {
+        const current = await host({ saved: 'en', [mode]: 'local' });
+        assert.throws(() => current.api.change('system', 'accepted workspace'));
+        assert.equal(current.api.getPreference(), 'en');
+        assert.equal(current.local.get(preference), 'en');
+        assert.equal(current.tab.has(handoff), false);
+        assert.equal(current.reloads(), 0);
+    });
+}
 
 test('regional preferences, invalid/stale overrides, browser priority and English fallback', async () => {
     assert.equal((await host({ saved: '  FR-ca  ' })).api.getStartup().locale, 'fr');
@@ -93,21 +142,53 @@ test('a preexisting handoff is never overwritten', async () => {
     assert.equal(current.reloads(), 0);
 });
 
-for (const kind of ['open form', 'nonempty draft', 'incomplete number']) {
-    test(kind + ' blocks before storage or navigation', async () => {
+function markedWorkspace(document, { editing = false, drafts = [], numbers = [] } = {}) {
+    // No IDs, class names or wrapper ancestry are part of this contract.
+    document.querySelector = selector => {
+        assert.equal(selector, '[data-language-workspace]');
+        return {
+            querySelector: selector => {
+                assert.equal(selector, '[data-language-edit="true"]');
+                return editing ? {} : null;
+            },
+            querySelectorAll: selector => {
+                if (selector === '[data-language-draft-input]') return drafts;
+                assert.equal(selector, '[data-language-number-input]');
+                return numbers;
+            }
+        };
+    };
+}
+
+for (const [kind, state] of [
+    ['open form', { editing: true }],
+    ['nonempty text draft', { drafts: [{ value: 'Unsubmitted' }] }],
+    ['whitespace draft', { drafts: [{ value: ' ' }] }],
+    ['unapplied selection', { drafts: [{ value: 'category-identity' }] }],
+    ['empty number', { numbers: [{ value: '', validity: { valid: true } }] }],
+    ['invalid number', { numbers: [{ value: '0', validity: { valid: false } }] }]
+]) {
+    test(kind + ' blocks before storage or navigation using semantic markers', async () => {
         const current = await host({ saved: 'en' });
-        current.document.querySelector = () => ({
-            querySelector: () => kind === 'open form' ? {} : null,
-            querySelectorAll: selector => selector.includes('#quickCardName')
-                ? (kind === 'nonempty draft' ? [{ value: 'Unsubmitted' }] : [])
-                : (kind === 'incomplete number' ? [{ value: '', validity: { valid: true } }] : [])
-        });
+        markedWorkspace(current.document, state);
         assert.throws(() => current.api.change('fr', 'accepted workspace'), /Save\/apply or cancel/);
         assert.equal(current.local.get(preference), 'en');
         assert.equal(current.tab.has(handoff), false);
         assert.equal(current.reloads(), 0);
     });
 }
+
+test('accepted numbers and empty draft controls allow a language handoff', async () => {
+    const current = await host({ saved: 'en' });
+    markedWorkspace(current.document, {
+        drafts: [{ value: '' }, { value: '' }],
+        numbers: [{ value: '5', validity: { valid: true } }, { value: '1', validity: { valid: true } }]
+    });
+    assert.equal(current.api.hasPendingEdits(), false);
+    current.api.change('fr', 'accepted workspace');
+    assert.equal(current.reloads(), 1);
+    assert.equal(current.local.get(preference), 'fr');
+});
 
 test('malformed, expired, mismatched or claimed checkpoints are kept without replay', async () => {
     const first = await host();
@@ -123,3 +204,17 @@ test('malformed, expired, mismatched or claimed checkpoints are kept without rep
         assert.equal(next.reloads(), 0);
     }
 });
+
+const production = JSON.parse(fs.readFileSync(new URL('../../YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json', import.meta.url), 'utf8'));
+for (const locale of production) {
+    test('production startup resolves and persists ' + locale.id + ' independently of numeric culture', async () => {
+        const regional = locale.id + '-ZZ';
+        const first = await host({ registry: production, languages: [regional] });
+        assert.equal(first.api.getStartup().locale, locale.id);
+        assert.equal(first.api.getStartup().numericCulture, regional);
+        const saved = await host({ registry: production, saved: locale.id, languages: ['es-ES'] });
+        assert.equal(saved.api.getStartup().locale, locale.id);
+        assert.equal(saved.api.getStartup().numericCulture, 'es-ES');
+        assert.equal((await host({ registry: production, saved: 'en', languages: [regional] })).api.getStartup().locale, 'en');
+    });
+}

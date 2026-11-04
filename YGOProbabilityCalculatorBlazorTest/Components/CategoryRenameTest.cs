@@ -96,6 +96,7 @@ public class CategoryRenameTest {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:Old");
+        CalculatorEditorTestBase.OpenNewRequirement(combo);
         CalculatorEditorTestBase.RequirementField(combo, "select[id^='comboTarget']").Change("user:Old");
         CalculatorEditorTestBase.RequirementField(combo, "#minCount0").Input("0");
         CalculatorEditorTestBase.RequirementField(combo, "#maxCount0").Input("1");

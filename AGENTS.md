@@ -47,7 +47,13 @@ For Windows Codex tasks using the verified restricted environment:
   - Git commands that write shared repository metadata, including fetch,
     branch creation, checkout, staging, commits, and rebases.
   - `scripts/codex/setup.ps1`.
-  - `dotnet --info`, `dotnet restore`, and `dotnet test`.
+  - `dotnet --info`, `dotnet restore`, `dotnet test`, and `dotnet run`.
+- Start local preview servers with approved execution, including
+  `dotnet run --no-build --no-restore`. A server launched inside the restricted
+  Windows sandbox can report “Now listening” while HTTP requests from the
+  in-app browser and other host processes time out. Restart that server with
+  approved execution on the same localhost port; verify that the page finishes
+  loading. This is a per-launch requirement, not a persistent browser fix.
 - These operations have already encountered sandbox restrictions in this
   environment. Do not repeat a restricted attempt merely to reproduce the
   known failure before requesting approval.
@@ -119,6 +125,7 @@ Applies to C# and Razor C#, including `@code`; preserve markup/layout during rea
 - Before the first push, review local commits. If an unpushed commit merely corrects or refines an earlier unpushed commit for the same logical change, amend or squash them into one coherent commit. Keep independently meaningful changes in separate commits, grouped by purpose rather than by pull request or file.
   Never amend or squash already-pushed commits, or rewrite published history for cosmetic cleanup.
 - Before rebasing a published task branch, record its exact remote SHA and preserve the old head in a local backup ref. Publish the rebase with explicit `--force-with-lease=<ref>:<expected-sha>` and verify the remote commit and tree. If the lease fails, fetch and reconcile concurrent changes before retrying; never overwrite them with unguarded force. This authorization does not extend to unrelated branches or protected branches.
+- If GitHub CI verification is unavailable, GitHub API pushes are authorized and the API identity has been confirmed correct. This authorization overrides the restriction on API commit creation in `scripts/codex/PRIVACY.md`; continue to inspect outgoing changes and verify published commits and trees.
 - An authenticated GitHub plugin may be used as a push fallback only when that specific remote operation is authorized. A forced plugin ref update is not an atomic Git lease: recheck the exact remote SHA immediately before updating, verify the intended commit and tree were published, and abort if the remote changed unexpectedly. Never use unguarded CLI force or infer CLI Git authentication from plugin access.
 - Keep changes/PRs focused; add relevant regression tests above and run solution checks for substantial changes. Omit routine verification results, including tests, CI, and privacy checks, from PRs and issues; report unreconciled verification blockers and non-routine evidence useful to reviewers or future agents, such as benchmarks.
 - Unless explicitly requested, do not change GitHub Actions workflows, Cloudflare deployment/branch policies, frameworks/dependencies, or unrelated docs, or perform broad refactors. Do not intentionally trigger deployments or modify releases without authorization.

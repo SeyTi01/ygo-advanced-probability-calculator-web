@@ -1,21 +1,32 @@
-.requirement-edit-grid { display: grid; grid-template-columns: minmax(0, 1fr) 5.5rem auto; align-items: end; gap: .65rem; }
-.requirement-edit-no-quantity { grid-template-columns: minmax(0, 1fr) auto; }
-.requirement-inputs, .requirement-operand, .requirement-quantity { min-width: 0; }
-.requirement-inputs { display: grid; gap: .5rem; }
-.requirement-operand { display: flex; align-items: end; gap: .5rem; }
-.requirement-operand > ::deep .requirement-property-picker { flex: 1; }
-.requirement-edit-multiple .requirement-inputs { grid-column: 1 / -1; }
-.requirement-edit-multiple .requirement-quantity { grid-column: 2; }
-.requirement-edit-multiple .requirement-submit { justify-self: end; }
-.requirement-edit-grid ::deep .form-label { font-size: .8rem; margin-bottom: .25rem; }
-.requirement-submit .btn { min-height: 38px; }
+.requirement-edit-grid { display: grid; grid-template-columns: minmax(0, 1fr) var(--expression-quantity-width); grid-template-rows: auto auto auto auto; column-gap: var(--expression-field-gap); }
+.requirement-edit-no-quantity { grid-template-columns: minmax(0, 1fr); }
+.requirement-edit-grid:has(> .requirement-quantity):has(> .requirement-submit) { grid-template-columns: minmax(0, 1fr) var(--expression-quantity-width) auto; }
+.requirement-edit-no-quantity:has(> .requirement-submit) { grid-template-columns: minmax(0, 1fr) auto; }
+.requirement-inputs, .requirement-operand, .requirement-quantity { min-width: 0; display: grid; grid-template-rows: subgrid; grid-row: 1 / span 4; }
+.requirement-inputs { grid-column: 1; }
+.requirement-operand { grid-template-columns: minmax(0, 1fr); column-gap: var(--expression-stack-gap); }
+.requirement-operand:has(> .requirement-operand-action) { grid-template-columns: minmax(0, 1fr) auto; }
+.requirement-operand:has(> .requirement-operand-action + .requirement-operand-action) { grid-template-columns: minmax(0, 1fr) auto auto; }
+.requirement-operand > ::deep .editor-field { grid-template-rows: subgrid; grid-row: 1 / span 4; }
+.requirement-operand-action { grid-row: 2; align-self: start; }
+.requirement-quantity > ::deep .editor-field { grid-template-rows: subgrid; grid-row: 1 / span 4; }
+.requirement-edit-grid > .requirement-submit { grid-row: 2; align-self: start; }
+.requirement-edit-multiple { grid-template-rows: auto auto; row-gap: var(--expression-stack-gap); }
+.requirement-edit-multiple .requirement-inputs { grid-column: 1 / -1; grid-row: 1; grid-template-rows: none; gap: var(--expression-stack-gap); }
+.requirement-edit-multiple .requirement-operand { grid-row: auto; grid-template-rows: auto auto auto auto; }
+.requirement-edit-multiple .requirement-quantity { grid-column: 2; grid-row: 2; grid-template-rows: auto auto auto auto; }
+.requirement-submit .btn { min-height: var(--editor-form-control-height); min-width: 5rem; }
+.requirement-cancel { text-decoration: none; }
+.requirement-cancel:hover { text-decoration: underline; }
+.requirement-edit-footer { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--expression-field-gap); margin-top: var(--expression-panel-spacing); }
+.requirement-options { min-width: 0; }
+.requirement-submit { flex: 0 0 auto; margin-inline-start: auto; }
 @media (max-width: 767.98px) {
-    .requirement-edit-grid { grid-template-columns: 5.5rem minmax(0, 1fr); }
-    .requirement-inputs { grid-column: 1 / -1; }
-    .requirement-edit-no-quantity .requirement-submit { grid-column: 2; }
-    .requirement-edit-multiple .requirement-quantity { grid-column: 1; }
-    .requirement-submit { justify-self: end; }
+    .requirement-edit-grid,
+    .requirement-edit-grid:has(> .requirement-quantity):has(> .requirement-submit) { grid-template-columns: var(--expression-quantity-width) minmax(0, 1fr); grid-template-rows: auto auto; row-gap: var(--expression-stack-gap); }
+    .requirement-inputs { grid-column: 1 / -1; grid-row: 1; grid-template-rows: auto auto auto auto; }
+    .requirement-edit-multiple .requirement-inputs { grid-template-rows: none; }
+    .requirement-quantity,
+    .requirement-edit-multiple .requirement-quantity { grid-column: 1; grid-row: 2; grid-template-rows: auto auto auto auto; }
+    .requirement-edit-grid > .requirement-submit { grid-row: 2; align-self: end; }
 }
-
-.requirement-edit-action-submit.requirement-edit-no-quantity { grid-template-columns: minmax(0, 1fr); }
-.requirement-action-submit { margin-inline-start: auto; }

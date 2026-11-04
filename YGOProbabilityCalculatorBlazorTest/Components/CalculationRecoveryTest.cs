@@ -12,32 +12,16 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 [TestFixture]
 public class CalculationRecoveryTest : CalculatorEditorTestBase {
-    private readonly List<CalculationSnapshot> _requests = [];
-    private readonly List<TaskCompletionSource<ProbabilityCalculationResult>> _jobs = [];
-    private readonly List<CancellationToken> _tokens = [];
+    private ControlledBackgroundCalculator _worker = null!;
 
     private IRenderedComponent<ProbabilityCalculatorComponent> Controlled(SessionState? session = null) {
-        Mock<IBackgroundCalculator> worker = new();
-        worker.Setup(calculator => calculator.CalculateAsync(It.IsAny<CalculationSnapshot>(), It.IsAny<CancellationToken>()))
-            .Returns((CalculationSnapshot snapshot, CancellationToken token) => {
-                TaskCompletionSource<ProbabilityCalculationResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                _requests.Add(snapshot);
-                _tokens.Add(token);
-                _jobs.Add(completion);
-                return completion.Task;
-            });
-        context.Services.AddSingleton(worker.Object);
+        _worker = new();
+        context.Services.AddSingleton<IBackgroundCalculator>(_worker);
         return Render(session ?? Session());
     }
 
-    [SetUp]
-    public void ResetRequests() {
-        _requests.Clear();
-        _jobs.Clear();
-        _tokens.Clear();
-    }
-
-    private void Complete(int index) => _jobs[index].SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_requests[index].Json)));
+    private void Complete(int index) => _worker.Calls[index].Completion.SetResult(
+        CalculationWire.ReadResult(CalculationWire.Execute(_worker.Calls[index].Snapshot.Json)));
 
     [TestCase(ProbabilityCalculationLimitReason.Work)]
     [TestCase(ProbabilityCalculationLimitReason.Storage)]
@@ -50,7 +34,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         ProbabilityCalculationResult accepted = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
         PinnedResultSnapshot pinned = cut.FindComponent<PinnedResultPanel>().Instance.Snapshot;
         Task failure = Button(cut, "Calculate").ClickAsync(new());
-        _jobs[1].SetException(new ProbabilityCalculationLimitException(reason));
+        _worker.Calls[1].Completion.SetException(new ProbabilityCalculationLimitException(reason));
         await failure;
         Assert.That(cut.Find("[role='alert']").TextContent,
             Does.Contain(reason == ProbabilityCalculationLimitReason.Work ? "work allowance" : "storage safety limit").And.Contain("No probability was calculated"));
@@ -65,14 +49,14 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Controlled(session);
         Task active = Button(cut, "Calculate").ClickAsync(new());
         await Button(cut, "Cancel").ClickAsync(new());
-        Assert.That(_tokens[0].IsCancellationRequested, Is.True);
-        _jobs[0].SetCanceled();
+        Assert.That(_worker.Calls[0].Token.IsCancellationRequested, Is.True);
+        _worker.Calls[0].Completion.SetCanceled();
         await active;
 
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Task manual = Button(cut, "Calculate").ClickAsync(new());
-        CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_requests[1].Json)!;
-        Assert.That(_requests[1].RequestedMode, Is.EqualTo(CalculationModel.OpeningHand));
+        CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Calls[1].Snapshot.Json)!;
+        Assert.That(_worker.Calls[1].Snapshot.RequestedMode, Is.EqualTo(CalculationModel.OpeningHand));
         Assert.That(input.Cards.All(card => card.DrawCount is null && card.PreDrawRemovalCount == 0), Is.True);
         Complete(1);
         await manual;
@@ -85,7 +69,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
     public async Task TransportFailureHasNoModelRecoveryAction() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Controlled();
         Task calculation = Button(cut, "Calculate").ClickAsync(new());
-        _jobs[0].SetException(new Microsoft.JSInterop.JSException("worker startup failed"));
+        _worker.Calls[0].Completion.SetException(new Microsoft.JSInterop.JSException("worker startup failed"));
         await calculation;
         Assert.That(cut.Find("[role='alert']").TextContent, Does.Contain("worker startup failed"));
         Assert.That(cut.FindAll(".calculation-recovery"), Is.Empty);
@@ -101,12 +85,12 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         session.Cards.Add(new([], 1, "Allure", id: "allure", drawCount: 2, postDrawDiscardCount: 1));
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Controlled(session);
         Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
-        Assert.That(_jobs, Is.Empty);
+        Assert.That(_worker.Calls, Is.Empty);
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "OpeningHand" });
         Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
         Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
-        Assert.That(_jobs, Is.Empty);
+        Assert.That(_worker.Calls, Is.Empty);
         await cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
         Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
         await cut.Find("#cardName0").InputAsync(new() { Value = "Renamed only" });
@@ -115,7 +99,7 @@ public class CalculationRecoveryTest : CalculatorEditorTestBase {
         }
         Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
         compiler.VerifyNoOtherCalls();
-        Assert.That(_jobs, Is.Empty);
+        Assert.That(_worker.Calls, Is.Empty);
     }
 
 }

@@ -54,7 +54,7 @@ public sealed record PinnedResultSnapshot(
         ImmutableArray<PinnedComboRow> pinnedComboRows = result.ComboProbabilities
             .Select(combo => new PinnedComboRow(
                 combo.ComboIndex,
-                string.IsNullOrWhiteSpace(combo.ComboName) ? UiText.Format("Ui.UnnamedCombo0", combo.ComboIndex + 1) : combo.ComboName,
+                ProbabilityResultProjection.ComboLabel(combo.ComboIndex, combo.ComboName),
                 combo.Probability,
                 combo.GroupId))
             .ToImmutableArray();

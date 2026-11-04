@@ -19,7 +19,7 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
                 combo = value.NewCombo;
                 comboEditor!.SetParametersAndRender(next => next.Add(component => component.Combo, combo));
             }));
-        comboEditor.Find("[data-new-requirement]").Click();
+        comboEditor.Find(".add-top-level-group").Click();
         Assert.That(comboEditor.FindComponent<RequirementEditForm>().Instance.QuantityContent, Is.Not.Null);
         AssertCollapsedNumericChoices(comboEditor);
         comboEditor.Find("#comboTarget0").Change(target);
@@ -43,34 +43,35 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
         Assert.That(simulation.FindComponent<RequirementEditForm>().Instance.QuantityContent, Is.Null);
         Assert.That(simulation.FindAll(".requirement-quantity"), Is.Empty);
         AssertCollapsedNumericChoices(simulation);
-        simulation.Find(".requirement-property-picker > select").Change(target);
+        simulation.Find(".requirement-property-picker select.requirement-options").Change(target);
         SetRange(simulation, property, "3", "5");
         simulation.Find($"input[aria-label='Maximum {property}']").Input("2");
-        Assert.That(simulation.Find(".requirement-context-actions button[type=submit]").HasAttribute("disabled"), Is.True);
+        Assert.That(simulation.Find(".requirement-form button[type=submit]").HasAttribute("disabled"), Is.True);
         simulation.Find("form").Submit();
         Assert.That(selector, Is.EqualTo(CardSelector.For(a)));
         Button(simulation, "Cancel").Click();
         simulation.Find(".requirement-edit").Click();
-        Assert.That(simulation.Find(".requirement-property-picker > select").GetAttribute("value"), Is.EqualTo(a.Identity));
-        simulation.Find(".requirement-property-picker > select").Change(target);
+        Assert.That(simulation.Find(".requirement-property-picker select.requirement-options").GetAttribute("value"), Is.EqualTo(a.Identity));
+        simulation.Find(".requirement-property-picker select.requirement-options").Change(target);
         SetRange(simulation, property, "3", "5");
         simulation.Find("form").Submit();
         Assert.That(selector.NumericRange, Is.EqualTo(saved.Selector.NumericRange));
     }
 
     [Test]
-    public void RemovingAnotherPropertyKeepsInvalidNumericDraftAndSaveProtection() {
+    public void InvalidNumericDraftBlocksSaveAndSwitchingConditionsDiscardsOnlyTheDraft() {
         Combo combo = new([ComboCategory.SameCard([new NumericPropertyRange(NumericPropertyKind.Level, 2, 5).ToCategory(), a, b], 1, 3)]);
         IRenderedComponent<ComboEditor> editor = context.RenderComponent<ComboEditor>(parameters => parameters
             .Add(component => component.Combo, combo).Add(component => component.CategoryBases, new[] { a, b }));
         editor.Find(".requirement-edit").Click();
         editor.Find("input[aria-label='Maximum Level']").Input("1");
-        RequirementPropertyPicker picker = editor.FindComponents<RequirementPropertyPicker>()[0].Instance;
-        editor.Find("button[aria-label='Remove property 2']").Click();
-        Assert.That(editor.FindComponents<RequirementPropertyPicker>()[0].Instance, Is.SameAs(picker));
         Assert.That(editor.Find("input[aria-label='Maximum Level']").GetAttribute("value"), Is.EqualTo("1"));
         Assert.That(editor.Find(".requirement-submit button").HasAttribute("disabled"), Is.True);
         editor.Find("form").Submit();
+        Assert.That(editor.Instance.Combo, Is.SameAs(combo));
+        ConditionButton(editor, "category:0", 1).Click();
+        Assert.That(editor.FindAll("form .requirement-property-picker"), Has.Count.EqualTo(1));
+        Assert.That(editor.Find("#comboTarget0").GetAttribute("value"), Is.EqualTo(a.Identity));
         Assert.That(editor.Instance.Combo, Is.SameAs(combo));
     }
 
@@ -84,7 +85,7 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
             .Add(component => component.OnChanged, _ => changes++));
         Assert.That(editor.Find(".draw-selector-chip").TextContent, Is.EqualTo("Level 5"));
         editor.Find(".requirement-edit").Click();
-        Assert.That(editor.Find("form .requirement-property-picker > select").GetAttribute("value"), Is.EqualTo("numeric:level"));
+        Assert.That(editor.Find("form .requirement-property-picker select.requirement-options").GetAttribute("value"), Is.EqualTo("numeric:level"));
         editor.Find("form").Submit();
         Assert.That(changes, Is.Zero);
         Assert.That(editor.Instance.Selector, Is.SameAs(original));
@@ -150,7 +151,7 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
             .Add(component => component.Category, role).Add(component => component.CategoryBases, CardPropertyProvider.CommonCategories)
             .Add(component => component.OnApply, rule => applied = rule));
         AssertCollapsedNumericChoices(editor);
-        editor.Find("[aria-label='Add AND property to alternative 1']").Change("numeric:" + property.ToString().ToLowerInvariant());
+        editor.Find("select[aria-label='Add AND property to alternative 1']").Change("numeric:" + property.ToString().ToLowerInvariant());
         SetRange(editor, property, "3", "5");
         RequirementPropertyPicker picker = editor.FindComponents<RequirementPropertyPicker>().Single(component => component.Instance.Value.StartsWith("metadata:numeric:")).Instance;
         editor.Find($"input[aria-label='Maximum {property}']").Input("2");
@@ -191,7 +192,7 @@ public sealed class CalculatorEditorNumericRequirementsTest : CalculatorEditorTe
         IRenderedComponent<CategoryRuleEditor> editor = context.RenderComponent<CategoryRuleEditor>(parameters => parameters
             .Add(component => component.Category, new CategoryBase("Role"))
             .Add(component => component.OnApply, value => applied = value));
-        editor.Find("[aria-label='Add rule alternative']").Change("numeric:level");
+        editor.Find("select[aria-label='Add rule alternative']").Change("numeric:level");
         editor.Find("select[aria-label='Comparison']").Change(comparison);
         string numberLabel = comparison == "maximum" ? "Maximum Level" : comparison == "exact" ? "Level" : "Minimum Level";
         editor.Find($"input[aria-label='{numberLabel}']").Input("");

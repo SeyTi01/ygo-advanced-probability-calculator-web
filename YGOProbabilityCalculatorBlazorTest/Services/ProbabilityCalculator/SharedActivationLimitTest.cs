@@ -1,5 +1,6 @@
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
+using static YGOProbabilityCalculatorBlazorTest.Fixtures.SearchCardFixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 

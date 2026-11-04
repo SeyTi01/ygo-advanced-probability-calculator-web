@@ -9,7 +9,7 @@
 .requirement-and-separator, .alternative-separator {
     display: flex;
     align-items: center;
-    gap: .65rem;
+    gap: var(--expression-field-gap);
 }
 .requirement-and-separator::before, .requirement-and-separator::after,
 .alternative-separator::before, .alternative-separator::after {
@@ -20,18 +20,28 @@
 
 .expression-inline-separator { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0; padding: 0; }
 .expression-inline-separator::before, .expression-inline-separator::after { display: none; }
-.expression-operator {
+.expression-operator,
+.expression-add-button {
     appearance: none;
     background: var(--bs-body-bg);
     color: var(--bs-secondary-color);
     border: 1px solid var(--bs-border-color);
     border-radius: .3rem;
-    padding: .25rem .5rem;
-    min-height: 2rem;
-    min-width: 2.75rem;
+    padding: var(--expression-inline-gap) var(--expression-stack-gap);
+    min-height: var(--editor-compact-control-height);
+    min-width: var(--app-touch-target-size);
     text-align: center;
     cursor: pointer;
     font: inherit;
 }
-.expression-operator:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+.expression-form-control .expression-operator {
+    min-height: var(--editor-form-control-height);
+    padding: .375rem .75rem;
+    border-radius: var(--bs-border-radius);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+}
+.expression-add-button { opacity: .7; }
+.expression-add-button:is(:hover, :focus-visible, :active) { opacity: 1; }
 .expression-operator-error { white-space: normal; font-size: .8rem; font-weight: normal; line-height: 1.4; }

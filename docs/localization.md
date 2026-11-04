@@ -1,6 +1,6 @@
 # Localization contributors
 
-English is the only production locale. Presentation uses the platform's
+English, Deutsch (`de`), 日本語 (`ja`), Français (`fr`), Italiano (`it`) and Português (`pt`) are production locales. Presentation uses the platform's
 `ResourceManager` and keyed `.resx` satellites in `Localization/Strings.resx`.
 This avoids an additional package and works equally in Razor, static C#
 presentation helpers, WebAssembly, and the publish-time prerenderer.
@@ -44,18 +44,23 @@ during startup is supported while retaining the browser's numeric culture.
    At two production locales the global header selector appears automatically
    on both routes. English alone keeps the existing header.
 3. Run the localization/editor tests, optimized publish, prerendered SEO checks,
-   and the isolated published browser workflow described below.
+   and the published browser workflow described below.
 
 ## Website preference and startup
 
 `ygo-calculator:language:v1` in localStorage contains an explicit website
 preference, independently of every deck, session, worker and share payload.
+The default **System** choice follows the browser's supported language and leaves
+that preference key absent, like the theme control. Choosing System clears an
+existing override; explicit language choices remain saved.
 Resolution is saved supported preference, then ordered `navigator.languages`,
 then English. Matching walks from a regional tag to registered parent tags.
 An explicit English selection overrides a supported German browser language.
 Unsupported/stale values are ignored; denied storage still allows startup.
-There is no language entry in Calculation settings or Browser default option.
-Clearing browser data resets the preference.
+The language and theme pickers are compact icon controls in the global header.
+They retain native keyboard/touch selection, accessible labels and current-choice
+tooltips. Language is not a calculation setting. Clearing browser data resets the
+preference to System.
 
 The head script `js/locale.js` fetches the small registry before
 `Blazor.start({ applicationCulture })` (autostart is disabled). Program sets
@@ -73,12 +78,15 @@ reveals its canonical HTML. For a non-English preference it keeps that HTML hidd
 until the correctly initialized interactive layout is ready. The document language
 then changes with the interactive UI. This does not translate or replace SEO
 metadata. JavaScript-disabled crawlers/readers retain canonical English HTML.
-Startup errors reveal the existing runtime-error UI. No translated card catalog
-is bundled; translations remain .resx satellites selected by startup.
+Startup errors reveal the existing runtime-error UI. UI translations remain
+.resx satellites selected by startup; localized card names load separately on demand.
 
 ## Language reload and accepted workspace
 
-A language change takes one reload of the **exact current URL**. Before switching,
+A language preference change takes one reload of the **exact current URL**.
+The checkpoint records the resolved target language, including when System is
+selected or the preference changes without changing the current UI language.
+Before switching,
 finish an open effect, requirement, rule or rename form by saving/applying or
 cancelling it. Clear or add nonempty quick-add/category/group text first. Invalid
 numeric input also blocks the switch. The shell reads these semantic edit markers
@@ -114,28 +122,21 @@ from normal explicit recovery and never changes session schema or worker bytes.
 
 ## Published integration check
 
-`node scripts/localization/prepare-test-host.cjs` makes an ignored source copy
-under `bin/localization-test-host`, adding the test-only pseudo satellite under
-`fr` and `de` plus an isolated registry. Neither pseudo resource nor registry
-is included in production. Publish that copy with the same stripped-IL AOT
-configuration as the production app. Use `--refresh` to recreate a previously
-marked generated copy after source changes, then run:
+Run the JavaScript localization tests and the browser smoke against an optimized
+production publish:
 
 ```sh
 node --test scripts/localization/locale.test.mjs
 dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release -o YGOProbabilityCalculatorBlazor/bin/language-publish
-node scripts/localization/prepare-test-host.cjs
-dotnet publish bin/localization-test-host/YGOProbabilityCalculatorBlazor.csproj -c Release -o bin/localization-test-publish
-node scripts/localization/browser-smoke.cjs YGOProbabilityCalculatorBlazor/bin/language-publish/wwwroot bin/localization-test-publish/wwwroot
+node scripts/localization/browser-smoke.cjs YGOProbabilityCalculatorBlazor/bin/language-publish/wwwroot
 ```
 
-Playwright and a Chromium browser are external test dependencies; set
-`YGO_BROWSER_EXECUTABLE` or `YGO_BROWSER_CHANNEL` as for the existing smoke tests.
-The optional third browser-script argument is a frozen dev publish for startup
-transfer comparison. The script checks first visible interactive language,
-satellite requests, real reload/restoration, saved English on a German browser,
-invalid preferences, navigation, accepted results, blocked unfinished edits, protected recovery/share state,
-storage failure, and desktop/mobile header usability. Run the regular .NET/JS
+Playwright and Chromium are external test dependencies; set
+`YGO_BROWSER_EXECUTABLE` or `YGO_BROWSER_CHANNEL` as for the other browser checks.
+The smoke checks production satellites, first visible language, on-demand localized
+card names, numeric culture, and real reload/restoration of accepted workspace and
+results. It also checks representative blocked edits and pending operations,
+protected recovery/share state, and storage failure. Run the regular .NET/JS
 suites and `PublishedOutputSeoTest` against the production publish as well.
 
 The test project's `Localization/Strings.fr.resx` is an intentionally artificial
@@ -152,7 +153,7 @@ resources, even inside that scope.
 `Archetypes.<canonical name>`, and `NumericProperty.<enum name>`. Missing optional
 labels retain the canonical English display value. Numeric requirement rendering
 uses parameterized `NumericRange.*` messages. Optional same-origin name assets join the shared catalog by canonical ID.
-No production name asset is registered yet; English performs no extra lookup.
+Reviewed locale name assets are registered; English performs no extra lookup.
 
 Catalog `CardInfo` results have verified identity and may use localized labels.
 Saved `Card.Name` always retains its stored text. An optional display label is
@@ -216,3 +217,48 @@ The deliberate later translation pass consists of:
 
 The `/help` route, canonical metadata, development-channel version label and
 publish-time prerendering behavior stay intact.
+
+## German card-name coverage
+
+The [German terminology guide](localization-de.md) records wording and intentional
+English fallbacks. The pinned YAML Yugi compilation is the sole German-name
+source. It supplies 14,125 names out of 14,607 canonical cards and covers all 24
+example entries. German and English
+queries select the same canonical cards through the shared loader. Umlauts and
+ß remain distinct; no accent stripping or translated-name identity joins occur.
+
+See the [offline generation and audit guide](../infrastructure/card-catalog/README.md#german-search-names).
+The retained name-only snapshot reproduces the runtime asset offline.
+YAML Yugi and its upstream contributors receive compilation credit in Help and
+the README; rights-holder card content is separate from the software license.
+
+## Japanese rollout
+
+The [Japanese terminology guide](localization-ja.md) records the UI vocabulary and
+intentional English fallbacks. The same pinned YAML Yugi source provides 12,080
+labels for 12,156 eligible cards; all 24 example entries are covered. Strict ruby
+projection keeps the printed base name and records source/normalized pairs in the
+audit. No reading, romanization, width or accent folding is performed during search.
+See the [localized-name generation guide](../infrastructure/card-catalog/README.md#additional-locales)
+for reproducible offline refresh and coverage limits.
+
+## French rollout
+
+The [French terminology guide](localization-fr.md) documents the reviewed vocabulary
+and intentional English fallbacks. The pinned YAML Yugi projection supplies
+11,956 labels for 12,156 eligible cards, covering all 24 example entries.
+The remaining 200 names use English fallback. See the [offline generation guide](../infrastructure/card-catalog/README.md#additional-locales).
+
+## Italian rollout
+
+The [Italian terminology guide](localization-it.md) documents the reviewed vocabulary
+and intentional English fallbacks. The pinned YAML Yugi projection supplies
+11,956 labels for 12,156 eligible cards, covering all 24 example entries.
+The remaining 200 names use English fallback. See the [offline generation guide](../infrastructure/card-catalog/README.md#additional-locales).
+
+## Portuguese rollout
+
+The [Portuguese terminology guide](localization-pt.md) documents the reviewed vocabulary
+and intentional English fallbacks. The pinned YAML Yugi projection supplies
+11,952 labels for 12,156 eligible cards, covering all 24 example entries.
+The remaining 204 names use English fallback. See the [offline generation guide](../infrastructure/card-catalog/README.md#additional-locales).

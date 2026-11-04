@@ -22,6 +22,28 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
     [Test]
+    public async Task AddActionsKeepCardSearchAndOpenTheNewCombo() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState {
+            Categories = [], Cards = [], Combos = [new([], "Existing")], HandSize = 5
+        });
+        IElement cardAdd = cut.Find(".quick-add button.add-action");
+        IElement comboAdd = cut.Find(".combo-heading #addCombo");
+        Assert.That(cardAdd.HasAttribute("disabled"), Is.True);
+        Assert.That(comboAdd.ClassList.Contains("add-action"), Is.True);
+        Assert.That(cardAdd.TextContent.Trim(), Is.EqualTo(comboAdd.TextContent.Trim()));
+        Assert.That(cardAdd.GetAttribute("aria-label"), Is.EqualTo("Add card"));
+        Assert.That(comboAdd.GetAttribute("aria-label"), Is.EqualTo("Add combo"));
+        await cut.Find("#quickCardName").InputAsync(new() { Value = "Custom card" });
+        Assert.That(cut.Find(".quick-add button.add-action").HasAttribute("disabled"), Is.False);
+        await cut.Find(".quick-add button.add-action").ClickAsync(new());
+        Assert.That(cut.FindComponents<CardEditor>(), Has.Count.EqualTo(1));
+        await cut.Find("#addCombo").ClickAsync(new());
+        Assert.That(cut.FindComponents<ComboEditor>(), Has.Count.EqualTo(2));
+        Assert.That(cut.Find("#combo1").ClassList.Contains("show"), Is.True);
+        Assert.That(context.JSInterop.Invocations.Any(call => call.Identifier == "workspaceSearch.focus" && (string)call.Arguments[0]! == "comboName1"), Is.True);
+    }
+
+    [Test]
     public async Task EmptyDeckCanAuthorCommonCategoryAndOrAndSameCardRequirements() {
         CategoryBase level8 = new NumericPropertyRange(NumericPropertyKind.Level, 8, 8).ToCategory();
         CategoryBase monster = CardPropertyProvider.CommonCategories.Single(static category => category.MetadataKey == "kind:monster");
@@ -221,6 +243,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         });
 
         await duplicateEditor.Find("#comboName2").InputAsync(new() { Value = "Adjusted route" });
+        OpenNewRequirement(duplicateEditor);
         await RequirementField(duplicateEditor, "#comboTarget2").ChangeAsync(new() { Value = a.Identity });
         await RequirementField(duplicateEditor, "#minCount2").InputAsync(new() { Value = "2" });
         await RequirementField(duplicateEditor, "#maxCount2").InputAsync(new() { Value = "2" });
@@ -296,9 +319,11 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> sourceEditor = cut.FindComponents<ComboEditor>()[1];
         IRenderedComponent<ComboEditor> otherEditor = cut.FindComponents<ComboEditor>()[2];
 
+        OpenNewRequirement(sourceEditor);
         await RequirementField(sourceEditor, "#comboTarget1").ChangeAsync(new() { Value = b.Identity });
         await RequirementField(sourceEditor, "#minCount1").InputAsync(new() { Value = "0" });
         await RequirementField(sourceEditor, "#maxCount1").InputAsync(new() { Value = "0" });
+        OpenNewRequirement(otherEditor);
         await RequirementField(otherEditor, "#comboTarget2").ChangeAsync(new() { Value = a.Identity });
         await RequirementField(otherEditor, "#minCount2").InputAsync(new() { Value = "0" });
         await RequirementField(otherEditor, "#maxCount2").InputAsync(new() { Value = "2" });
@@ -308,6 +333,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         IReadOnlyList<IRenderedComponent<ComboEditor>> editors = cut.FindComponents<ComboEditor>();
         Assert.That(editors[1].Instance, Is.SameAs(sourceEditor.Instance));
         Assert.That(editors[3].Instance, Is.SameAs(otherEditor.Instance));
+        OpenNewRequirement(editors[2]);
         Assert.Multiple(() => {
             Assert.That(RequirementField(sourceEditor, "#comboTarget1").GetAttribute("value"), Is.EqualTo(b.Identity));
             Assert.That(RequirementField(sourceEditor, "#minCount1").GetAttribute("value"), Is.EqualTo("0"));
@@ -340,6 +366,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
         IRenderedComponent<ComboEditor> sourceEditor = cut.FindComponent<ComboEditor>();
         string cardId = session.Cards[1].Id;
+        OpenNewRequirement(sourceEditor);
         await RequirementField(sourceEditor, "#comboTarget0").ChangeAsync(new() { Value = CardTarget(cardId) });
         await RequirementField(sourceEditor, "#minCount0").InputAsync(new() { Value = "2" });
         await RequirementField(sourceEditor, "#maxCount0").InputAsync(new() { Value = "2" });
@@ -347,6 +374,7 @@ public sealed class CalculatorEditorTestCombos : CalculatorEditorTestBase {
 
         IReadOnlyList<IRenderedComponent<ComboEditor>> editors = cut.FindComponents<ComboEditor>();
         Assert.That(editors[0].Instance, Is.SameAs(sourceEditor.Instance));
+        OpenNewRequirement(editors[1]);
         Assert.Multiple(() => {
             Assert.That(sourceEditor.Instance.Combo.Cards, Is.Empty);
             Assert.That(RequirementField(sourceEditor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget(cardId)));

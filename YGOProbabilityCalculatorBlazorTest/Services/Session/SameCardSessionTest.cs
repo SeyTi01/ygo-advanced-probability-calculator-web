@@ -1,18 +1,15 @@
 using System.Text.Json;
-using Microsoft.JSInterop;
-using Moq;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 
 [TestFixture]
 public class SameCardSessionTest {
-    private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
-
     [Test]
     public async Task SameCardSessionShareAndWorkerPreserveCompositeMeaning() {
         CategoryBase a = SameCardSelectorTest.A;
@@ -24,11 +21,11 @@ public class SameCardSessionTest {
             Combos = [new([requirement]), new([], alternativeGroups: [new([ComboAlternative.For(requirement), ComboAlternative.For(new ComboCard("a", 1, 1))])])],
             HandSize = 2
         };
-        string json = Codec().SerializeSession(session);
+        string json = SessionFixture.CreateCodec().SerializeSession(session);
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
-        SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
+        SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
         Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
-        Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
+        Assert.That(SessionFixture.CreateCodec().SerializeSession(loaded), Is.EqualTo(json));
         Assert.That(loaded.Combos[0].Categories[0].Selector, Is.EqualTo(requirement.Selector));
         Assert.That(loaded.Combos[1].AlternativeGroups[0].Alternatives[0].Category!.Selector, Is.EqualTo(requirement.Selector));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 2, [], options: new());
@@ -41,6 +38,6 @@ public class SameCardSessionTest {
     [TestCase("{\"Kind\":\"AllOf\",\"Categories\":[\"user:A\",\"user:B\"]}", "[{\"Name\":\"A\"}]")]
     public void SameCardSessionRejectsMalformedRequirement(string selector, string categories) {
         string json = $$"""{"SchemaVersion":4,"Combos":[{"Categories":[{"Selector":{{selector}},"CategoryBases":{{categories}},"MinCount":1,"MaxCount":2}]}]}""";
-        Assert.ThrowsAsync<InvalidOperationException>(() => Codec().LoadSessionAsync(json));
+        Assert.ThrowsAsync<InvalidOperationException>(() => SessionFixture.CreateCodec().LoadSessionAsync(json));
     }
 }

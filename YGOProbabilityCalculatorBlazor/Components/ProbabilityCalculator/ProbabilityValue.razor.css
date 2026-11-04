@@ -1,7 +1,8 @@
 /* A compact, content-independent column keeps accuracy changes from resizing labels.
    Narrow panels use two predictable lines; spacious panels can keep one line. */
 .probability-with-accuracy { display: inline-grid; grid-template-columns: minmax(0, 1fr); justify-items: end; align-items: baseline; width: 6.5em; min-width: 0; max-width: 100%; text-align: right; font-variant-numeric: tabular-nums; }
-.probability-with-accuracy:focus-visible { outline: 2px solid var(--app-focus-ring-color, currentColor); outline-offset: 3px; border-radius: .15rem; }
+.probability-with-accuracy { --control-focus-color: var(--app-focus-ring-color, currentColor); }
+.probability-with-accuracy:focus-visible { border-radius: .15rem; }
 .combo-probability-value { white-space: nowrap; }
 .probability-uncertainty, .probability-uninformative { font-size: .75em; font-weight: normal; white-space: nowrap; }
 .probability-uninformative { grid-column: 1 / -1; }

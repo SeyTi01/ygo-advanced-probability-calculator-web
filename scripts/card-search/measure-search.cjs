@@ -1,158 +1,109 @@
-// Opt-in browser check: NODE_PATH points at an existing Playwright installation.
-// node scripts/card-search/measure-search.cjs <published/wwwroot> [trials]
+// Opt-in timing observation, with no performance thresholds.
+// node scripts/card-search/measure-search.cjs <published-wwwroot> <output.json> [trials=3]
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
-const http = require('node:http');
 const path = require('node:path');
 const { chromium } = require('playwright');
+const { serve, launchOptions } = require('../background-calculation/browser-support.cjs');
 
-(async () => {
-    const root = path.resolve(process.argv[2]);
-    const trials = Number(process.argv[3] || 3);
-    const types = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.wasm': 'application/wasm', '.html': 'text/html', '.css': 'text/css' };
-    const server = http.createServer(async (request, response) => {
-        try {
-            const pathname = new URL(request.url, 'http://localhost').pathname;
-            const file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : decodeURIComponent(pathname)));
-            if (!file.startsWith(root + path.sep)) return response.writeHead(403).end();
-            response.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream');
-            response.end(await fs.readFile(file));
-        } catch { response.writeHead(404).end(); }
-    });
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+function installProbe() {
+    window.searchProbe = { events: [], longTasks: [] };
+    if (PerformanceObserver.supportedEntryTypes.includes('longtask')) {
+        new PerformanceObserver(list => searchProbe.longTasks.push(...list.getEntries().map(entry =>
+            ({ startTime: entry.startTime, duration: entry.duration })))).observe({ type: 'longtask' });
+    }
+    document.addEventListener('input', event => {
+        if (event.target.id !== 'quickCardName' || !event.target.value) return;
+        const record = { query: event.target.value, started: performance.now() };
+        searchProbe.events.push(record);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            record.inputDoubleFrameMs = performance.now() - record.started;
+        }));
+    }, true);
+    new MutationObserver(() => {
+        const record = searchProbe.events.at(-1);
+        const options = [...document.querySelectorAll('#quickCardResults [role="option"]')];
+        if (!record || record.suggestionsObservedMs !== undefined || !options.length) return;
+        record.suggestionsObservedMs = performance.now() - record.started;
+        record.names = options.map(option => option.textContent.trim());
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            record.suggestionsDoubleFrameMs = performance.now() - record.started;
+        }));
+    }).observe(document, { childList: true, subtree: true, characterData: true });
+}
+
+async function main() {
+    const [root, output, trialArgument = '3'] = process.argv.slice(2);
+    const trials = Number(trialArgument);
+    const cpuRates = (process.env.YGO_SEARCH_CPU_RATES || '1,4').split(',').map(Number);
+    assert(root && output && process.argv.length <= 5 && Number.isInteger(trials) && trials > 0 && trials <= 20,
+        'Usage: measure-search.cjs <published-wwwroot> <output.json> [trials=3; 1..20]');
+    assert(cpuRates.length && cpuRates.every(rate => Number.isFinite(rate) && rate >= 1 && rate <= 20),
+        'YGO_SEARCH_CPU_RATES must be comma-separated CPU throttle rates from 1 to 20');
+    const evidence = { metadata: { trials, viewport: [1440, 1000], cpuRates, timeoutMs: 30000,
+        cache: 'fresh context per trial/rate; first query then same-app warm queries',
+        network: 'uncompressed loopback; artwork requests aborted',
+        metrics: 'full-query input event to suggestion DOM observation and double animation frame; not engine-only time or paint' }, results: [] };
+    await fs.mkdir(path.dirname(path.resolve(output)), { recursive: true });
+    const catalog = JSON.parse(await fs.readFile(path.join(root, 'data/card-catalog.v1.json'), 'utf8'));
+    evidence.metadata.catalogCards = catalog.cards.length;
+    const { server, url } = await serve(root);
     let browser;
     try {
-        browser = await chromium.launch({ executablePath: process.env.WORKSPACE_BROWSER_PATH || undefined, channel: process.env.WORKSPACE_BROWSER_PATH ? undefined : process.env.YGO_BROWSER_CHANNEL || 'msedge', headless: true });
-        const sample = JSON.parse(await fs.readFile(path.join(root, 'sample-data/example_session_state.json'), 'utf8'));
-        assert.equal(sample.Cards.reduce((sum, card) => sum + card.Copies, 0), 40);
-        assert.equal(sample.HandSize, 5);
-        const catalog = JSON.parse(await fs.readFile(path.join(root, 'data/card-catalog.v1.json'), 'utf8'));
-        console.log(JSON.stringify({ browser: browser.version(), catalogCards: catalog.cards.length, trials, deck: 40, hand: 5 }));
-        for (const rate of [1, 4]) {
+        browser = await chromium.launch(launchOptions());
+        evidence.metadata.browser = browser.version();
+        for (const rate of evidence.metadata.cpuRates) {
             for (let trial = 0; trial < trials; trial++) {
-                const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-                const errors = [];
-                const phases = [];
-                let catalogLoads = 0;
-                page.on('request', request => { if (request.url().endsWith('/data/card-catalog.v1.json')) catalogLoads++; });
-                page.on('pageerror', error => errors.push(error.message));
-                page.on('console', message => { if (message.text().startsWith('SEARCH_PROFILE:')) phases.push(message.text()); });
-                await page.route('**/card-artwork/**', route => route.abort());
-                await page.goto(`http://127.0.0.1:${server.address().port}`);
-                await page.getByRole('button', { name: 'Calculate', exact: true }).waitFor();
-                try { await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined); }
-                catch (error) { console.error(await page.evaluate(() => ({ ready: document.readyState, runtime: typeof getDotnetRuntime, blazor: typeof Blazor, fileKeys: Object.keys(document.querySelector('#sessionFileInput') || {}) })), errors); throw error; }
-                await page.locator('#sessionFileInput').setInputFiles({ name: 'search-sample.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(sample)) });
-                try { await page.locator('.card-editor').first().waitFor(); }
-                catch (error) { console.error(await page.locator('body').innerText(), errors); throw error; }
-                await page.locator('.card-editor').first().locator('.accordion-button').click();
-                const input = page.locator('#cardName0');
-                await input.waitFor({ state: 'visible' });
-                const cdp = await page.context().newCDPSession(page);
-                await cdp.send('Emulation.setCPUThrottlingRate', { rate });
-                await page.evaluate(() => {
-                    window.searchProbe = { events: [], longTasks: [] };
-                    new PerformanceObserver(list => searchProbe.longTasks.push(...list.getEntries().map(entry => entry.duration))).observe({ type: 'longtask', buffered: false });
-                    document.addEventListener('input', event => {
-                        if (event.target.id !== 'cardName0') return;
-                        const record = { value: event.target.value, start: performance.now() };
-                        searchProbe.events.push(record);
-                        requestAnimationFrame(() => requestAnimationFrame(() => {
-                            record.feedback = performance.now() - record.start;
-                            record.visibleValue = event.target.value;
-                        }));
-                    }, true);
-                    // Registered after Blazor's delegated handler: measures synchronous dispatch,
-                    // including parent/render work and a warm synchronous catalog search.
-                    document.addEventListener('input', event => {
-                        if (event.target.id !== 'cardName0') return;
-                        const record = searchProbe.events.at(-1);
-                        record.dispatch = performance.now() - record.start;
-                        const names = [...document.querySelectorAll('.card-search-result')].map(element => element.textContent.trim());
-                        if (names.length) {
-                            record.suggestions = record.dispatch;
-                            record.names = names;
-                        }
-                    });
-                    new MutationObserver(() => {
-                        const last = searchProbe.events.at(-1);
-                        const names = [...document.querySelectorAll('.card-search-result')].map(element => element.textContent.trim());
-                        if (last && !last.suggestions && names.length) {
-                            last.suggestions = performance.now() - last.start;
-                            last.names = names;
-                        }
-                    }).observe(document.querySelector('.card-name-field'), { childList: true, subtree: true, characterData: true });
-                });
-                const coldStart = Date.now();
-                const catalogLoadsBeforeFocus = catalogLoads;
-                await input.focus();
-                await page.locator('.card-search-result').first().waitFor();
-                const coldFocus = Date.now() - coldStart;
-                await page.waitForTimeout(200);
-                await page.evaluate(() => { searchProbe.events = []; searchProbe.longTasks = []; });
-                for (const sequence of ['Ash Blossom', 'Dark Magic']) {
-                    await input.fill('');
-                    await input.pressSequentially(sequence, { delay: 100 });
-                    await page.waitForTimeout(200);
-                }
-                await input.fill('');
-                await input.pressSequentially('Blue-Eyes', { delay: 5 });
-                await page.waitForTimeout(200);
-                await input.press('Backspace');
-                await page.waitForTimeout(150);
-                await input.fill('Pot of Greed');
-                await page.waitForTimeout(250);
-                const measured = await page.evaluate(() => structuredClone(searchProbe));
-                await input.press('ArrowDown');
-                const activeId = await input.getAttribute('aria-activedescendant');
-                assert(activeId && await page.locator(`#${activeId}`).count());
-                await input.press('Escape');
-                assert.equal(await page.locator('.card-search-results').count(), 0);
-                assert.equal(await input.inputValue(), 'Pot of Greed');
-                assert.equal(await page.evaluate(() => document.activeElement.id), 'cardName0');
-                console.log(JSON.stringify({ rate, trial, coldFocus, catalogLoadsBeforeFocus, catalogLoads, ...measured, phases, errors }));
-                await input.fill('Ash Blossom');
-                await page.locator('.card-search-result').first().click();
-                assert.equal(await input.inputValue(), 'Ash Blossom & Joyous Spring');
-                const recoveryStart = Date.now();
-                await input.fill('Final manual character!');
-                await page.waitForFunction(() => {
-                    try {
-                        return JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Cards[0].Name === 'Final manual character!';
-                    } catch { return false; }
-                }, null, { timeout: 5000 });
-                const recoveryMilliseconds = Date.now() - recoveryStart;
-                const recoveredName = await page.evaluate(() => JSON.parse(JSON.parse(localStorage.getItem('ygo-calculator:session-recovery:v1')).payload).Cards[0].Name);
-                assert.equal(recoveredName, 'Final manual character!');
-                await input.press('Tab');
-                assert.equal(await input.inputValue(), 'Final manual character!');
-                await input.focus();
-                await input.fill('Blue-Eyes');
-                await input.press('ArrowUp');
-                await input.press('Enter');
-                assert.match(await input.inputValue(), /Blue-Eyes/);
-                await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-                await page.locator('.probability-total-value').waitFor();
-                await input.focus();
-                await page.evaluate(() => { searchProbe.events = []; searchProbe.longTasks = []; });
-                await input.fill('After result edit!');
-                await page.locator('.probability-result-status .visually-hidden').waitFor();
-                await page.waitForTimeout(100);
-                const afterResultEdit = await page.evaluate(() => structuredClone(searchProbe));
-                if (trial === 0 && rate === 1 && process.env.YGO_SEARCH_SCREENSHOTS) {
-                    await input.fill('Ash');
-                    await page.screenshot({ path: path.join(process.env.YGO_SEARCH_SCREENSHOTS, 'card-search-desktop.png') });
-                    await page.setViewportSize({ width: 390, height: 900 });
-                    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 390);
-                    await page.screenshot({ path: path.join(process.env.YGO_SEARCH_SCREENSHOTS, 'card-search-mobile.png') });
-                }
-                assert.deepEqual(errors, []);
-                console.log(JSON.stringify({ interactions: 'passed', rate, trial, recoveryMilliseconds, afterResultEdit }));
-                await page.close();
+                const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, locale: 'en-US' });
+                const result = { rate, trial, status: 'running', events: [], errors: [] };
+                evidence.results.push(result);
+                let page;
+                try {
+                    page = await context.newPage();
+                    let catalogRequests = 0;
+                    page.on('pageerror', error => result.errors.push(error.message));
+                    page.on('request', request => { if (new URL(request.url()).pathname === '/data/card-catalog.v1.json') catalogRequests++; });
+                    await page.route('https://ygo-calculator-artwork.ygo-probability.workers.dev/**', route => route.abort());
+                    await page.addInitScript(installProbe);
+                    await page.goto(url);
+                    await page.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
+                    const input = page.locator('#quickCardName');
+                    await input.focus();
+                    const cdp = await context.newCDPSession(page);
+                    await cdp.send('Emulation.setCPUThrottlingRate', { rate });
+                    result.catalogRequestsBeforeQueries = catalogRequests;
+                    await page.evaluate(() => { searchProbe.longTasks = []; });
+                    for (const query of ['Ash Blossom', 'Ash Blossom', 'Blue-Eyes']) {
+                        await input.fill('');
+                        await page.locator('#quickCardResults').waitFor({ state: 'hidden' });
+                        await input.fill(query);
+                        await page.waitForFunction(query => {
+                            const event = searchProbe.events.at(-1);
+                            return event?.query === query && event.suggestionsDoubleFrameMs !== undefined && event.inputDoubleFrameMs !== undefined;
+                        }, query, { timeout: 30000 });
+                    }
+                    Object.assign(result, await page.evaluate(() => ({ ...searchProbe,
+                        catalogResources: performance.getEntriesByType('resource').filter(entry => new URL(entry.name).pathname === '/data/card-catalog.v1.json')
+                            .map(entry => ({ duration: entry.duration, transferSize: entry.transferSize, decodedBodySize: entry.decodedBodySize })) })));
+                    result.catalogRequests = catalogRequests;
+                    result.events.forEach((event, index) => { event.temperature = index === 0 ? 'first' : 'warm'; });
+                    assert.deepEqual(result.errors, []);
+                    result.status = 'complete';
+                    console.log(JSON.stringify(result));
+                } catch (error) {
+                    result.status = error.name === 'TimeoutError' ? 'timeout' : 'error';
+                    result.error = error.message;
+                    result.partial = await page?.evaluate(() => searchProbe).catch(() => undefined);
+                    // Failed/time-limited trials are not included as successful durations.
+                    throw error;
+                } finally { await context.close(); }
             }
         }
     } finally {
         await browser?.close();
         await new Promise(resolve => server.close(resolve));
+        await fs.writeFile(output, JSON.stringify(evidence, null, 2));
     }
-})().catch(error => { console.error(error); process.exitCode = 1; });
+}
+
+if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });

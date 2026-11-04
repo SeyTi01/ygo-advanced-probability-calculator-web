@@ -3,19 +3,18 @@ using System.Text.Json.Nodes;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 
 public sealed class BoundedEffectSessionTest {
-    private static SessionService Codec() => new(null!, new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
-
     [TestCase("ActivationLimit", "0"), TestCase("ActivationLimit", "61"), TestCase("ActivationLimit", "1.5")]
     [TestCase("ActivationLimit", "true"), TestCase("MinimumHandSize", "-1"), TestCase("MinimumHandSize", "61")]
     public void InvalidActivationFieldsAreRejectedAsSessionErrors(string field, string value) {
         Card source = CardEffectRegistry.Default.RestoreBuiltIn(new([], externalCardId: 78058681));
-        JsonObject root = JsonNode.Parse(Codec().SerializeSession(new() { Cards = [source] }))!.AsObject();
+        JsonObject root = JsonNode.Parse(SessionFixture.CreateCodec().SerializeSession(new() { Cards = [source] }))!.AsObject();
         root["Cards"]![0]![field] = JsonNode.Parse(value);
-        Assert.ThrowsAsync<InvalidOperationException>(() => Codec().LoadSessionAsync(root.ToJsonString()));
+        Assert.ThrowsAsync<InvalidOperationException>(() => SessionFixture.CreateCodec().LoadSessionAsync(root.ToJsonString()));
     }
 
     [Test]
@@ -36,6 +35,21 @@ public sealed class BoundedEffectSessionTest {
     }
 
     [Test]
+    public async Task UnrestrictedModeSurvivesCategoryRemovalAndSessionRoundTrip() {
+        CategoryBase role = new("Role");
+        SearchEffectMode[] modes = [new(CardSelector.Any, 1), new(CardSelector.For(role), 2)];
+        Card source = new([], search: new(SearchEffectPlan.ModeTargetUnion(modes), false, modes));
+        Card updated = CategoryRemoval.Remove(source, role.Identity);
+        Assert.That(updated.Search!.Selector, Is.EqualTo(CardSelector.Any));
+        Assert.That(updated.Search.Modes![0], Is.EqualTo(modes[0]));
+        Assert.That(updated.Search.Modes[1].Selector, Is.EqualTo(CardSelector.Not(CardSelector.Any)));
+        Assert.That(updated.Search.Modes[1].ActivationLimit, Is.EqualTo(2));
+        SessionState decoded = await SessionFixture.CreateCodec().LoadSessionAsync(SessionFixture.CreateCodec().SerializeSession(new() { Cards = [updated] }));
+        Assert.That(decoded.Cards.Single().Search, Is.EqualTo(updated.Search));
+        Assert.Throws<ArgumentException>(() => new Card([], search: source.Search! with { Selector = CardSelector.For(role) }));
+    }
+
+    [Test]
     public async Task SchemaEightPreservesAllModesAndExplicitCustomOverridesWithoutRefreshingDefinitions() {
         Card old = new([], drawCount: 1, drawOncePerTurn: false, externalCardId: 93946239,
             effectProfile: new(EffectSource.BuiltIn, 93946239, 1, "Draw 1", EffectSupport.Partial, "Minimum hand size is not checked."));
@@ -43,10 +57,10 @@ public sealed class BoundedEffectSessionTest {
             if (mode is not (CalculationModel.Fast or CalculationModel.Exact or CalculationModel.OpeningHand)) {
                 continue;
             }
-            JsonObject root = JsonNode.Parse(Codec().SerializeSession(new() { Cards = [old, old.Duplicate().WithDrawCount(2)], CalculationModel = mode }))!.AsObject();
+            JsonObject root = JsonNode.Parse(SessionFixture.CreateCodec().SerializeSession(new() { Cards = [old, old.Duplicate().WithDrawCount(2)], CalculationModel = mode }))!.AsObject();
             root["SchemaVersion"] = 8;
             root.Remove("FastExecutionStrategy");
-            SessionState saved = await Codec().LoadSessionAsync(root.ToJsonString());
+            SessionState saved = await SessionFixture.CreateCodec().LoadSessionAsync(root.ToJsonString());
             Assert.That(saved.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
             Assert.That(saved.CalculationModel, Is.EqualTo(mode));
             Assert.That(saved.Cards[0].EffectPlan, Is.EqualTo(old.EffectPlan));

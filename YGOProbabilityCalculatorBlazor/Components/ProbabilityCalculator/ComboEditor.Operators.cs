@@ -73,14 +73,7 @@ public partial class ComboEditor {
     private ComboAlternative RequirementOperand(ComboRequirementPosition position) => position.Kind == ComboRequirementKind.Category
         ? ComboAlternative.For(Combo.Categories[position.Index]) : ComboAlternative.For(Combo.Cards[position.Index]);
 
-    private ComboRequirementPosition? EditingPosition {
-        get {
-            if (_editingIndex is not int index || _editingRequirement is not { } editing) { return null; }
-            ComboRequirementKind kind = editing.Category is not null ? ComboRequirementKind.Category : ComboRequirementKind.Card;
-            if (_editingGroupIndex is not null) { kind = ComboRequirementKind.Group; }
-            return new(kind, _editingGroupIndex ?? index);
-        }
-    }
+    private ComboRequirementPosition? EditingPosition => _draft.Editing?.Location.Position;
 
     private bool CanApplyInline(IReadOnlyList<ComboRequirementPosition> positions, ComboGroupEdit edit) {
         bool editsAffected = EditingPosition is { } position && positions.Contains(position);
@@ -257,33 +250,25 @@ public partial class ComboEditor {
     }
 
     private void RemapEditingRow(Combo updated) {
-        if (_editingRequirement is not { } editing) { return; }
+        if (_draft.Editing?.Requirement is not { } editing) { return; }
         // Track the occurrence too: legacy sessions may repeat the same object.
-        int occurrence = Rows(Combo).TakeWhile(row => row.Index != _editingIndex || row.Group != _editingGroupIndex || !SameRequirement(row.Requirement, editing))
+        int occurrence = Rows(Combo).TakeWhile(row => row.Index != _draft.Editing?.Location.Index || row.Group != _draft.Editing?.Location.GroupIndex || !SameRequirement(row.Requirement, editing))
             .Count(row => SameRequirement(row.Requirement, editing));
         (ComboAlternative Requirement, int Index, int? Group)[] matches = Rows(updated).Where(row => SameRequirement(row.Requirement, editing)).ToArray();
         if (occurrence < matches.Length) {
-            _editingIndex = matches[occurrence].Index;
-            _editingGroupIndex = matches[occurrence].Group;
+            _draft.Editing!.Location = ComboDraftLocation.For(editing, matches[occurrence].Index, matches[occurrence].Group);
         }
     }
 
-    private void ToggleNewRequirement() {
-        if (_editingNewRequirement) { CancelRequirement(); return; }
-        BeginTopLevelRequirement();
-    }
-
     private void FinishNewRequirement(string key) {
-        _editingNewRequirement = false;
-        _hasNewRequirementRow = false;
+        _draft.FinishNewRequirement();
         _returnRowKey = key;
         _focusAlternativeEntry = true;
     }
 
     private void BeginTopLevelRequirement() {
-        if (_editingRequirement is not null || AuthoringScope) { CancelScopedAuthoring(); }
-        _hasNewRequirementRow = true;
-        _editingNewRequirement = true;
+        if (_draft.Editing is not null || AuthoringScope) { CancelScopedAuthoring(); }
+        _draft.BeginNewRequirement();
         _focusAlternativeEntry = true;
         _returnRowKey = null;
     }

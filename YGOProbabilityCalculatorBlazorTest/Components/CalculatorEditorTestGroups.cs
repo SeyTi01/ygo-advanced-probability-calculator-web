@@ -84,6 +84,7 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
             Assert.That(categoryContent.Children.First().ClassList, Does.Contain("editor-add-row"));
             Assert.That(categoryManagement.QuerySelector(".editor-add-row input[aria-label='Category name']"), Is.Not.Null);
             Assert.That(categoryManagement.QuerySelector(".editor-add-row button")!.HasAttribute("disabled"), Is.True);
+            Assert.That(categoryManagement.QuerySelector(".editor-add-row button")!.ClassList, Does.Contain("add-action"));
             Assert.That(categoryManagement.QuerySelectorAll(".category-chip"), Has.Length.EqualTo(2));
             Assert.That(categoryManagement.HasAttribute("open"), Is.False);
 
@@ -92,6 +93,8 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
             Assert.That(groupContent.Children.First().ClassList, Does.Contain("editor-add-row"));
             Assert.That(groupManagement.QuerySelector(".editor-add-row input[aria-label='New combo group name']"), Is.Not.Null);
             Assert.That(groupManagement.QuerySelector(".editor-add-row button")!.HasAttribute("disabled"), Is.True);
+            Assert.That(groupManagement.QuerySelector(".editor-add-row button")!.ClassList, Does.Contain("add-action"));
+            Assert.That(groupManagement.QuerySelector(".editor-add-row button")!.GetAttribute("title"), Is.EqualTo("Add combo group"));
             Assert.That(groupManagement.HasAttribute("open"), Is.False);
             Assert.That(cut.FindComponent<ComboListEditor>().Find("h4").TextContent.Trim(), Is.EqualTo("Combos"));
         });
@@ -102,6 +105,7 @@ public sealed class CalculatorEditorTestGroups : CalculatorEditorTestBase {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(Session());
         IRenderedComponent<ComboEditor> first = cut.FindComponents<ComboEditor>()[0];
         Assert.That(first.Find(".combo-header-content").QuerySelector(".combo-group-membership"), Is.Null);
+        OpenNewRequirement(first);
         RequirementField(first, "#comboTarget0").Change("user:B");
         RequirementField(first, "#minCount0").Input("0");
         RequirementField(first, "#maxCount0").Input("0");

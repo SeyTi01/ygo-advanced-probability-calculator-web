@@ -29,6 +29,9 @@
     @if (!IsUnconfigured && _effect.Source != EffectSource.BuiltIn && Card.Search is null) {
         <div class="simulation-summary">@DrawEffectPresentation.DescribePlan(Card.EffectPlan, CategoryBases)</div>
     }
+    @if (_effect.Source == EffectSource.BuiltIn && Card.Excavation is not null) {
+        <div class="simulation-summary">@_effect.Summary</div>
+    }
     @if (!_effect.CanExecute) {
         <div class="small text-danger" role="alert">@(UiText.Get("Ui.ThisSavedEffectCannotRunInThisCalculator"))</div>
     }
@@ -38,7 +41,7 @@
     @if ((_draft is not null ? _draft.Search : Card.Search) is { } search) {
         <div class="simulation-summary">@SearchSummary(_draft ?? Card)</div>
         <details class="simulation-targets small">
-            <summary>@(UiText.Get("Ui.TargetsInThisDeck"))</summary>
+            <summary class="control-focus-ring control-focus-ring-spaced">@(UiText.Get("Ui.TargetsInThisDeck"))</summary>
             <div role="status" aria-label="@(UiText.Get("Ui.CurrentSearchTargets"))">
                 @(SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : UiText.Get("Ui.None"))
             </div>
@@ -49,18 +52,18 @@
     }
     <div class="simulation-actions">
         @if (_effect.CanExecute) {
-            <button @ref="_editButton" type="button" class="btn btn-sm btn-link simulation-edit"
+            <button @ref="_editButton" type="button" class="control-focus-ring control-focus-ring-spaced btn btn-sm btn-link simulation-edit"
                     aria-expanded="@(_draft is not null ? "true" : "false")" aria-controls="simulationEditor@(Index)"
                     @onclick="ToggleEditor">@EditLabel</button>
         }
         @if (Card.HasEffect) {
-            <button type="button" class="btn btn-sm btn-link simulation-toggle" @onclick="ToggleSimulation">@(UiText.Get(Card.SimulationEnabled ? "Ui.DisableSimulation" : "Ui.EnableSimulation"))</button>
+            <button type="button" class="control-focus-ring control-focus-ring-spaced btn btn-sm btn-link simulation-toggle" @onclick="ToggleSimulation">@(UiText.Get(Card.SimulationEnabled ? "Ui.DisableSimulation" : "Ui.EnableSimulation"))</button>
         }
         @if (_effect.CanRestore && _effect.Source != EffectSource.BuiltIn) {
-            <button type="button" class="btn btn-sm btn-link simulation-restore" @onclick="Restore">@(UiText.Get("Ui.RestoreBuiltInSimulation"))</button>
+            <button type="button" class="control-focus-ring control-focus-ring-spaced btn btn-sm btn-link simulation-restore" @onclick="Restore">@(UiText.Get("Ui.RestoreBuiltInSimulation"))</button>
         }
         @if (HasDetails) {
-            <button @ref="_detailsButton" type="button" class="btn btn-sm btn-link simulation-details-toggle"
+            <button @ref="_detailsButton" type="button" class="control-focus-ring control-focus-ring-spaced btn btn-sm btn-link simulation-details-toggle"
                     aria-expanded="@(_detailsOpen ? "true" : "false")" aria-controls="simulationDetails@(Index)"
                     title="@(_performanceNote ? UiText.Get("Ui.ModelNotesIncludePerformanceGuidance") : null)"
                     @onclick="() => _detailsOpen = !_detailsOpen">@(UiText.Get("Ui.ModelNotes"))</button>
@@ -68,6 +71,9 @@
     </div>
     @if (_detailsOpen && HasDetails) {
         <div id="simulationDetails@(Index)" class="simulation-details small">
+            @if (Card.Excavation is not null) {
+                <p class="simulation-excavation-note">@(UiText.Get("Effect.ExcavationPhaseRestriction"))</p>
+            }
             @if (_performanceNote) {
                 <p class="simulation-performance"><strong>@(UiText.Get("Ui.Performance"))</strong> @(UiText.Get("Ui.ThisEffectRequiresDetailedHandStateCalculationInEffectModesAndCanBecomeExpensiveInComple"))</p>
             }
@@ -78,7 +84,7 @@
                 @if (HasSavedRevisionDetails) {
                     <p>@(UiText.Format("Effect.SavedRevision", Card.EffectProfile.Revision))</p>
                     @if (_effect.CanRestore) {
-                        <button type="button" class="btn btn-sm btn-outline-secondary simulation-restore" @onclick="Restore">@(UiText.Get("Ui.RestoreBuiltInSimulation"))</button>
+                        <button type="button" class="control-focus-ring control-focus-ring-spaced btn btn-sm btn-outline-secondary simulation-restore" @onclick="Restore">@(UiText.Get("Ui.RestoreBuiltInSimulation"))</button>
                     }
                 }
             }
@@ -87,109 +93,138 @@
             }
         </div>
     }
-    @if (_draft is not null) {
-        <div id="simulationEditor@(Index)" class="simulation-editor">
+    @if (_draft is { } draft) {
+        <div id="simulationEditor@(Index)" class="simulation-editor" data-language-edit="true">
             <div class="small fw-semibold mb-2">@(UiText.Get("Ui.CustomSimulation"))</div>
-            @if (_draft.PostDrawDeckMillCount > 0) {
-                <div class="form-text simulation-mill-note">@(UiText.Format("Effect.PreservedMill", _draft.PostDrawDeckMillCount))</div>
+            @if (draft.PostDrawDeckMillCount > 0) {
+                <div class="form-text simulation-mill-note">@(UiText.Format("Effect.PreservedMill", draft.PostDrawDeckMillCount))</div>
             }
             @if (Error is not null) {
                 <div class="alert alert-danger py-2" role="alert">@Error</div>
             }
-            <label for="cardDraw@(Index)" class="form-label">@(UiText.Get("Ui.Effect"))</label>
-            <div class="d-flex flex-wrap align-items-center gap-3">
+            <div class="simulation-fields">
+                <EditorField Label="@(UiText.Get("Ui.Effect"))" For="@($"cardDraw{Index}")" ControlSize="ExpressionControlSize.Compact">
+                <ChildContent>
                 <select @ref="_drawInput" id="cardDraw@(Index)" class="form-select form-select-sm w-auto"
-                        value="@(_draft.Search is not null ? "search" : _draft.DrawCount?.ToString() ?? string.Empty)"
+                        value="@DraftOperation"
                          @onchange="e => ChangeDrawCount(e.Value)">
                     <option value="">@(UiText.Get("Ui.None"))</option>
                     <option value="1">@(UiText.Get("Ui.Draw1"))</option>
                     <option value="2">@(UiText.Get("Ui.Draw2"))</option>
                     <option value="3">@(UiText.Get("Ui.Draw3"))</option>
                     <option value="search">@(UiText.Get("Ui.Search1"))</option>
+                    @if (AvailableExcavation is { } excavation) {
+                        <option value="excavation">@(UiText.Format("Ui.Excavate0", excavation.Count))</option>
+                    }
                 </select>
-                @if (_draft.EffectPlan.ActivationLimit is int limit) {
-                    <div class="form-text">@(UiText.Format("Effect.PreservedAllowance", limit))</div>
+                </ChildContent>
+                <HelpContent>
+                @if (draft.EffectPlan.ActivationLimit is int limit) {
+                    @UiText.Format("Effect.PreservedAllowance", limit)
                 }
-                else if (_draft.HasEffect && _draft.Search?.Modes is null) {
+                </HelpContent>
+                </EditorField>
+                @if (draft.EffectPlan.ActivationLimit is null && draft.HasEffect && draft.Search?.Modes is null && draft.Excavation is null) {
+                    <EditorField ControlSize="ExpressionControlSize.Compact">
                     <div class="form-check form-switch mb-0">
                         <input id="@OnceInputId" class="form-check-input" type="checkbox" role="switch"
-                               checked="@_draft.OncePerTurn" @onchange="e => ChangeOncePerTurn(e.Value)" />
+                               checked="@draft.OncePerTurn" @onchange="e => ChangeOncePerTurn(e.Value)" />
                         <label for="@OnceInputId" class="form-check-label">@(UiText.Get("Ui.OncePerTurn"))</label>
                     </div>
+                    </EditorField>
                 }
-                @if (_draft.HasEffect) {
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        <label for="cardCost@(Index)" class="form-label mb-0">@(_draft.Search is null ? UiText.Get("Effect.BeforeDrawing") : UiText.Get("Effect.BeforeSearching"))</label>
+                @if (draft.HasEffect && draft.Excavation is null) {
+                    <EditorField Label="@(draft.Search is null ? UiText.Get("Effect.BeforeDrawing") : UiText.Get("Effect.BeforeSearching"))" For="@($"cardCost{Index}")" ControlSize="ExpressionControlSize.Compact">
                         <select id="cardCost@(Index)" class="form-select form-select-sm w-auto"
-                                value="@_draft.PreDrawRemovalCount"
+                                value="@draft.PreDrawRemovalCount"
                                 @onchange="e => ChangePreDrawRemovalCount(e.Value)">
                             <option value="0">@(UiText.Get("Ui.None"))</option>
                             <option value="1">@(UiText.Get("Ui.Remove1"))</option>
                             <option value="2">@(UiText.Get("Ui.Remove2"))</option>
                         </select>
-                    </div>
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        <label for="cardDiscard@(Index)" class="form-label mb-0">@(_draft.Search is null ? UiText.Get("Effect.AfterDrawing") : UiText.Get("Effect.AfterSearching"))</label>
+                    </EditorField>
+                    <EditorField Label="@(draft.Search is null ? UiText.Get("Effect.AfterDrawing") : UiText.Get("Effect.AfterSearching"))" For="@($"cardDiscard{Index}")" ControlSize="ExpressionControlSize.Compact">
                         <select id="cardDiscard@(Index)" class="form-select form-select-sm w-auto"
-                                value="@_draft.PostDrawDiscardCount"
+                                value="@draft.PostDrawDiscardCount"
                                 @onchange="e => ChangePostDrawDiscardCount(e.Value)">
                             <option value="0">@(UiText.Get("Ui.None"))</option>
                             <option value="1">@(UiText.Get("Ui.Remove1"))</option>
                             <option value="2">@(UiText.Get("Ui.Remove2"))</option>
                         </select>
-                    </div>
+                    </EditorField>
                 }
             </div>
-            @if (_draft.PreDrawRemovalCount > 0) {
-                <div class="mt-2 small">@(_draft.Search is null ? UiText.Get("Effect.BeforeDrawingRemoval") : UiText.Get("Effect.BeforeSearchingRemoval"))</div>
-                <PostDrawSelectorEditor Id="@($"cardCostEligibility{Index}")" Selector="_draft.PreDrawSelector"
+            @if (draft.PreDrawRemovalCount > 0) {
+                <EditorField CssClass="simulation-selector-field" Label="@(draft.Search is null ? UiText.Get("Effect.BeforeDrawingRemoval") : UiText.Get("Effect.BeforeSearchingRemoval"))">
+                <PostDrawSelectorEditor Id="@($"cardCostEligibility{Index}")" Selector="draft.PreDrawSelector"
                                         CategoryBases="CategoryBases"
                                         RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
                                         CategoryColorIndices="CategoryColorIndices"
                                         ShowHelp="false"
                                         CategoryRename="CategoryRename" OnEditingChanged='editing => SelectorEditing("cost-filter", editing)'
                                         OnError='error => SelectorError("cost-filter", error)'
-                                        OnChanged='selector => SetDraft(_draft.WithPreDrawSelector(selector), "selector")' />
+                                        OnChanged='selector => SetDraft(draft.WithPreDrawSelector(selector), "selector")' />
+                </EditorField>
             }
-            @if (_draft.PostDrawDiscardCount > 0) {
-                <div class="mt-2 small">@(_draft.Search is null ? UiText.Get("Effect.AfterDrawingRemoval") : UiText.Get("Effect.AfterSearchingRemoval"))</div>
-                <PostDrawSelectorEditor Id="@($"cardEligibility{Index}")" Selector="_draft.PostDrawSelector"
+            @if (draft.PostDrawDiscardCount > 0) {
+                <EditorField CssClass="simulation-selector-field" Label="@(draft.Search is null ? UiText.Get("Effect.AfterDrawingRemoval") : UiText.Get("Effect.AfterSearchingRemoval"))">
+                <PostDrawSelectorEditor Id="@($"cardEligibility{Index}")" Selector="draft.PostDrawSelector"
                                         CategoryBases="CategoryBases"
                                         RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
                                         CategoryColorIndices="CategoryColorIndices"
                                         ShowHelp="false" OnError='error => SelectorError("removal-filter", error)'
                                         CategoryRename="CategoryRename" OnEditingChanged='editing => SelectorEditing("removal-filter", editing)'
-                                        OnChanged='selector => SetDraft(_draft.WithPostDrawSelector(selector), "selector")' />
+                                        OnChanged='selector => SetDraft(draft.WithPostDrawSelector(selector), "selector")' />
+                </EditorField>
             }
-            @if (_draft.MinimumHandSize > 0) {
-                <div class="form-text">@(UiText.Format("Effect.PreservedHandSize", _draft.MinimumHandSize))</div>
+            @if (draft.MinimumHandSize > 0) {
+                <div class="form-text">@(UiText.Format("Effect.PreservedHandSize", draft.MinimumHandSize))</div>
             }
-            @if (_draft.Search?.Modes is not null) {
-                <div class="form-text">@DrawEffectPresentation.DescribePlan(_draft.EffectPlan, CategoryBases)</div>
+            @if (draft.Search?.Modes is { } modes) {
+                <div class="simulation-search-modes">
+                    @for (int modeIndex = 0; modeIndex < modes.Count; modeIndex++) {
+                        int position = modeIndex;
+                        SearchEffectMode mode = modes[position];
+                        string field = SearchModeField(position);
+                        string label = UiText.Format("Result.Mode", position + 1);
+                        <section @key="position" class="simulation-search-mode" aria-label="@label">
+                            <div class="simulation-search-mode-heading">
+                                <span>@label</span>
+                                <span class="badge text-bg-secondary" title="@ModeAllowance(label, mode)" aria-label="@ModeAllowance(label, mode)">@(mode.ActivationLimit is int allowance ? $"{allowance}×" : "∞")</span>
+                            </div>
+                            <PostDrawSelectorEditor Id="@($"cardSearchMode{Index}-{position}")" Selector="mode.Selector"
+                                CategoryBases="CategoryBases" RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
+                                CategoryColorIndices="CategoryColorIndices" ShowHelp="false" MetadataOnly="draft.Search.ObjectiveMetadataOnly"
+                                CategoryRename="CategoryRename" OnEditingChanged="editing => SelectorEditing(field, editing)"
+                                OnChanged="selector => ChangeSearchModeSelector(position, selector)" OnError="error => SelectorError(field, error)" />
+                        </section>
+                    }
+                </div>
             }
-            else if (_draft.Search is { } draftSearch) {
+            else if (draft.Search is { } draftSearch) {
                 <PostDrawSelectorEditor Id="@($"cardSearchEligibility{Index}")" Selector="draftSearch.Selector"
                     CategoryBases="CategoryBases" RelevantMetadataCategoryIdentities="RelevantMetadataCategoryIdentities"
                     CategoryColorIndices="CategoryColorIndices" ShowHelp="false"
                     CategoryRename="CategoryRename" OnEditingChanged='editing => SelectorEditing("search-filter", editing)'
                     OnChanged="ChangeSearchSelector" OnError='error => SelectorError("search-filter", error)' />
             }
-            @if (_draft.DrawCount is not null) {
+            @if (draft.DrawCount is not null) {
                 <details class="simulation-advanced mt-2">
-                    <summary>@(_draft.PreDrawDeckRemovalCount > 0 ? UiText.Format("Effect.AdvancedWithBanish", _draft.PreDrawDeckRemovalCount) : UiText.Get("Effect.Advanced"))</summary>
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        <label for="cardDeckCost@(Index)" class="form-label mb-0">@(UiText.Get("Ui.BanishFromDeck"))</label>
+                    <summary class="control-focus-ring control-focus-ring-spaced">@(draft.PreDrawDeckRemovalCount > 0 ? UiText.Format("Effect.AdvancedWithBanish", draft.PreDrawDeckRemovalCount) : UiText.Get("Effect.Advanced"))</summary>
+                    <EditorField Label="@(UiText.Get("Ui.BanishFromDeck"))" For="@($"cardDeckCost{Index}")" ControlSize="ExpressionControlSize.Compact" CssClass="simulation-deck-cost">
+                    <ChildContent>
                         <input id="cardDeckCost@(Index)" class="form-control form-control-sm" type="number" min="0" max="60"
-                               style="width: 4.5rem" value="@_draft.PreDrawDeckRemovalCount"
+                               value="@draft.PreDrawDeckRemovalCount"
                                @onchange="e => ChangePreDrawDeckRemovalCount(e.Value)" />
-                    </div>
-                    <div class="form-text">@(UiText.Get("Ui.Deckdepletionismodeledsearchtargetsurvivalfollowsthereportedresultaccuracy"))</div>
+                    </ChildContent>
+                    <HelpContent>@(UiText.Get("Ui.Deckdepletionismodeledsearchtargetsurvivalfollowsthereportedresultaccuracy"))</HelpContent>
+                    </EditorField>
                 </details>
             }
             <div class="d-flex gap-2 mt-3">
-                <button type="button" class="btn btn-primary btn-sm simulation-save" disabled="@(Error is not null || _filterEdits.Count > 0)"
+                <button type="button" class="control-focus-ring control-focus-ring-spaced btn btn-primary btn-sm simulation-save" disabled="@(Error is not null || _filterEdits.Count > 0)"
                         title="@(_filterEdits.Count > 0 ? UiText.Get("Ui.SaveOrCancelTheConditionEditFirst") : null)" @onclick="Save">@(UiText.Get("Ui.Save"))</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm simulation-cancel" @onclick="CloseEditor">@(UiText.Get("Ui.Cancel"))</button>
+                <button type="button" class="control-focus-ring control-focus-ring-spaced btn btn-outline-secondary btn-sm simulation-cancel" @onclick="CloseEditor">@(UiText.Get("Ui.Cancel"))</button>
             </div>
         </div>
     }
@@ -239,12 +274,19 @@
         ? UiText.Get("Ui.ConfigureSimulation") : UiText.Get("Ui.CustomizeSimulation");
     private bool HasSavedRevisionDetails => _effect.Source == EffectSource.BuiltIn
         && !_effect.UsesCurrentDescription;
-    private bool HasDetails => _performanceNote || (_effect.Source == EffectSource.BuiltIn
+    private bool HasDetails => Card.Excavation is not null || _performanceNote || (_effect.Source == EffectSource.BuiltIn
         && (!string.IsNullOrWhiteSpace(_effect.Limitations) || HasSavedRevisionDetails))
         || (_effect.Source == EffectSource.LegacySnapshot && Card.HasEffect);
     private string? ModeNotice => Card.HasEffect && !DrawEffectsEnabled
         ? UiText.Get("Ui.OpeningHandOnlySavedSimulationIsOff")
         : null;
+    private ExcavationEffectPlan? AvailableExcavation => Card.Excavation ?? _effect.Maintained?.Plan.Excavation;
+    private string DraftOperation => _draft switch {
+        { Excavation: not null } => "excavation",
+        { Search: not null } => "search",
+        { DrawCount: int count } => count.ToString(),
+        _ => string.Empty
+    };
 
     private string SearchSummary(Card card) => _effect.Source == EffectSource.BuiltIn && card.EffectPlan == Card.EffectPlan
             ? _effect.Summary
@@ -315,8 +357,7 @@
             return;
         }
 
-        bool missingCategory = plan.HandCostSelector.CategoryIdentities.Concat(plan.RemovalSelector.CategoryIdentities)
-            .Concat(plan.Search?.Selector.CategoryIdentities ?? [])
+        bool missingCategory = plan.EnumerateCategoryIdentities()
             .Any(identity => identity.StartsWith("user:", StringComparison.Ordinal) && !CategoryBases.Any(category => category.Identity == identity));
         if (missingCategory) {
             _errors["selector"] = UiText.Get("Ui.ASelectedCategoryWasRemovedUpdateTheEligibilityFilter");
@@ -354,6 +395,11 @@
         _errors.Remove(field);
         _errors.Remove("selector");
         if (draft.Search is null) { ClearSelectorState("search-filter"); }
+        if (draft.Search?.Modes is null) {
+            foreach (string fieldName in _filterEdits.Concat(_filterErrors.Keys).Where(name => name.StartsWith("search-mode-", StringComparison.Ordinal)).Distinct().ToArray()) {
+                ClearSelectorState(fieldName);
+            }
+        }
         if (draft.PreDrawRemovalCount == 0) { ClearSelectorState("cost-filter"); }
         if (draft.PostDrawDiscardCount == 0) { ClearSelectorState("removal-filter"); }
         if (draft.DrawCount is null) {
@@ -364,7 +410,7 @@
     private void ChangeDrawCount(object? value) {
         string? text = value?.ToString();
         if (string.IsNullOrEmpty(text)) {
-            SetDraft(_draft!.WithDrawCount(null).WithSearch(null), "draw");
+            SetDraft(_draft!.WithDrawCount(null).WithSearch(null).WithExcavation(null), "draw");
         }
         else if (text == "search") {
             SearchEffectPlan search = _effect.Maintained?.Plan.Search ?? new(CardSelector.Any, false);
@@ -373,6 +419,9 @@
                 ? draft.WithEffect(_effect.Maintained.Plan, draft.EffectProfile.AsCustom())
                 : draft.WithOncePerTurn(false);
             SetDraft(draft, "draw");
+        }
+        else if (text == "excavation" && AvailableExcavation is { } excavation) {
+            SetDraft(_draft!.WithExcavation(excavation), "draw");
         }
         else if (int.TryParse(text, out int count) && count is >= 1 and <= 3) {
             SetDraft(_draft!.WithDrawCount(count), "draw");
@@ -387,6 +436,23 @@
         // assigned roles/properties. Merely opening/saving an older draft keeps
         // its saved provenance policy, including schema-6 true/false values.
         SetDraft(_draft!.WithSearch(_draft.Search! with { Selector = selector, ObjectiveMetadataOnly = false }), "selector");
+    }
+
+    private static string SearchModeField(int position) => $"search-mode-{position}";
+
+    private static string ModeAllowance(string label, SearchEffectMode mode) => UiText.Format("Ui.01PerEntry", label,
+        mode.ActivationLimit?.ToString() ?? UiText.Get("Ui.Unlimited"));
+
+    private void ChangeSearchModeSelector(int position, CardSelector selector) {
+        SearchEffectPlan search = _draft!.Search!;
+        SearchEffectMode[] modes = search.Modes!.ToArray();
+        if (modes[position].Selector.Equals(selector)) {
+            return;
+        }
+
+        modes[position] = modes[position] with { Selector = selector };
+        SearchEffectPlan updated = search with { Modes = modes, Selector = SearchEffectPlan.ModeTargetUnion(modes) };
+        SetDraft(_draft.WithSearch(updated), "selector");
     }
 
     private void SelectorError(string field, string? error) {
@@ -471,11 +537,10 @@
         _effect = EffectDescriptions.Describe(Card);
     }
 
-    private static Card RenameFilters(Card card, CategoryRenameNotice rename) => card.WithEffect(card.EffectPlan with {
-        HandCostSelector = card.PreDrawSelector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"),
-        RemovalSelector = card.PostDrawSelector.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"),
-        Search = card.Search?.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}")
-    }, card.EffectProfile);
+    private static Card RenameFilters(Card card, CategoryRenameNotice rename) => card.WithEffect(
+        card.EffectPlan.RenameCategory($"user:{rename.OldName}", $"user:{rename.NewName}"),
+        card.EffectProfile
+    );
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_focusDraw && _draft is not null) {

@@ -1,0 +1,77 @@
+name: Monthly card data refresh
+on:
+  schedule:
+    - cron: '23 4 3 * *'
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: 'Optional earlier refresh run ID whose downloaded inputs should be reused'
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: card-data-refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: github.repository == 'SeyTi01/ygo-advanced-probability-calculator-web' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      REFRESH_BRANCH: codex/card-data-refresh
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: dev
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Prepare reviewed automation branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "SOURCE_DIR=$RUNNER_TEMP/card-data-sources" >> "$GITHUB_ENV"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          node scripts/codex/privacy-guard.mjs install --name 'github-actions[bot]' --email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin
+          expected=$(git ls-remote --heads origin "refs/heads/$REFRESH_BRANCH" | cut -f1)
+          echo "EXPECTED_SHA=$expected" >> "$GITHUB_ENV"
+          if [ -n "$expected" ]; then
+            git switch -c "$REFRESH_BRANCH" "$expected"
+            git update-ref refs/backup/card-data-refresh "$expected"
+            git rebase origin/dev
+          else
+            git switch -c "$REFRESH_BRANCH" origin/dev
+          fi
+      - name: Restore or acquire pinned sources
+        id: sources
+        env:
+          REUSE_RUN_ID: ${{ inputs.source_run_id }}
+        run: node infrastructure/card-catalog/prepare-refresh-sources.mjs
+      # Persist successful acquisition before generation, tests or publication can fail.
+      # Reruns reuse the immutable checkpoint rather than overwriting it.
+      - name: Retain replay inputs
+        if: steps.sources.outputs.checkpoint-exists != 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: card-data-refresh-${{ github.run_id }}
+          path: ${{ env.SOURCE_DIR }}
+          retention-days: 90
+          if-no-files-found: error
+      - name: Generate and validate offline
+        run: |
+          node infrastructure/card-catalog/refresh-card-data.mjs "$SOURCE_DIR"
+          node --test infrastructure/card-catalog/*.test.mjs
+      - name: Publish review PR and request existing CI
+        run: node infrastructure/card-catalog/publish-refresh.mjs

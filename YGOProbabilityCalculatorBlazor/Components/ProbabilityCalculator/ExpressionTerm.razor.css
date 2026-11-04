@@ -3,14 +3,23 @@
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--expression-term-gap, .5rem);
+    gap: var(--expression-term-gap, var(--expression-stack-gap));
     min-width: 0;
     max-width: 100%;
 }
 .expression-term-compact {
-    --expression-term-gap: .25rem;
+    --expression-term-gap: var(--expression-inline-gap);
     display: inline;
 }
+.expression-term-operand {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    min-height: var(--expression-control-height);
+    padding-inline: var(--expression-member-padding-inline);
+}
+.expression-term-compact .expression-term-operand { min-height: 0; padding-inline: 0; }
 .expression-term-compact > .expression-term-part {
     display: inline-flex;
     width: max-content;
@@ -18,6 +27,44 @@
     vertical-align: middle;
 }
 .expression-term-compact > .expression-term-part + .expression-term-part {
-    margin-inline-start: .25rem;
-    max-width: calc(100% - .25rem);
+    margin-inline-start: var(--expression-term-gap);
+    max-width: calc(100% - var(--expression-term-gap));
+}
+
+.expression-term-centered {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    width: 100%;
+}
+.expression-term-centered > .expression-term-part { display: contents; }
+.expression-term-centered .expression-term-operand {
+    display: flex;
+    justify-content: center;
+    flex: 0 1 auto;
+    min-width: 0;
+}
+.expression-term-centered .expression-term-separator { flex: 0 0 auto; }
+
+/* Keep a single operator centered across requirement rows. */
+.expression-term-centered:not(.expression-term-many):has(> .expression-term-part:nth-child(2)) .expression-term-operand { flex: 1 1 0; }
+.expression-term-centered:not(.expression-term-many):has(> .expression-term-part:nth-child(2)) > .expression-term-part:first-child > .expression-term-operand { justify-content: flex-end; }
+.expression-term-centered:not(.expression-term-many):has(> .expression-term-part:nth-child(2)) > .expression-term-part:last-child > .expression-term-operand { justify-content: flex-start; }
+
+/* Many alternatives can wrap as paired terms when the row becomes too narrow. */
+.expression-term-crowded {
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.expression-term-crowded > .expression-term-part {
+    display: inline-flex;
+    flex: 0 1 auto;
+    justify-content: center;
+}
+.expression-term-crowded .expression-term-operand { flex: 0 1 auto; }
+
+@media (max-width: 991.98px) {
+    .expression-term-many { flex-wrap: wrap; justify-content: center; }
+    .expression-term-many > .expression-term-part { display: inline-flex; flex: 0 1 auto; justify-content: center; }
+    .expression-term-many .expression-term-operand { flex: 0 1 auto; }
 }

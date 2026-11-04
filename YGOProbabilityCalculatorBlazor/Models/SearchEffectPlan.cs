@@ -25,17 +25,37 @@ public sealed record SearchEffectPlan(CardSelector Selector, bool ObjectiveMetad
         return hash.ToHashCode();
     }
 
-    public SearchEffectPlan RenameCategory(string previous, string replacement) => this with {
-        Selector = Selector.RenameCategory(previous, replacement),
-        Modes = Modes?.Select(mode => mode with { Selector = mode.Selector.RenameCategory(previous, replacement) }).ToArray()
-    };
+    public IEnumerable<CardSelector> EnumerateSelectors() {
+        yield return Selector;
+        foreach (SearchEffectMode mode in Modes ?? []) {
+            yield return mode.Selector;
+        }
+    }
+
+    public SearchEffectPlan TransformSelectors(Func<CardSelector, CardSelector> transform) {
+        if (Modes is null) {
+            return this with { Selector = transform(Selector) };
+        }
+
+        SearchEffectMode[] modes = Modes.Select(mode => mode with { Selector = transform(mode.Selector) }).ToArray();
+
+        return this with { Selector = ModeTargetUnion(modes), Modes = modes };
+    }
+
+    public SearchEffectPlan RenameCategory(string previous, string replacement) =>
+        TransformSelectors(selector => selector.RenameCategory(previous, replacement));
+
+    public static CardSelector ModeTargetUnion(IReadOnlyList<SearchEffectMode> modes) =>
+        modes.Any(mode => mode.Selector.Kind == CardSelectorKind.Any)
+            ? CardSelector.Any
+            : CardSelector.AnyOfSelectors(modes.Select(mode => mode.Selector));
 
     public void Validate() {
         if (Modes is null) {
             return;
         }
         if (Modes.Count is < 1 or > 8 || Modes.Any(mode => mode is null || mode.Selector is null || mode.ActivationLimit is < 1 or > 60)
-            || !Selector.Equals(CardSelector.AnyOfSelectors(Modes.Select(mode => mode.Selector)))) {
+            || !Selector.Equals(ModeTargetUnion(Modes))) {
             throw new ArgumentException("Search modes require bounded allowances and their exact target union.");
         }
     }

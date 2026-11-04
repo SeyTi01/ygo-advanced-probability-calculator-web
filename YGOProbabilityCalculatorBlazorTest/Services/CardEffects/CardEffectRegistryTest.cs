@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components.Forms;
 using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -11,13 +10,12 @@ using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 
 public class CardEffectRegistryTest {
     private static readonly CardEffectRegistry Registry = CardEffectRegistry.Default;
-    private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
-
     private sealed class AdditionalEffect(int draw = 1, int revision = 1, IReadOnlyList<CategoryBase>? properties = null) : ICardEffectDefinition {
         public IReadOnlyList<CategoryBase> FilterProperties => properties ?? [];
         public int CanonicalCardId => 900001;
@@ -98,9 +96,9 @@ public class CardEffectRegistryTest {
         Assert.That(Registry.Describe(card).Summary, Is.Not.Empty);
         foreach (Card variant in new[] { card, card.WithDrawCount(1) }) {
             SessionState session = new() { Cards = [variant] };
-            string json = Codec().SerializeSession(session);
+            string json = SessionFixture.CreateCodec().SerializeSession(session);
             string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
-            Card loaded = (await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment))).Cards.Single();
+            Card loaded = (await SessionFixture.CreateCodec().LoadSessionAsync(SessionShareCodec.Decode(fragment))).Cards.Single();
             Assert.That(loaded.EffectPlan, Is.EqualTo(variant.EffectPlan));
             Assert.That(loaded.EffectProfile, Is.EqualTo(variant.EffectProfile));
             CalculationInput wire = JsonSerializer.Deserialize<CalculationInput>(CalculationSnapshot.Capture([loaded], [], 1, []).Json)!;
@@ -200,8 +198,8 @@ public class CardEffectRegistryTest {
         CardEffectRegistry changed = new([new AdditionalEffect(3, 2)]);
         Card original = old.CreateImportedCard(new() { Id = 900001 }, 1, 900001);
         foreach (Card card in new[] { original, original.WithDrawCount(2) }) {
-            string json = Codec().SerializeSession(new() { Cards = [card] });
-            Card loaded = (await Codec().LoadSessionAsync(json)).Cards.Single();
+            string json = SessionFixture.CreateCodec().SerializeSession(new() { Cards = [card] });
+            Card loaded = (await SessionFixture.CreateCodec().LoadSessionAsync(json)).Cards.Single();
             Assert.That(changed.Describe(loaded).Plan, Is.EqualTo(card.EffectPlan));
             Assert.That(changed.Describe(loaded).Source, Is.EqualTo(card.EffectProfile.Source));
             Assert.That(changed.RestoreBuiltIn(loaded).DrawCount, Is.EqualTo(3));
@@ -219,7 +217,7 @@ public class CardEffectRegistryTest {
     public async Task UnsupportedCapabilityIsPreservedAndFailsClosedUntilExplicitlyDisabled(EffectExecutionModel model) {
         Card card = Registry.CreateImportedCard(new() { Id = 55144522 }, 1, 55144522);
         card = card.WithEffect(card.EffectPlan, card.EffectProfile with { ExecutionModel = model });
-        Card loaded = (await Codec().LoadSessionAsync(Codec().SerializeSession(new() { Cards = [card] }))).Cards.Single();
+        Card loaded = (await SessionFixture.CreateCodec().LoadSessionAsync(SessionFixture.CreateCodec().SerializeSession(new() { Cards = [card] }))).Cards.Single();
         Assert.That(loaded.EffectProfile.ExecutionModel, Is.EqualTo(model));
         Assert.That(Registry.Describe(loaded).CanExecute, Is.False);
         List<Card> cards = [loaded, new([], 5)];
@@ -262,13 +260,13 @@ public class CardEffectRegistryTest {
     [TestCase("{\"CanonicalCardId\":-1}")]
     public void InvalidProvenanceFailsClosed(string profile) {
         string json = "{\"SchemaVersion\":5,\"Cards\":[{\"Categories\":[],\"Copies\":1,\"Name\":null,\"EffectProfile\":" + profile + "}]}";
-        Assert.ThrowsAsync<InvalidOperationException>(() => Codec().LoadSessionAsync(json));
+        Assert.ThrowsAsync<InvalidOperationException>(() => SessionFixture.CreateCodec().LoadSessionAsync(json));
     }
 
     [TestCase(0), TestCase(3), TestCase(4), TestCase(5)]
     public async Task LegacyFilesNeverInferBuiltInOwnership(int schema) {
         string json = $$"""{"SchemaVersion":{{schema}},"Cards":[{"Categories":[],"Copies":1,"Name":"Pot of Greed","ExternalCardId":55144522,"DrawCount":1}]}""";
-        Card card = (await Codec().LoadSessionAsync(json)).Cards.Single();
+        Card card = (await SessionFixture.CreateCodec().LoadSessionAsync(json)).Cards.Single();
         Assert.That(card.EffectProfile.Source, Is.EqualTo(EffectSource.LegacySnapshot));
         Assert.That(card.DrawCount, Is.EqualTo(schema < 4 ? (int?)null : 1));
         Assert.That(Registry.Describe(card).CanRestore, Is.True);

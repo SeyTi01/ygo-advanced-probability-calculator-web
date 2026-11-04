@@ -22,7 +22,7 @@ public class BackgroundCalculationIntegrationTest {
     private PendingSessionService _pending = null!;
     private Mock<ILegacyCardMetadataEnricher> _enricher = null!;
     private Mock<IDeckImportService> _imports = null!;
-    private ControlledCalculator _calculator = null!;
+    private ControlledBackgroundCalculator _calculator = null!;
     private IRenderedComponent<Host> _host = null!;
     private IRenderedComponent<ProbabilityCalculatorComponent> _cut = null!;
     private int Writes => _context.JSInterop.Invocations["sessionRecovery.update"].Count;
@@ -77,7 +77,7 @@ public class BackgroundCalculationIntegrationTest {
     private static ProbabilityCalculationResult Result(string name) => new(0.5, [new(0, name, 0.5)]);
 
     private async Task Complete(int job, Task action, string name) {
-        _calculator.Jobs[job].SetResult(Result(name));
+        _calculator.Calls[job].Completion.SetResult(Result(name));
         await action;
     }
 
@@ -153,14 +153,14 @@ public class BackgroundCalculationIntegrationTest {
 
         SessionState saved = await _sessions.LoadSessionAsync(await Milestone(update, "accepted replacement recovery payload"));
         Assert.That(saved.Cards[0].Name, Is.EqualTo("Replacement"));
-        Assert.That(_calculator.Tokens[1].IsCancellationRequested, Is.True);
+        Assert.That(_calculator.Calls[1].Token.IsCancellationRequested, Is.True);
         Assert.That(_cut.FindAll(".probability-results"), Is.Empty, "accepting a different workspace clears old results");
         Task newer = Start();
         if (error) {
-            _calculator.Jobs[1].SetException(new InvalidOperationException("Obsolete worker error"));
+            _calculator.Calls[1].Completion.SetException(new InvalidOperationException("Obsolete worker error"));
         }
         else {
-            _calculator.Jobs[1].SetResult(Result("Obsolete worker result"));
+            _calculator.Calls[1].Completion.SetResult(Result("Obsolete worker result"));
         }
         await old;
         Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
@@ -198,7 +198,7 @@ public class BackgroundCalculationIntegrationTest {
             Assert.That(_cut.FindAll(".probability-results"), Is.Empty);
         }
 
-        _calculator.Jobs[1].SetException(new InvalidOperationException("Obsolete worker error"));
+        _calculator.Calls[1].Completion.SetException(new InvalidOperationException("Obsolete worker error"));
         await worker;
         Assert.That(_cut.Markup, Does.Not.Contain("Obsolete worker error"));
     }
@@ -221,7 +221,7 @@ public class BackgroundCalculationIntegrationTest {
         Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.True);
         await Cancel();
         Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
-        _calculator.Jobs[1].SetResult(Result("Late cancelled result"));
+        _calculator.Calls[1].Completion.SetResult(Result("Late cancelled result"));
         await cancelled;
         Assert.That(Writes, Is.EqualTo(writes));
         Assert.That((string)_context.JSInterop.Invocations["sessionRecovery.update"].Last().Arguments[2]!, Is.EqualTo(initialBytes));
@@ -230,14 +230,14 @@ public class BackgroundCalculationIntegrationTest {
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         SessionState saved = await _sessions.LoadSessionAsync(await Milestone(update, "edit autosave during calculation"));
         Assert.That(saved.HandSize, Is.EqualTo(3));
-        Assert.That(_calculator.Tokens[2].IsCancellationRequested, Is.True);
+        Assert.That(_calculator.Calls[2].Token.IsCancellationRequested, Is.True);
         Assert.That(_cut.Find(".probability-result-status").TextContent.Trim(), Is.EqualTo("Inputs changed"));
         Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
         await _cut.Find("button[title='Copy results']").ClickAsync(new());
         Assert.That(_context.JSInterop.Invocations["copyText"].Last().Arguments[0],
             Does.StartWith("Previous result — current inputs have changed.\nProgressive\nProbability results\nHand size: 2"));
         Task latest = Start();
-        _calculator.Jobs[2].SetException(new InvalidOperationException("Late edit error"));
+        _calculator.Calls[2].Completion.SetException(new InvalidOperationException("Late edit error"));
         await worker;
         await Complete(3, latest, "Current result");
         Assert.That(_cut.Find("button[title='Copy results']").HasAttribute("disabled"), Is.False);
@@ -258,7 +258,7 @@ public class BackgroundCalculationIntegrationTest {
         await Milestone(started, "pending load before unmount");
         _host.SetParametersAndRender(p => p.Add(x => x.Visible, false));
         await _host.InvokeAsync(() => oldInstance.DisposeAsync().AsTask()); // Repeated disposal must be harmless.
-        Assert.That(_calculator.Tokens[0].IsCancellationRequested, Is.True);
+        Assert.That(_calculator.Calls[0].Token.IsCancellationRequested, Is.True);
         Assert.That(_context.JSInterop.Invocations["sessionRecovery.dispose"].Count(x => Equals(x.Arguments[0], oldOwner)), Is.EqualTo(1));
         Task<string> update = NextUpdate();
         _pending.PendingSession = Workspace("New example");
@@ -271,10 +271,10 @@ public class BackgroundCalculationIntegrationTest {
         Assert.That(oldSession.Cards[0].Name, Is.EqualTo("Initial"), "disposed load owner must reject enrichment completion");
         Task latest = Start();
         if (error) {
-            _calculator.Jobs[0].SetException(new InvalidOperationException("Disposed worker error"));
+            _calculator.Calls[0].Completion.SetException(new InvalidOperationException("Disposed worker error"));
         }
         else {
-            _calculator.Jobs[0].SetResult(Result("Disposed worker result"));
+            _calculator.Calls[0].Completion.SetResult(Result("Disposed worker result"));
         }
         await old;
         Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
@@ -290,7 +290,7 @@ public class BackgroundCalculationIntegrationTest {
         Task worker = Start();
         int writes = Writes;
         await Upload("{");
-        Assert.That(_calculator.Tokens[1].IsCancellationRequested, Is.False);
+        Assert.That(_calculator.Calls[1].Token.IsCancellationRequested, Is.False);
         Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
         Assert.That(_cut.Markup, Does.Contain("Accepted result").And.Contain("Failed to load session"));
         Assert.That(Writes, Is.EqualTo(writes));
@@ -313,7 +313,7 @@ public class BackgroundCalculationIntegrationTest {
         await Milestone(started.Task, "pending import start");
         await File(Workspace("Accepted file"));
         Task worker = Start();
-        _calculator.Jobs[0].SetException(new InvalidOperationException("Current worker failure"));
+        _calculator.Calls[0].Completion.SetException(new InvalidOperationException("Current worker failure"));
         await worker;
         response.SetException(new InvalidOperationException("Obsolete import failure"));
         await import;
@@ -341,19 +341,6 @@ public class BackgroundCalculationIntegrationTest {
         public string ContentType => "application/json";
         public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default) =>
             new MemoryStream(Encoding.UTF8.GetBytes(json));
-    }
-
-    private sealed class ControlledCalculator : IBackgroundCalculator {
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-        public List<TaskCompletionSource<ProbabilityCalculationResult>> Jobs { get; } = [];
-        public List<CancellationToken> Tokens { get; } = [];
-        public Task<ProbabilityCalculationResult> CalculateAsync(CalculationSnapshot snapshot, CancellationToken token) {
-            TaskCompletionSource<ProbabilityCalculationResult> job = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            Jobs.Add(job);
-            Tokens.Add(token);
-
-            return job.Task; // Ignore cancellation deliberately.
-        }
     }
 
     private sealed class FeedbackClock : TimeProvider {

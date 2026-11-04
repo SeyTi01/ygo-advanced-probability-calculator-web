@@ -1,17 +1,10 @@
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createOwner } from '../../YGOProbabilityCalculatorBlazor/wwwroot/js/background-calculation.js';
+import { installFakeWorker } from './fake-worker.mjs';
 
 let workers;
-class FakeWorker {
-    sent = [];
-    terminated = 0;
-    constructor() { workers.push(this); }
-    postMessage(message) { this.sent.push(message); }
-    terminate() { this.terminated++; }
-    emit(data) { this.onmessage?.({ data }); }
-}
-beforeEach(() => { workers = []; globalThis.Worker = FakeWorker; });
+beforeEach(t => { workers = installFakeWorker(t); });
 
 async function success(owner, json = 'input') {
     const job = owner.createJob();
@@ -164,6 +157,7 @@ for (const event of ['onerror', 'onmessageerror']) test(`${event} during idle re
 for (const failure of ['constructor', 'startup', 'send', 'timeout']) test(`recovery after ${failure} fault`, async t => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const owner = createOwner();
+    const FakeWorker = globalThis.Worker;
     if (failure === 'constructor') globalThis.Worker = class { constructor() { throw Error('unsupported'); } };
     const job = owner.createJob(), result = job.run('input');
     const rejected = assert.rejects(result);

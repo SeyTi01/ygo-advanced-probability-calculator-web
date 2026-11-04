@@ -28,9 +28,19 @@ The deterministic keep policy protects held positive combo pieces and searches w
 
 Hidden top-deck banish and milling reduce deck capacity. Completed physical Exact also accounts for surviving target identities, including ordered draws, costs and removals. Banished-card and GY effects/recovery are not inferred. Fast may prove the same outcome exact, or require a certificate; do not infer accuracy merely from the presence of Desires or a draw effect.
 
-## Optional searches after draws
+## One excavation after draws
 
-All configured draws and their associated costs and removals resolve before searches. Sources held when the search phase begins, including sources drawn earlier, may activate. Each eligible search source may be declined or consumed to transfer one eligible remaining Main Deck copy to hand. Sources share actual copy and deck-capacity limits. A target already held is not a remaining deck copy. Fetched effects do not activate or start another draw/search pass; supported search-phase removals can still remove them. Supported search plans with their own hand costs, removals, mode allowances or minimum-hand requirements resolve those rules during the search phase; Fast and Exact use physical counting for these plans.
+After all draw effects, at most one held excavation source activates before ordinary searches. The eligible source with the highest excavation count wins; equal counts use stable entry identity, independent of visual deck order. Selection happens before revealing cards. Activation consumes the source even if no revealed target helps a combo; the model does not decline it, switch to another source, or excavate again after seeing the pool.
+
+Pot of Duality excavates three cards. Pot of Prosperity always excavates six and assumes six Extra Deck cards are available. The full excavation must fit in the remaining Main Deck. Prosperity is unavailable if a card effect already drew cards on that branch; eligible draws are not skipped to reserve a Prosperity activation. If the higher-count source is ineligible, a lower-count eligible source may activate. If none is eligible, the hand proceeds directly to searches.
+
+Exactly one revealed physical copy replaces the source. The calculator checks possible additions jointly with ordinary search assignments, preserving distinct-copy requirements, hand-wide maxima and overlapping combo/group unions. Unselected revealed cards remain available to ordinary searches. Duality shuffles them back and Prosperity puts them on the bottom; the distinction cannot affect the modeled continuation because there are no later draws or excavations. Field/summoning and damage restrictions remain outside the opening-hand model.
+
+An excavated effect does not activate. Only ordinary search opportunities already held before the excavation addition may act afterward. Multiple sequential excavations are deliberately unsupported: leaving their choices undecided would let an earlier selection use knowledge of a later reveal. This restriction is part of the model, not uncertainty covered by a Fast certificate.
+
+## Optional searches after excavation
+
+All configured draws and their associated costs and removals, followed by the optional presence of one excavation activation, resolve before searches. Sources held after draws, including sources drawn earlier, may activate; excavation does not create new search opportunities. Each eligible search source may be declined or consumed to transfer one eligible remaining Main Deck copy to hand. Sources share actual copy and deck-capacity limits. A target already held is not a remaining deck copy. Fetched effects do not activate or start another draw/search pass; supported search-phase removals can still remove them. Supported search plans with their own hand costs, removals, mode allowances or minimum-hand requirements resolve those rules during the search phase; Fast and Exact use physical counting for these plans.
 
 At each search step the highest-priority currently legal source acts or is declined. Costs, remaining targets, minimum hand size and per-entry/mode allowances are checked again after each activation. Declining retires that physical opportunity; temporarily unavailable sources may become legal after another search. The completed draw phase stays closed.
 
@@ -42,7 +52,7 @@ Search plus draw operations on the same source are unsupported. Search-only coun
 
 ## Boundaries
 
-The model does not simulate a duel, opponent interaction, summon/effect legality in general, field/Extra Deck play, arbitrary GY or banish triggers, recursive searched effects, optional draw activation, or optimal sequencing/removal. A specific built-in may have additional assumptions listed in Model notes. No effect simulation ignores every configured draw/search operation and counts only the dealt hand.
+The model does not simulate a duel, opponent interaction, summon/effect legality in general, field/Extra Deck play, arbitrary GY or banish triggers, recursive fetched effects, optional draw/excavation activation, multiple excavation activations, or optimal sequencing/removal. A specific built-in may have additional assumptions listed in Model notes. No effect simulation ignores every configured draw, excavation and search operation and counts only the dealt hand.
 
 Exact means exact for these inputs and rules. A hypothetical custom plan need not bound real gameplay, especially with maxima or exclusions. More Storage or unlimited Work cannot repair an unsupported model.
 

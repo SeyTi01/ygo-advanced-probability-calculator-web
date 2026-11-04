@@ -1,22 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createOwner } from '../../YGOProbabilityCalculatorBlazor/wwwroot/js/background-calculation.js';
+import { installFakeWorker } from './fake-worker.mjs';
 
 let epoch = 0;
 function setup(t, progressive = false) {
     let now = epoch += 1000000;
-    const workers = [];
+    const workers = installFakeWorker(t);
     t.mock.timers.enable({ apis: ['setTimeout'] });
     t.mock.method(performance, 'now', () => now);
-    const previousWorker = globalThis.Worker;
-    globalThis.Worker = class {
-        sent = []; terminated = 0;
-        constructor() { workers.push(this); }
-        postMessage(data) { this.sent.push(data); }
-        terminate() { this.terminated++; }
-        emit(data) { this.onmessage?.({data}); }
-    };
-    t.after(() => { globalThis.Worker = previousWorker; });
     const owner = createOwner();
     t.after(() => owner.dispose());
     const job = owner.createJob();
@@ -28,7 +20,6 @@ function setup(t, progressive = false) {
         ready() { worker.emit({ready:true}); },
         emit(response, remainingWork = '100') { worker.emit({id:1, response:JSON.stringify(response), remainingWork}); }};
 }
-globalThis.Worker ??= class {};
 
 test('progressive initial response is immediate but never releases the single lease', async t => {
     const s = setup(t, true); s.ready();

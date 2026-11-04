@@ -127,15 +127,16 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
     public async Task BottomPlusReturnsToTheSeparateCopyDraftAndDoesNotCommitAnOpenRow() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() { Categories = [a, b], Combos = [new([new(a, 1, 3)])] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "2" });
         await EditRequirement(editor, "category:0");
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "0" });
         OpenNewRequirement(editor);
-        Assert.That(editor.FindAll(".requirement-row form"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".requirement-list > form.requirement-form"), Has.Count.EqualTo(1));
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("2"));
-        await RequirementField(editor, "#minCount0").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+        await editor.Find(".requirement-form").SubmitAsync(); // Native Enter submission is verified in the browser.
         Assert.That(editor.Instance.Combo.Categories.Select(category => category.MinCount), Is.EqualTo(new[] { 1, 2 }));
         Assert.That(editor.Instance.Combo.AlternativeGroups, Is.Empty);
         Assert.That(editor.Find(".requirement-list > .requirement-and-separator select").GetAttribute("value"), Is.EqualTo("+"));
@@ -180,7 +181,7 @@ public sealed class CalculatorEditorInlineTest : CalculatorEditorTestBase {
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("0"));
         await Button(editor, "Cancel").ClickAsync(new());
         await editor.Find(".expression-operator").ChangeAsync(new() { Value = "OR" });
-        await Button(editor, "+ Add requirement").ClickAsync(new());
+        await Button(editor, "Add a separate-copy requirement").ClickAsync(new());
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await Button(editor, "Add").ClickAsync(new());
         Combo nested = editor.Instance.Combo;

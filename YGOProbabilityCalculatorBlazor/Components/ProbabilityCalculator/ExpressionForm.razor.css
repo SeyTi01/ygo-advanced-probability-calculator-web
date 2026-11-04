@@ -1,13 +1,10 @@
-.requirement-form { padding: .75rem; border: 1px solid var(--bs-border-color); border-radius: .375rem; margin: .75rem 0 .75rem; min-width: 0; }
-.requirement-form ::deep .requirement-form-heading { display: flex; position: relative; justify-content: space-between; align-items: flex-start; gap: .5rem; padding-inline-end: 5rem; margin-bottom: .65rem; font-size: .875rem; }
-.requirement-form ::deep .requirement-form-heading .btn { position: absolute; inset-block-start: 0; inset-inline-end: 0; }
-.requirement-form ::deep .requirement-form-heading:has(.btn) { min-height: 36px; }
-.requirement-form ::deep .requirement-context-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--bs-border-color); }
-.requirement-form ::deep .requirement-context-actions .btn { min-height: 36px; text-align: left; }
+.requirement-form { padding: var(--expression-panel-spacing); border: 1px solid var(--bs-border-color); border-radius: .375rem; margin: var(--expression-panel-spacing) 0 var(--expression-panel-spacing); min-width: 0; }
+.requirement-form:has(.requirement-edit-grid) { background: var(--bs-tertiary-bg); }
+.requirement-form:has(.requirement-edit-grid) ::deep .requirement-form-heading { align-items: center; padding-bottom: var(--expression-stack-gap); border-bottom: 1px solid var(--bs-border-color); }
+.requirement-form ::deep .requirement-form-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--expression-stack-gap); margin-bottom: var(--expression-field-gap); font-size: .875rem; }
+.requirement-form ::deep .requirement-form-heading .btn { flex: 0 0 auto; margin-inline-start: auto; min-height: var(--expression-control-height); }
+.requirement-form ::deep .requirement-form-heading:has(.btn) { min-height: var(--expression-control-height); }
+.requirement-form ::deep .requirement-context-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--expression-stack-gap); margin-top: var(--expression-panel-spacing); padding-top: var(--expression-panel-spacing); border-top: 1px solid var(--bs-border-color); }
+.requirement-form ::deep .requirement-context-actions .btn { min-height: var(--expression-control-height); text-align: left; }
 .requirement-form ::deep .btn-outline-secondary { color: var(--bs-body-color); border-color: var(--bs-secondary-color); }
 .requirement-form ::deep .btn-outline-secondary:hover { color: var(--bs-white); }
-
-@media (max-width: 767.98px) {
-    .requirement-form ::deep .requirement-form-heading:has(.btn),
-    .requirement-form ::deep .requirement-context-actions .btn { min-height: 44px; }
-}

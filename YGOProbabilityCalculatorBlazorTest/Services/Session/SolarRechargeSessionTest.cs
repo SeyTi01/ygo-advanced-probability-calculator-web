@@ -1,17 +1,15 @@
 using System.Text.Json;
-using Microsoft.JSInterop;
-using Moq;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 
 public class SolarRechargeSessionTest {
-    private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
     private static Card Solar() => CardEffectRegistry.Default.CreateImportedCard(new() { Id = 691925, Name = "Localized name" }, 3, 691925);
 
     [Test]
@@ -19,13 +17,13 @@ public class SolarRechargeSessionTest {
         Card card = Solar();
         Card saved = card.WithEffect(card.EffectPlan with { HiddenPostDrawMill = 1 }, card.EffectProfile with { Revision = 17 });
         SessionState session = new() { Cards = [saved, new([], 37, id: "filler")], Combos = [new([])], HandSize = 5 };
-        string json = Codec().SerializeSession(session);
+        string json = SessionFixture.CreateCodec().SerializeSession(session);
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
-        SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
+        SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
         Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Cards[0].EffectPlan, Is.EqualTo(saved.EffectPlan));
         Assert.That(loaded.Cards[0].EffectProfile, Is.EqualTo(saved.EffectProfile));
-        Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
+        Assert.That(SessionFixture.CreateCodec().SerializeSession(loaded), Is.EqualTo(json));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 5, [], options: new());
         WorkerCard wire = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!.Cards[0];
         Assert.That(wire.PostDrawDeckMillCount, Is.EqualTo(1));
@@ -63,9 +61,9 @@ public class SolarRechargeSessionTest {
     [TestCase(0), TestCase(1), TestCase(2), TestCase(3), TestCase(4), TestCase(5)]
     public async Task OldPlansKeepTheirMeaningWithoutEnrichment(int schema) {
         string json = $$"""{"SchemaVersion":{{schema}},"Cards":[{"Categories":[],"Copies":1,"Name":"Solar Recharge","ExternalCardId":691925,"DrawCount":2}]}""";
-        Assert.That((await Codec().LoadSessionAsync(json)).Cards.Single().PostDrawDeckMillCount, Is.Zero);
+        Assert.That((await SessionFixture.CreateCodec().LoadSessionAsync(json)).Cards.Single().PostDrawDeckMillCount, Is.Zero);
         if (schema < 5) {
-            Assert.That((await Codec().LoadSessionAsync(json.Replace("\"DrawCount\":2", "\"DrawCount\":2,\"PostDrawDeckMillCount\":2")))
+            Assert.That((await SessionFixture.CreateCodec().LoadSessionAsync(json.Replace("\"DrawCount\":2", "\"DrawCount\":2,\"PostDrawDeckMillCount\":2")))
                 .Cards.Single().PostDrawDeckMillCount, Is.Zero);
         }
     }
@@ -74,6 +72,6 @@ public class SolarRechargeSessionTest {
     [TestCase("1,\"postdrawdeckmillcount\":1")]
     public void InvalidMillFieldsFailClosed(string value) {
         string json = "{\"SchemaVersion\":5,\"Cards\":[{\"Categories\":[],\"Copies\":1,\"Name\":null,\"DrawCount\":2,\"PostDrawDeckMillCount\":" + value + "}]}";
-        Assert.ThrowsAsync<InvalidOperationException>(() => Codec().LoadSessionAsync(json));
+        Assert.ThrowsAsync<InvalidOperationException>(() => SessionFixture.CreateCodec().LoadSessionAsync(json));
     }
 }

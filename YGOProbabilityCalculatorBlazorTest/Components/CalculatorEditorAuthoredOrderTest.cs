@@ -47,8 +47,10 @@ public sealed class CalculatorEditorAuthoredOrderTest : CalculatorEditorTestBase
             Categories = [a, b], Cards = [new([a], 2, "Physical", id: "physical")], Combos = [new([])], HandSize = 2
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = "card:physical" });
         await Button(editor, "Add").ClickAsync(new());
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(RowKinds(editor), Is.EqualTo(new[] { "card:0", "category:0" }));
@@ -201,7 +203,7 @@ public sealed class CalculatorEditorAuthoredOrderTest : CalculatorEditorTestBase
                 editor!.SetParametersAndRender(next => next.Add(component => component.Selector, value));
             }));
         await editor.Find("#removalSelector").ChangeAsync(new() { Value = b.Identity });
-        await editor.Find("#removalSelector").ChangeAsync(new() { Value = a.Identity });
+        await AddEligibilityAlternative(editor, "B", a.Identity);
         Assert.That(editor.FindAll(".draw-selector-chip").Select(element => element.TextContent), Is.EqualTo(new[] { "B", "A" }));
         Assert.That(selector.Signature, Is.EqualTo(CardSelector.AnyOf([a.Identity, b.Identity]).Signature));
     }

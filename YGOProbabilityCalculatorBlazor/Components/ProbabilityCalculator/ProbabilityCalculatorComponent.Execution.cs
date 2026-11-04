@@ -17,7 +17,7 @@ public partial class ProbabilityCalculatorComponent {
                 IReadOnlyList<Card> cards = CategoryMembership.Materialize(_cards, _categoryBases);
                 _executionAssessment = DrawExecutionAssessment.Assess(cards, _combos, _handSize, SelectedModel != CalculationModel.OpeningHand);
                 _performanceCandidateIndices = _executionAssessment.ElevatedRisk
-                    ? Enumerable.Range(0, cards.Count).Where(index => cards[index].Active && cards[index].Copies > 0
+                    ? Enumerable.Range(0, cards.Count).Where(index => cards[index].Active && cards[index].Copies > 0 && cards[index].SimulationEnabled
                         && DrawEffectPerformance.RequiresDetailedHandState(cards[index].EffectPlan, cards[index].EffectProfile.ExecutionModel)).Take(3).ToArray()
                     : [];
                 _assessmentDirty = false;

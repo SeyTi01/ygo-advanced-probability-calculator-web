@@ -43,28 +43,36 @@ internal sealed partial class PostDrawCalculation {
     // Sources stay separate; a target row can still represent equivalent labels.
     private sealed class SearchKeepPolicy {
         private readonly (int Row, int Copies, bool Relevant)[][] _targets;
+        private readonly ExcavationEffectPlan?[] _excavations;
         private readonly WorkBudget _budget;
 
         internal SearchKeepPolicy(List<Card> cards, bool[] relevant, WorkBudget budget) {
             _budget = budget;
-            budget.CheckStorage(cards.Count, 3L * cards.Count * cards.Count + cards.Count);
+            budget.CheckStorage(cards.Count, 3L * cards.Count * cards.Count + 2L * cards.Count);
             _targets = new (int, int, bool)[cards.Count][];
+            _excavations = cards.Select(card => card.Excavation).ToArray();
 
             for (int source = 0; source < cards.Count; source++) {
-                if (cards[source].Copies <= 0 || cards[source].Search is not { } search) {
+                SearchEffectPlan? search = cards[source].Search;
+                ExcavationEffectPlan? excavation = cards[source].Excavation;
+
+                if (cards[source].Copies <= 0 || (search is null && excavation is null)) {
                     _targets[source] = [];
                     continue;
                 }
 
-                budget.Spend(cards.Sum(card => card.Categories.Count + 1L) * (search.Selector.CategoryIdentities.Count + 1L));
+                budget.Spend(cards.Sum(card => card.Categories.Count + 1L) * ((search?.Selector.CategoryIdentities.Count ?? 0) + 1L));
                 _targets[source] = cards.Select((card, row) => (Card: card, Row: row))
-                    .Where(target => target.Row != source && search.Matches(target.Card))
+                    .Where(target => excavation is not null || (target.Row != source && search!.Matches(target.Card)))
                     .Select(target => (target.Row, target.Card.Copies, relevant[target.Row])).ToArray();
             }
         }
 
-        internal int Tier(int source, int[] values, int handStart, int capacity) {
-            if (capacity <= 0) {
+        internal int Tier(int source, int[] values, int handStart, int capacity, bool effectDrawOccurred = false) {
+            ExcavationEffectPlan? excavation = _excavations[source];
+
+            if (capacity <= 0 || (excavation is not null && (capacity < excavation.Count
+                || (excavation.RequiresNoPriorEffectDraw && effectDrawOccurred)))) {
                 return 4;
             }
 

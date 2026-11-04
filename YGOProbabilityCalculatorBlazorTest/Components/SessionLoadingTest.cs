@@ -69,6 +69,20 @@ public class SessionLoadingTest {
 
     private Task Upload(IRenderedComponent<ProbabilityCalculatorComponent> cut, SessionState session) => Upload(cut, _sessions.SerializeSession(session));
 
+    [Test]
+    public async Task LeavingTheCalculatorRevokesAPendingLoadEvenAfterReturning() {
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Mount();
+        GatedStream stream = new(_sessions.SerializeSession(Session("Before Help")));
+        Task load = Upload(cut, "", stream);
+        await stream.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        cut.SetParametersAndRender(parameters => parameters.Add(component => component.Active, false));
+        cut.SetParametersAndRender(parameters => parameters.Add(component => component.Active, true));
+        stream.Gate.SetResult();
+        await load;
+        Assert.That(cut.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Initial"));
+        Loading(cut, false);
+    }
+
     private TaskCompletionSource<IReadOnlyList<CardInfo>> HoldCatalog() {
         TaskCompletionSource<IReadOnlyList<CardInfo>> gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _catalog.Setup(service => service.GetCatalogCardsAsync()).Returns(gate.Task);
@@ -322,8 +336,9 @@ public class SessionLoadingTest {
 
     [TestCase("en")]
     [TestCase("fr")]
+    [TestCase("de")]
     public void HelpKeepsOneExampleActionBeforeCollapsedSemanticTopics(string language) {
-        using PresentationLocale locale = new(language, production: language == "en");
+        using PresentationLocale locale = new(language, production: language != "fr");
         IRenderedComponent<Help> cut = _context.RenderComponent<Help>();
         Assert.That(cut.FindAll(".example-session-action button"), Has.Count.EqualTo(1));
         Assert.That(cut.Find(".help-content > section .example-session-action"), Is.Not.Null);

@@ -50,11 +50,16 @@ internal sealed class BoundedSearchHandCounter {
         budget.CheckStorage(_modes.Length + cards.Count, _modes.Sum(mode => (long)mode.Targets.Length + 2) + cards.Count);
     }
 
-    internal bool[] Evaluate(ReadOnlySpan<int> initial, int[] deck, IReadOnlyList<int>? encounters = null) {
+    internal bool[] Evaluate(
+        ReadOnlySpan<int> initial,
+        int[] deck,
+        IReadOnlyList<int>? encounters = null,
+        ReadOnlySpan<int> activationSources = default
+    ) {
         int[] hand = initial.ToArray();
-        int[] original = initial.ToArray();
+        int[] original = activationSources.IsEmpty ? initial.ToArray() : activationSources.ToArray();
         List<int> pending = encounters?.ToList() ?? Enumerable.Range(0, _cards.Count)
-            .Where(row => _cards[row].Search is not null).SelectMany(row => Enumerable.Repeat(row, hand[row])).ToList();
+            .Where(row => _cards[row].Search is not null).SelectMany(row => Enumerable.Repeat(row, original[row])).ToList();
         int pendingCapacity = pending.Count;
         int[] used = new int[_cards.Count];
         int[] modeUses = new int[_modes.Length];

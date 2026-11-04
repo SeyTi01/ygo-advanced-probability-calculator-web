@@ -1,0 +1,23 @@
+<div class="editor-field @(ControlSize == ExpressionControlSize.Compact ? "editor-field-compact" : "") @CssClass">
+    @if (Label is not null) {
+        @if (For is null) { <div class="form-label editor-field-label">@Label</div> }
+        else { <label for="@For" class="form-label editor-field-label">@Label</label> }
+    }
+    <div class="editor-field-control">@ChildContent</div>
+    @if (AdditionalContent is not null) {
+        <div class="editor-field-additional">@AdditionalContent</div>
+    }
+    @if (HelpContent is not null) {
+        <div class="editor-field-help form-text">@HelpContent</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? For { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public ExpressionControlSize ControlSize { get; set; } = ExpressionControlSize.Form;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? AdditionalContent { get; set; }
+    [Parameter] public RenderFragment? HelpContent { get; set; }
+}

@@ -8,18 +8,12 @@ public static class CategoryRemoval {
 
     private static bool IsReferenced(string identity, IEnumerable<Card> cards, IEnumerable<Combo> combos) =>
         cards.Any(card => card.Categories.Any(category => category.Identity == identity)
-            || card.PreDrawSelector.CategoryIdentities.Contains(identity)
-            || card.PostDrawSelector.CategoryIdentities.Contains(identity)
-            || (card.Search?.Selector.CategoryIdentities.Contains(identity) ?? false)
-            || (card.Search?.Modes?.Any(mode => mode.Selector.CategoryIdentities.Contains(identity)) ?? false))
+            || card.EffectPlan.EnumerateCategoryIdentities().Contains(identity))
         || combos.Any(combo => combo.AllCategories.Any(category => category.Selector.CategoryIdentities.Contains(identity)));
 
     public static Card Remove(Card card, string identity) {
         bool membership = card.Categories.Any(category => category.Identity == identity);
-        bool filter = card.PreDrawSelector.CategoryIdentities.Contains(identity)
-            || card.PostDrawSelector.CategoryIdentities.Contains(identity)
-            || (card.Search?.Selector.CategoryIdentities.Contains(identity) ?? false)
-            || (card.Search?.Modes?.Any(mode => mode.Selector.CategoryIdentities.Contains(identity)) ?? false);
+        bool filter = card.EffectPlan.EnumerateCategoryIdentities().Contains(identity);
         if (!membership && !filter) {
             return card;
         }
@@ -29,20 +23,9 @@ public static class CategoryRemoval {
             return result;
         }
 
-        SearchEffectPlan? search = card.Search;
-        if (search is not null) {
-            SearchEffectMode[]? modes = search.Modes?.Select(mode => mode with { Selector = RemoveFilter(mode.Selector, identity) }).ToArray();
-            search = search with {
-                Selector = modes is null ? RemoveFilter(search.Selector, identity) : CardSelector.AnyOfSelectors(modes.Select(mode => mode.Selector)),
-                Modes = modes
-            };
-        }
+        DrawEffectPlan plan = card.EffectPlan.TransformSelectors(selector => RemoveFilter(selector, identity));
 
-        return result.WithEffect(card.EffectPlan with {
-            HandCostSelector = RemoveFilter(card.PreDrawSelector, identity),
-            RemovalSelector = RemoveFilter(card.PostDrawSelector, identity),
-            Search = search
-        }, card.EffectProfile.AsCustom());
+        return result.WithEffect(plan, card.EffectProfile.AsCustom());
     }
 
     public static Combo Remove(Combo combo, string identity) {

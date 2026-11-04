@@ -3,7 +3,9 @@ using System.Text.Json;
 
 namespace YGOProbabilityCalculatorBlazor.Localization;
 
-public sealed record ProductionLocale(string Id, string Name);
+public sealed record ProductionLocale(string Id, string Name, CardNameCapability? CardNames = null);
+
+public sealed record CardNameCapability(string Asset);
 
 // Website preference, never SessionState. Browser and .NET use the same registry.
 public sealed class LocalePreference {

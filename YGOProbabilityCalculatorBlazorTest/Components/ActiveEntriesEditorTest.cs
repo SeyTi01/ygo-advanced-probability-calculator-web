@@ -245,20 +245,21 @@ public class ActiveEntriesEditorTest {
         Assert.That(cut.Find("p.form-text[role=status]").TextContent, Does.Contain("fewer than the hand size"));
 
         SetActiveAsync(cut, "#cardActive1", false).GetAwaiter().GetResult();
-        Assert.That(cut.Find("p.form-text[role=status]").TextContent, Does.Contain("Add or enable at least one deck card"));
+        Assert.That(calculate().HasAttribute("disabled"), Is.True);
+        Assert.That(cut.FindAll("p.form-text[role=status]"), Is.Empty);
 
         SetActiveAsync(cut, "#cardActive0", true).GetAwaiter().GetResult();
         SetActiveAsync(cut, "#cardActive1", true).GetAwaiter().GetResult();
         SetActiveAsync(cut, "#comboActive0", false).GetAwaiter().GetResult();
         Assert.That(calculate().HasAttribute("disabled"), Is.True);
-        Assert.That(cut.Find("p.form-text[role=status]").TextContent, Does.Contain("Activate at least one combo"));
+        Assert.That(cut.FindAll("p.form-text[role=status]"), Is.Empty);
     }
 
     [Test]
-    public void EmptyWorkspaceExplainsHowToIncludeDeckCards() {
+    public void EmptyWorkspaceDisablesCalculationWithoutWarning() {
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { HandSize = 5 });
         Assert.That(cut.Find(".calculate-action > button").HasAttribute("disabled"), Is.True);
-        Assert.That(cut.Find("p.form-text[role=status]").TextContent, Does.Contain("Add or enable at least one deck card"));
+        Assert.That(cut.FindAll("p.form-text[role=status]"), Is.Empty);
     }
 
     [Test]
@@ -277,6 +278,7 @@ public class ActiveEntriesEditorTest {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:B");
+        CalculatorEditorTestBase.OpenNewRequirement(combo);
         CalculatorEditorTestBase.RequirementField(combo, "select[id^='comboTarget']").Change("user:B");
         CalculatorEditorTestBase.RequirementField(combo, "#minCount0").Input("0");
         CalculatorEditorTestBase.RequirementField(combo, "#maxCount0").Input("0");
@@ -354,6 +356,7 @@ public class ActiveEntriesEditorTest {
         card.Find(".accordion-button").Click();
         combo.Find(".accordion-button").Click();
         card.Find("select[id^='cardCategory']").Change("user:A");
+        CalculatorEditorTestBase.OpenNewRequirement(combo);
         CalculatorEditorTestBase.RequirementField(combo, "select[id^='comboTarget']").Change("user:A");
         CalculatorEditorTestBase.RequirementField(combo, "#minCount0").Input("0");
         CalculatorEditorTestBase.RequirementField(combo, "#maxCount0").Input("0");

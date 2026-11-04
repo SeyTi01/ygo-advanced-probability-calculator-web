@@ -1,51 +1,12 @@
-<section class="alert alert-secondary mt-3 pinned-result" aria-labelledby="pinnedResultHeading">
+<section class="alert alert-secondary mt-4 pinned-result" aria-labelledby="pinnedResultHeading">
     <div class="pinned-heading">
         <h5 id="pinnedResultHeading">@(UiText.Get("Ui.PinnedResult"))</h5>
-        <button type="button" class="btn btn-sm btn-outline-secondary" title="@(UiText.Get("Ui.UnpinResult"))" aria-label="@(UiText.Get("Ui.UnpinResult"))" @onclick="OnClear"><PinIcon Slashed="true" /></button>
+        <button type="button" class="btn btn-sm btn-outline-secondary result-icon-action" title="@(UiText.Get("Ui.UnpinResult"))" aria-label="@(UiText.Get("Ui.UnpinResult"))" @onclick="OnClear"><PinIcon Slashed="true" /></button>
     </div>
     <CalculationAccuracyResult Context="Snapshot.Context" ModeDescription="@Snapshot.Context.ModeDescription" Contract="Snapshot.Contract" />
     <CalculationAccuracyDetails />
 
-    <div class="pinned-row pinned-total">
-        <span>@(UiText.Get("Ui.AnyActiveCombo"))</span><ProbabilityValue Probability="Snapshot.Total" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" ValueClass="probability-total-value" />
-    </div>
-    @{
-        List<PinnedGroupRow> visibleGroups = Snapshot.Groups.Where(group => group.ActiveCount > 0).ToList();
-        HashSet<string> visibleGroupIds = visibleGroups.Select(group => group.Id).ToHashSet(StringComparer.Ordinal);
-        List<PinnedComboRow> ungrouped = Snapshot.Combos
-            .Where(combo => combo.GroupId is null || !visibleGroupIds.Contains(combo.GroupId)).ToList();
-    }
-    @foreach (PinnedGroupRow group in visibleGroups) {
-        <section class="pinned-group">
-            <h6 class="pinned-row">
-                <span>@group.Label <small class="text-body-secondary fw-normal">@(UiText.Format("Result.ActiveCount", group.ActiveCount))</small></span>
-                <ProbabilityValue Probability="group.Probability" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" Row="ProbabilityRow.Group" Index="@Snapshot.Groups.IndexOf(group)" />
-            </h6>
-            <ol class="pinned-list pinned-members">
-                @foreach (PinnedComboRow row in Snapshot.Combos.Where(combo => combo.GroupId == group.Id)) {
-                    <li>
-                        <div class="pinned-row">
-                            <span>@row.Label</span>
-                            <ProbabilityValue Probability="row.Probability" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" Row="ProbabilityRow.Combo" Index="row.Index" />
-                        </div>
-                    </li>
-                }
-            </ol>
-        </section>
-    }
-    @if (ungrouped.Count > 0) {
-        <h6>@(visibleGroups.Count == 0 ? UiText.Get("Ui.IndividualCombos") : UiText.Get("Ui.UngroupedCombos"))</h6>
-        <ol class="pinned-list">
-            @foreach (PinnedComboRow row in ungrouped) {
-                <li>
-                    <div class="pinned-row">
-                        <span>@row.Label</span>
-                        <ProbabilityValue Probability="row.Probability" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" Row="ProbabilityRow.Combo" Index="row.Index" />
-                    </div>
-                </li>
-            }
-        </ol>
-    }
+    <ProbabilityResultBody Projection="ProbabilityResultProjection.Create(Snapshot)" Contract="Snapshot.Contract" Certificate="Snapshot.SearchAvailability" Pinned="true" />
 </section>
 
 @code {

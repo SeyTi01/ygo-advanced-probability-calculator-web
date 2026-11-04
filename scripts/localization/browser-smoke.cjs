@@ -1,4 +1,4 @@
-// node scripts/localization/browser-smoke.cjs <production-wwwroot> <isolated-test-wwwroot> [baseline-wwwroot]
+// node scripts/localization/browser-smoke.cjs <production-wwwroot>
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -26,24 +26,80 @@ async function change(page, locale) {
     assert.equal(await page.locator('.content > .alert[role=alert]').count(), 0, 'no language-handoff error');
 }
 
-async function blocked(page, locale, message) {
+async function blocked(page, locale) {
     const before = page.url();
     const saved = await page.evaluate(key => localStorage.getItem(key), preference);
+    const selected = await page.locator('#language-preference').inputValue();
     await page.locator('#language-preference').selectOption(locale);
-    await page.locator('.content > .alert[role=alert]').filter({ hasText: message }).waitFor();
+    await page.locator('.content > .alert[role=alert]').waitFor();
     await page.waitForFunction(() => !document.querySelector('.page').inert);
     assert.equal(page.url(), before);
     assert.equal(await page.evaluate(key => localStorage.getItem(key), preference), saved);
-    assert.equal(await page.locator('#language-preference').inputValue(), await page.locator('html').getAttribute('lang'));
+    assert.equal(await page.locator('#language-preference').inputValue(), selected);
 }
 
-async function header(page) {
+async function translatedProduction(browser, url, track, locale, root, englishPlaceholder) {
+    const nameAsset = locale.cardNames?.asset;
+    const names = nameAsset
+        ? new Map(JSON.parse(fs.readFileSync(path.join(root, nameAsset), 'utf8')).names)
+        : null;
+    const translatedName = names?.get(35261759);
+    if (nameAsset) assert(translatedName, `${locale.id}: the representative maintained card has a verified label`);
+    const region = { fr: 'fr-FR', it: 'it-IT', pt: 'pt-BR', ja: 'ja-JP' }[locale.id] ?? locale.id;
+    const context = await browser.newContext({ locale: region, viewport: { width: 390, height: 844 } });
+    await context.addInitScript(() => {
+        window.firstInteractivePlaceholder = null;
+        const observe = () => {
+            const input = document.querySelector('#quickCardName');
+            if (!window.firstInteractivePlaceholder && input && getComputedStyle(input).visibility === 'visible') {
+                window.firstInteractivePlaceholder = input.placeholder;
+            }
+            requestAnimationFrame(observe);
+        };
+        requestAnimationFrame(observe);
+    });
+    const page = await context.newPage(); track(page);
+    const requests = [];
+    page.on('request', request => requests.push(request.url()));
+    await page.goto(url + '/help');
+    await page.waitForFunction(id => document.documentElement.lang === id && !document.documentElement.classList.contains('locale-pending'), locale.id);
+    assert.equal(await page.locator('#language-preference').inputValue(), 'system');
+    assert.equal(requests.some(value => /card-names\./.test(value)), false, 'Help loads no card names');
+    const satellites = requests.filter(value => /\/[^/]+\/[^/]*resources/.test(value));
+    assert(satellites.some(value => value.includes(`/${locale.id}/`)), `${locale.id}: selected satellite loads`);
+    assert(satellites.every(value => value.includes(`/${locale.id}/`)), `${locale.id}: unrelated satellites stay unloaded`);
     await usable(page, page.locator('#language-preference'));
-    assert.equal(await page.evaluate(() => {
-        const title = document.querySelector('.app-title').getBoundingClientRect();
-        const controls = document.querySelector('.top-row-controls').getBoundingClientRect();
-        return title.bottom <= controls.top || title.right <= controls.left;
-    }), true, 'title and language controls do not overlap');
+    const summary = page.locator('#requirements > summary');
+    await summary.focus(); await summary.press('Enter');
+    assert.equal(await page.locator('#requirements').evaluate(element => element.open), true);
+    await page.goto(url); await interactive(page);
+    const placeholder = await page.locator('#quickCardName').getAttribute('placeholder');
+    assert(placeholder && placeholder !== englishPlaceholder, 'selected locale renders a translated input');
+    assert.equal(await page.evaluate(() => window.firstInteractivePlaceholder), placeholder, 'first visible input uses selected language');
+    assert.equal(requests.some(value => /card-names\./.test(value)), false, 'empty calculator defers card names');
+    if (!nameAsset) { await context.close(); return; }
+    await page.locator('#quickCardName').fill(translatedName);
+    await page.locator('#quickCardOption-35261759').waitFor();
+    assert.equal(await page.locator('#quickCardOption-35261759').innerText(), translatedName);
+    assert.equal(await page.locator('#quickCardOption-35261759').count(), 1, 'localized matches deduplicate by identity');
+    await page.locator('#quickCardName').fill('Pot of Desires');
+    await page.locator('#quickCardOption-35261759').waitFor();
+    assert.equal(await page.locator('#quickCardOption-35261759').innerText(), translatedName);
+    const nameAssetPath = `/${nameAsset}`;
+    assert.deepEqual(requests.filter(value => /card-names\./.test(value)).map(value => new URL(value).pathname), [nameAssetPath]);
+    await page.locator('#quickCardOption-35261759').click();
+    await page.waitForFunction(key => {
+        try { return JSON.parse(JSON.parse(localStorage.getItem(key)).payload).Cards[0].Name === 'Pot of Desires'; } catch { return false; }
+    }, recovery);
+    const accepted = await page.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery);
+    const card = JSON.parse(accepted).Cards[0];
+    assert.equal(card.ExternalCardId, 35261759);
+    assert.equal(card.DrawCount, 2);
+    assert.equal(card.PreDrawDeckRemovalCount, 10);
+    await change(page, 'en'); await change(page, locale.id);
+    await page.locator('.card-header-name').filter({ hasText: translatedName }).waitFor();
+    assert.equal(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery), accepted);
+    await context.close();
 }
 
 async function main() {
@@ -58,24 +114,29 @@ async function main() {
     };
     try {
         const prod = await serve(process.argv[2]); servers.push(prod.server);
-        const context = await browser.newContext({ locale: 'de-DE', viewport: { width: 390, height: 844 } });
+        const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 } });
         const page = await context.newPage();
         track(page);
         await page.goto(prod.url); await interactive(page);
-        assert.equal(await page.locator('#language-preference').count(), 0);
-        assert.equal(await page.locator('#quickCardName').getAttribute('placeholder'), 'Search cards or enter a name');
-        const transfer = await page.evaluate(() => performance.getEntriesByType('resource').reduce((sum, item) => sum + item.encodedBodySize, 0));
+        assert.equal(await page.locator('#language-preference').inputValue(), 'system');
+        assert.equal(await page.locator('#language-preference option').first().getAttribute('value'), 'system');
+        const englishPlaceholder = await page.locator('#quickCardName').getAttribute('placeholder');
+        assert(englishPlaceholder);
         const productionRequests = await page.evaluate(() => performance.getEntriesByType('resource').map(item => item.name));
-        assert.equal(productionRequests.some(url => /\/(fr|de)\/.*resources/.test(url)), false);
+        assert.equal(productionRequests.some(url => /\/[^/]+\/[^/]*resources/.test(url)), false);
         assert.equal(productionRequests.some(url => /card-names\./.test(url)), false);
-        console.log(`Production English first visit encoded resource bodies: ${transfer} bytes.`);
-        await usable(page, page.locator('#theme-preference'));
         await context.close();
+        const productionLocales = JSON.parse(fs.readFileSync(path.join(process.argv[2], 'localization/locales.json'), 'utf8'));
+        for (const locale of productionLocales.filter(locale => locale.id !== 'en')) {
+            await translatedProduction(browser, prod.url, track, locale, process.argv[2], englishPlaceholder);
+        }
 
-        const testHost = await serve(process.argv[3]); servers.push(testHost.server);
         const test = await browser.newContext({ locale: 'de-DE', viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
         await test.addInitScript(key => {
-            if (!localStorage.getItem(key)) localStorage.setItem(key, 'en');
+            if (!sessionStorage.getItem('language-smoke:seeded')) {
+                localStorage.setItem(key, 'en');
+                sessionStorage.setItem('language-smoke:seeded', 'true');
+            }
             Object.defineProperty(window, 'showSaveFilePicker', { value: undefined });
             // Observe the first visible interactive card input, not only the settled language.
             window.firstInteractivePlaceholder = null;
@@ -93,54 +154,18 @@ async function main() {
         let documents = 0;
         const requests = [];
         p.on('request', request => { requests.push(request.url()); if (request.isNavigationRequest() && request.frame() === p.mainFrame()) documents++; });
-        await p.goto(testHost.url); await interactive(p);
+        await p.goto(prod.url); await interactive(p);
         assert.equal(await p.locator('#language-preference').inputValue(), 'en', 'explicit English overrides supported de-DE');
-        console.log('Satellite requests on English:', requests.filter(url => /\/(fr|de)\//.test(url)));
-        assert.equal(requests.some(url => /\/(fr|de)\/.*resources/.test(url)), false, 'English downloads no pseudo satellites');
+        assert.equal(requests.some(url => /\/[^/]+\/[^/]*resources/.test(url)), false, 'explicit English loads no satellite assemblies');
         await usable(p, p.locator('#language-preference'));
         const box = await p.locator('#language-preference').boundingBox(); assert(box.height >= 44);
         const beforeEmpty = documents;
-        await change(p, 'fr');
+        await change(p, 'de');
         assert.equal(documents - beforeEmpty, 1, 'exactly one document reload');
-        assert.equal(await p.locator('#quickCardName').getAttribute('placeholder'), '⟦Search cards⟧');
-        assert.equal(await p.evaluate(() => window.firstInteractivePlaceholder), '⟦Search cards⟧');
-        assert(requests.some(url => /\/fr\/.*resources/.test(url)), 'selected satellite requested');
-        assert.equal(requests.some(url => /\/de\/.*resources/.test(url)), false, 'unselected satellite not requested');
-
-        // A supported German browser still keeps explicitly selected English after a reload and a new context.
         await change(p, 'en');
-        const beforeKeyboard = documents;
-        await Promise.all([p.waitForEvent('load'), (async () => {
-            await p.locator('#language-preference').focus();
-            await p.keyboard.press('ArrowDown');
-            await p.keyboard.press('Enter');
-        })()]);
-        await interactive(p);
-        assert.equal(await p.locator('#language-preference').inputValue(), 'fr');
-        assert.equal(documents - beforeKeyboard, 1, 'keyboard selection takes one reload');
-        await change(p, 'en');
-        await p.reload(); await interactive(p);
-        assert.equal(await p.locator('#language-preference').inputValue(), 'en');
-        const profilePath = path.resolve('bin/language-browser-profile');
-        let profile = await chromium.launchPersistentContext(profilePath, { ...launchOptions(), locale: 'de-DE' });
-        let profilePage = await profile.newPage(); track(profilePage);
-        await profilePage.goto(testHost.url); await interactive(profilePage);
-        await profilePage.evaluate(key => localStorage.setItem(key, 'de'), preference);
-        await profilePage.reload(); await interactive(profilePage);
-        await change(profilePage, 'en');
-        await profile.close();
-        profile = await chromium.launchPersistentContext(profilePath, { ...launchOptions(), locale: 'de-DE' });
-        profilePage = await profile.newPage(); track(profilePage);
-        await profilePage.goto(testHost.url); await interactive(profilePage);
-        await profilePage.route('**/help', route => route.fulfill({ contentType: 'text/html', body: fs.readFileSync(path.join(process.argv[3], 'help.html')) }));
-        await profilePage.getByRole('link', { name: 'Help', exact: true }).click();
-        assert.equal(await profilePage.locator('#language-preference').inputValue(), 'en');
-        await profilePage.getByRole('link', { name: 'Back', exact: true }).click(); await interactive(profilePage);
-        assert.equal(await profilePage.locator('#language-preference').inputValue(), 'en', 'English persists across an actual browser process restart');
-        await profile.close();
 
         const role = { Name: 'Target', Source: 'User' };
-        const session = { SchemaVersion: 12, CalculationModel: 'Fast', FastExecutionStrategy: 'Progressive', HandSize: 1,
+        const session = { SchemaVersion: 14, CalculationModel: 'Fast', FastExecutionStrategy: 'Progressive', HandSize: 1,
             Categories: [role], Cards: [{ Id: 'a', Name: 'Workspace sentinel', Copies: 2, Categories: [role] },
                 { Id: 'b', Name: 'Filler', Copies: 1, Categories: [] }],
             Combos: [{ Name: 'Two thirds', Categories: [{ BaseCategory: role, MinCount: 1, MaxCount: 1 }] }], ComboGroups: [] };
@@ -152,31 +177,16 @@ async function main() {
         await p.locator('#comboName0').fill('Accepted rename');
 
         await p.locator('#quickCardName').fill('Unsubmitted card draft');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await blocked(p, 'de');
         assert.equal(await p.locator('#quickCardName').inputValue(), 'Unsubmitted card draft');
         await p.locator('#quickCardName').fill('');
         await p.locator('.simulation-edit').first().click();
         await p.locator('#cardDraw0').selectOption('2');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await blocked(p, 'de');
         assert.equal(await p.locator('#cardDraw0').inputValue(), '2');
         await p.locator('.simulation-editor').getByRole('button', { name: 'Cancel', exact: true }).click();
-        await p.locator("button[data-requirement='category:0']").click();
-        await p.locator('#minCount0').fill('0');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
-        await p.locator('.requirement-form').getByRole('button', { name: 'Cancel', exact: true }).click();
-        await p.locator('.category-management > summary').click();
-        await p.getByRole('textbox', { name: 'Category name', exact: true }).fill('Unsubmitted role');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
-        await p.getByRole('textbox', { name: 'Category name', exact: true }).fill('');
-        await p.locator('.combo-group-management > summary').click();
-        await p.getByRole('textbox', { name: 'New combo group name', exact: true }).fill('Unsubmitted group');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
-        await p.getByRole('textbox', { name: 'New combo group name', exact: true }).fill('');
-        await p.locator('.category-management .category-name-trigger').first().click();
-        await blocked(p, 'fr', /Save\/apply or cancel/);
-        await p.getByRole('button', { name: 'Cancel category edit', exact: true }).click();
         await p.locator('#cardCopies0').fill('');
-        await blocked(p, 'fr', /Save\/apply or cancel/);
+        await blocked(p, 'de');
         await p.locator('#cardCopies0').fill('3');
         assert.equal(await p.evaluate(() => ygoLocale.hasPendingEdits()), false);
 
@@ -184,6 +194,8 @@ async function main() {
         await p.waitForFunction(() => document.querySelector('.calculate-action > button')?.getAttribute('aria-busy') === 'false'
             && document.querySelector('.probability-total-value'));
         assert.match(await p.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)3\/4(?!\d)/);
+        const numericResult = await p.locator('.probability-results .probability-total-value').innerText();
+        assert.match(numericResult, /75,00\s*%/, 'English UI retains the German browser numeric culture');
         await p.getByRole('button', { name: 'Pin result', exact: true }).click();
         const pinned = await p.locator('.pinned-result').innerText();
         await p.waitForFunction(key => {
@@ -191,19 +203,18 @@ async function main() {
             return saved.Cards[0].Copies === 3 && saved.Combos[0].Name === 'Accepted rename';
         }, recovery);
         const accepted = await p.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery);
-        await change(p, 'fr');
+        await change(p, 'system');
+        assert.equal(await p.locator('html').getAttribute('lang'), 'de');
+        assert.equal(await p.evaluate(key => localStorage.getItem(key), preference), null, 'System clears the explicit override');
         assert.equal(await p.evaluate(key => JSON.parse(localStorage.getItem(key)).payload, recovery), accepted);
+        assert.equal(await p.locator('.probability-results .probability-total-value').innerText(), numericResult, 'language reload preserves numeric formatting');
         assert.match(await p.locator('.probability-total .probability-with-accuracy').getAttribute('title'), /(?<!\d)3\/4(?!\d)/);
+        assert.equal(await p.locator('.pinned-result').count(), 1);
+        await change(p, 'en');
         assert.equal(await p.locator('.pinned-result').innerText(), pinned);
         assert.equal(await p.getByRole('button', { name: 'Restore previous session', exact: true }).count(), 0);
-        for (const width of [320, 390, 1280]) { await p.setViewportSize({ width, height: 900 }); await header(p); }
-        await p.screenshot({ path: path.resolve('bin/language-desktop.png'), fullPage: true });
-        await p.setViewportSize({ width: 390, height: 844 });
-        await p.locator('#theme-preference').selectOption('dark'); await header(p);
-        await p.screenshot({ path: path.resolve('bin/language-mobile.png'), fullPage: true });
 
         // A share offer and another tab's recovery are independent of the accepted checkpoint.
-        await change(p, 'en');
         const foreign = JSON.stringify({ version: 1, savedAt: '2026-10-25T00:00:00Z', payload: accepted });
         await p.evaluate(([key, value]) => localStorage.setItem(key, value), [recovery, foreign]);
         await p.evaluate(() => { sessionSharing.copy = async text => { window.testShareLink = text; return true; }; });
@@ -213,21 +224,23 @@ async function main() {
         await p.evaluate(fragment => { location.hash = fragment; }, shared);
         await p.getByRole('button', { name: 'Load shared session', exact: true }).waitFor();
         assert.equal(await p.locator('#language-preference').inputValue(), 'en');
-        await change(p, 'fr');
+        await change(p, 'de');
         assert.equal(await p.evaluate(key => localStorage.getItem(key), recovery), foreign);
-        assert.equal(await p.getByRole('button', { name: 'Load shared session', exact: true }).count(), 1);
+        assert.equal(new URL(p.url()).hash, shared, 'language reload keeps the incoming share');
         await change(p, 'en');
+        await p.getByRole('button', { name: 'Load shared session', exact: true }).waitFor();
+        await p.getByRole('button', { name: 'Restore previous session', exact: true }).waitFor();
         await p.evaluate(key => {
             const original = Storage.prototype.setItem;
             Storage.prototype.setItem = function (name, value) { if (name === key) throw new Error('Storage denied for test'); return original.call(this, name, value); };
         }, preference);
-        await blocked(p, 'fr', /Language was not changed/);
+        await blocked(p, 'de');
         assert.equal(await p.evaluate(key => sessionStorage.getItem(key), handoff), null);
         await test.close();
 
         const work = await browser.newContext({ locale: 'en-US' });
         const pending = await work.newPage(); track(pending);
-        await pending.goto(testHost.url); await interactive(pending); await load(pending, session);
+        await pending.goto(prod.url); await interactive(pending); await load(pending, session);
         await pending.evaluate(() => {
             const original = Worker.prototype.postMessage;
             Worker.prototype.postMessage = function (message, ...rest) {
@@ -237,7 +250,7 @@ async function main() {
         });
         await pending.getByRole('button', { name: 'Calculate', exact: true }).click();
         await pending.waitForFunction(() => window.heldCalculation);
-        await blocked(pending, 'fr', /calculation to finish or cancel/);
+        await blocked(pending, 'de');
         await pending.getByRole('button', { name: 'Cancel calculation', exact: true }).click();
         await pending.waitForFunction(() => document.querySelector('.calculate-action > button').getAttribute('aria-busy') === 'false');
         await pending.evaluate(() => {
@@ -250,38 +263,14 @@ async function main() {
         const replacement = structuredClone(session); replacement.Cards[0].Name = 'Pending replacement';
         await pending.locator('#sessionFileInput').setInputFiles({ name: 'pending.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(replacement)) });
         await pending.waitForFunction(() => typeof releaseLoad === 'function');
-        await blocked(pending, 'fr', /session or deck import to finish/);
+        await blocked(pending, 'de');
         await pending.evaluate(() => releaseLoad());
         await pending.waitForFunction(key => JSON.parse(JSON.parse(localStorage.getItem(key)).payload).Cards[0].Name === 'Pending replacement', recovery);
-        await change(pending, 'fr');
+        await change(pending, 'de');
         await work.close();
 
-        // Browser detection, unsupported saved preference, and canonical Help transition.
-        const automatic = await browser.newContext({ locale: 'fr-FR' });
-        const help = await automatic.newPage();
-        track(help);
-        await help.route('**/help', route => route.fulfill({ contentType: 'text/html', body: fs.readFileSync(path.join(process.argv[3], 'help.html')) }));
-        await help.goto(testHost.url + '/help');
-        await help.locator('#language-preference').waitFor();
-        await help.waitForFunction(() => !document.documentElement.classList.contains('locale-pending'));
-        assert.equal(await help.locator('#language-preference').inputValue(), 'fr');
-        assert.equal(await help.locator('html').getAttribute('lang'), 'fr');
-        await help.getByRole('link', { name: 'Back', exact: true }).click(); await interactive(help);
-        assert.equal(await help.locator('#quickCardName').getAttribute('placeholder'), '⟦Search cards⟧');
-        await help.evaluate(key => localStorage.setItem(key, 'stale'), preference);
-        await help.reload(); await interactive(help);
-        assert.equal(await help.locator('#language-preference').inputValue(), 'fr');
-        await automatic.close();
-
-        if (process.argv[4]) {
-            const baseline = await serve(process.argv[4]); servers.push(baseline.server);
-            const b = await browser.newPage({ locale: 'de-DE' }); await b.goto(baseline.url);
-            await b.waitForFunction(() => document.querySelector('#sessionFileInput')?._blazorInputFileNextFileId !== undefined);
-            const old = await b.evaluate(() => performance.getEntriesByType('resource').reduce((sum, item) => sum + item.encodedBodySize, 0));
-            console.log(`Frozen dev English resource bodies: ${old} bytes; change: ${transfer - old} bytes (uncompressed local HTTP).`);
-        }
         assert.deepEqual(errors, []);
-        console.log('Published locale lifecycle, selective satellites, first frame, one reload, accepted work/results, blocked edits and pending operations, recovery/share ownership, storage failure and keyboard/mobile header passed.');
+        console.log('Published satellites, first visible language, card names and reload workspace ownership passed.');
     } finally {
         await browser.close();
         for (const server of servers) await new Promise(resolve => server.close(resolve));

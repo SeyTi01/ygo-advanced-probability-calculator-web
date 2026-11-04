@@ -24,11 +24,12 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         IElement requirements = editor.Find(".requirement-list");
-        Assert.That(requirements.Children.Skip(1).Select(element => element.ClassList.Single(name => name is "requirement-row" or "requirement-and-separator" or "requirement-or-group")), Is.EqualTo(new[] {
+        Assert.That(requirements.Children.Where(element => element.QuerySelector(".add-top-level-group") is null)
+            .Select(element => element.ClassList.Single(name => name is "requirement-row" or "requirement-and-separator" or "requirement-or-group")), Is.EqualTo(new[] {
             "requirement-row", "requirement-and-separator", "requirement-row", "requirement-and-separator",
             "requirement-or-group", "requirement-and-separator", "requirement-or-group"
         }));
-        foreach (IElement separator in requirements.Children.Where(element => element.ClassList.Contains("requirement-and-separator"))) {
+        foreach (IElement separator in requirements.Children.Where(element => element.ClassList.Contains("requirement-and-separator") && element.QuerySelector("select") is not null)) {
             Assert.That(separator.QuerySelector("select")!.GetAttribute("value"), Is.EqualTo("+"));
             Assert.That(separator.GetAttribute("aria-label"), Is.EqualTo("+: separate card requirements"));
         }
@@ -39,8 +40,8 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         }
         await EditRequirement(editor, "category:0");
         await Button(editor, "Remove requirement").ClickAsync(new());
-        Assert.That(requirements.Children.Count(element => element.ClassList.Contains("requirement-and-separator")), Is.EqualTo(2));
-        Assert.That(requirements.Children[1].ClassName, Is.EqualTo("requirement-row"));
+        Assert.That(requirements.Children.Count(element => element.ClassList.Contains("requirement-and-separator") && element.QuerySelector("select") is not null), Is.EqualTo(2));
+        Assert.That(requirements.Children[0].ClassList, Does.Contain("requirement-row"));
         Assert.That(editor.FindAll(".requirement-or-group"), Has.Count.EqualTo(2));
     }
 
@@ -87,15 +88,16 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
-        Assert.That(editor.FindAll(".requirement-property-picker > select"), Is.Empty);
+        Assert.That(editor.FindAll(".requirement-property-picker select.requirement-options"), Is.Empty);
         OpenNewRequirement(editor);
-        Assert.That(editor.FindAll(".requirement-property-picker > select"), Has.Count.EqualTo(1));
+        Assert.That(editor.FindAll(".requirement-property-picker select.requirement-options"), Has.Count.EqualTo(1));
         Assert.That(editor.FindAll("#comboTarget0 optgroup").First().GetAttribute("label"), Is.EqualTo("Cards"));
         Assert.That(editor.FindAll("[data-action], .add-or-button, .alternative-target-instruction"), Is.Empty);
         Assert.That(editor.Find("details").HasAttribute("open"), Is.False);
         AssertAnyMaximumDraft(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = "card:r" });
-        await RequirementField(editor, "#minCount0").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+        await editor.Find(".requirement-form").SubmitAsync(); // Native Enter submission is verified in the browser.
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await Button(editor, "Add").ClickAsync(new());
         Assert.That(editor.Instance.Combo.Cards.Single().CardId, Is.EqualTo("r"));
@@ -146,15 +148,17 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         Combo original = new([new(a, 1, 3)]);
         IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new SessionState { Categories = [a, b], Combos = [original] });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "2" });
         await EditRequirement(editor, "category:0");
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "0" });
         await RequirementField(editor, "#minCount0").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
+        OpenNewRequirement(editor);
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("2"));
-        Assert.That(editor.FindAll("[aria-expanded='true'].requirement-edit:not([data-new-requirement])"), Is.Empty);
+        Assert.That(editor.FindAll("[aria-expanded='true'].requirement-edit"), Is.Empty);
     }
 
     [Test]
@@ -163,7 +167,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await EditRequirement(editor, "category:0");
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "4" });
-        Assert.That(editor.Find("[data-action='alternative']").TextContent, Is.EqualTo("Add alternative (OR)"));
+        Assert.That(editor.Find("[data-action='alternative']").TextContent, Is.EqualTo("Add OR"));
         await editor.Find("[data-action='alternative']").ClickAsync(new());
         Assert.That(editor.FindAll("[role='alert']"), Has.Count.EqualTo(1));
         Assert.That(editor.Instance.Combo.Categories.Single().MinCount, Is.EqualTo(1));
@@ -193,8 +197,8 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
             Assert.That(parentheses.Select(element => element.TextContent.Trim()), Is.EqualTo(new[] { "(", ")" }));
             Assert.That(parentheses.All(element => element.QuerySelector("svg")?.GetAttribute("aria-hidden") == "true"), Is.True);
         }
-        await EditRequirement(editor, "alternative:0:0");
-        await editor.Find("[aria-label='Same-card property 2']").ChangeAsync(new() { Value = c.Identity });
+        await ConditionButton(editor, "alternative:0:0", 1).ClickAsync(new());
+        await editor.Find("#comboTarget0").ChangeAsync(new() { Value = c.Identity });
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "2" });
         await Button(editor, "Save").ClickAsync(new());
         ComboCategory changed = editor.Instance.Combo.AlternativeGroups.Single().Alternatives[0].Category!;
@@ -249,6 +253,7 @@ public sealed class CalculatorEditorProgressiveTest : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(cut.Find(".probability-total").TextContent, Does.Contain(sameCard.ToString("P2")));
         await RemoveProperty(editor, "category:0", 2);
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await Button(editor, "Add").ClickAsync(new());
         double separate = SmallDeckOracle.EnumerateProbability([both, blank], [editor.Instance.Combo], 1);

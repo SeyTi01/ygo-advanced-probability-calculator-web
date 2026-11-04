@@ -1,5 +1,139 @@
 # Local card search catalog
 
+## Monthly reviewed refreshes
+
+`.github/workflows/card-data-refresh.yml` runs on `dev` at 04:23 UTC on the
+third day of each month, or through **Run workflow**. It updates one
+`codex/card-data-refresh` PR against `dev`; it never merges or releases it.
+The Cloudflare Pages project excludes this exact branch from preview builds.
+Other branches and the `main` production branch retain their existing behavior.
+The workflow needs repository permission for Actions to create pull requests.
+It uses the explicit public `github-actions[bot]` identity through the publication
+guard, and dispatches `tests.yml` explicitly because token-authored pushes do
+not trigger its push event. No Cloudflare secret is required.
+The publisher checks for an existing push or manual test run on the exact branch
+head before dispatching, including on a no-change retry after interrupted publication.
+Failed test runs remain visible for review rather than being retried automatically.
+After workflow changes, start a new **Run workflow** on `dev`: GitHub reruns retain
+the old workflow definition even when checkout obtains current code. Generation
+rejects that mismatch before writing a bundle.
+To retry after a code/workflow fix without downloading provider data again, start
+a new **Run workflow** on `dev` and set `source_run_id` to the earlier refresh run ID.
+Leave it blank for a fresh monthly acquisition.
+
+Manual acquisition and generation use the same commands as the schedule:
+
+```sh
+python infrastructure/card-catalog/fetch-refresh.py --output /tmp/card-data-sources
+node infrastructure/card-catalog/refresh-card-data.mjs /tmp/card-data-sources
+```
+
+Choose a new, nonexistent source directory. Acquisition downloads one full
+YGOPRODeck `misc=yes` response and candidate vocabulary, then resolves YAML Yugi
+to an immutable commit and downloads its archive. Only individual OCG/TCG card
+records and series vocabulary are read; no upstream code executes. The name
+adapter retains the existing password/fake-password and unique-artwork join rules.
+YAML Yugi is the sole translation source. The raw archive and canonical response
+stay in the source directory, outside the app and committed projections.
+
+Successful acquisition is checkpointed as `card-data-refresh-RUN_ID` before
+generation, tests or publication. **Re-run jobs** restores that run's checkpoint
+automatically and skips all provider requests. A new run with `source_run_id`
+copies the selected checkpoint into its own artifact, so subsequent retries do
+not depend on the older artifact's retention. Existing checkpoints are not overwritten.
+Download the same artifact for offline replay with the second command. Source
+hashes and sizes are verified after restoration and again before generation.
+An explicit missing/expired replay, a corrupt/incomplete artifact, or a GitHub
+download error fails without silently fetching new provider data. Expired checkpoints
+require a new run. An automatic retry with no checkpoint acquires fresh inputs;
+acquisition must finish and its upload must succeed before later failures can be
+recovered this way.
+Artifacts have 90-day retention; download needed historical inputs before expiry.
+YAML Yugi remains retrievable by pinned revision; exact historical YGOPRODeck
+responses cannot be recovered from its moving endpoint after artifact expiry.
+Permanent private R2 archival is a separate future option, not provisioned here.
+Normal builds, tests and app startup never run acquisition.
+
+Review `snapshots/refresh/audit.json`: canonical additions/changes, per-locale label
+changes, source hashes, candidate additions/removals and source evidence,
+unresolved identity declarations, membership differences/overlaps, provider
+conflicts and example-session coverage. `names.LOCALE.json` retains the compact
+input for each translation language registered in `wwwroot/localization/locales.json`:
+German, Japanese, French, Italian and Portuguese. Every locale is generated from
+the same pinned YAML Yugi response; no additional source downloads are needed.
+Generated timestamps and irrelevant upstream fields do not create repeat PRs,
+but a name change in any one language updates the bundle.
+The no-change check also verifies the generated assets and retained projections;
+a saved fingerprint cannot hide an incompletely committed bundle. Publication
+uses the same registered-locale file list as generation and stages the entire
+validated bundle before committing.
+
+After generation, shipped-name checks use each refreshed projection and its
+entry in `localizedNames`, with `nameChanges` grouped by locale. Audit format 2
+records the shared catalog/example hashes, source and normalization evidence,
+missing labels and example coverage. Historical dated snapshots/audits remain intact;
+the checks can also read the previous German-only refresh audit format. Each
+locale must retain its existing label coverage and coverage ratio before any
+bundle files are written. The workflow stages all locale assets and projections
+together in one review PR; it never adds a locale without an existing baseline.
+
+Some upstream responses move a primary ID to another artwork or replace a prerelease
+ID with an official passcode. An established canonical ID survives only if exactly
+one source record links it through a numeric artwork ID or `misc_info.beta_id`
+and its English name/type are unchanged. Every such change and its link type is audited;
+current artwork IDs remain intact for artwork lookup and translation password joins.
+Names alone never join identities; ambiguous owners or changed identities fail.
+Unexplained card/label removals fail, as do more than 25 newly unresolved cards
+or a coverage-ratio drop over 0.5 percentage points in any locale. Existing null/empty
+membership semantics and all reviewed eligibility/name policies remain intact.
+
+The bot never writes policy files. Review new candidate evidence, update
+`archetype-policy.json` or reviewed clauses explicitly, and regenerate. Existing
+reviewer commits are preserved when the automation branch rebases onto `dev`;
+conflicts or publication-identity failures stop rather than overwriting edits.
+If the base changes during generation or a push lease fails, rerun after
+reconciling the branch. Source/validation failures leave the remote branch and
+published data intact. A local I/O failure during file promotion can leave a
+partial working-tree bundle: discard only generated refresh files and replay;
+the workflow never commits after a failed step. Legitimate removals require a
+separate reviewed manual refresh using the generators' exact-ID removal files,
+never a lowered baseline. GitHub may delay schedules or disable them after 60
+days of repository inactivity; re-enable and use the manual trigger to catch up.
+
+## Archetype source assessment (2026-11-01)
+
+The bounded evidence is retained in
+`snapshots/archetype-source-assessment.2026-11-01.json`: the first 20 newly seen
+eligible IDs in provider order plus eight existing identity/mention edge cases.
+The response contained 14,648 records and 36 newly seen eligible IDs. Nine
+apparent missing identities were primary-artwork changes with unique numeric
+links, not evidence to remove their established canonical identities.
+
+The comparison supports retaining the reviewed English-name/permanent-text
+resolver. For example, Aleister's provider association is Invoked while its
+resolved name membership is Aleister; Dramatic Rescue's provider association is
+Amazoness while its resolved membership is empty. Summoned Skull's permanent
+Archfiend declaration, Hardened Armed Dragon's exclusion, Double Iris Magician's
+overlapping memberships, and Ocean/Substitute/Lemuria name substitutions remain
+covered. The controlled refresh fixture proves that a new Lightsworn card gains
+membership, while an unknown permanent family remains null and becomes
+classifiable only after an explicit candidate rule is supplied.
+
+[YAML Yugi](https://github.com/DawnbrandBots/yaml-yugi#aggregations), pinned to
+`86c467a8e14e633a6210458905f5a479c4836405`, offers multilingual series vocabulary,
+not an authoritative per-card gameplay membership map.
+[YGOJSON's schema](https://github.com/iconmaster5326/YGOJSON/blob/main/schema/v1/series.json)
+does distinguish archetypes and explicit member UUIDs, but its published
+`v1/individual` head `ab5016e14cc6c3296a85d52de2c8b61b9db55cfa` is still dated
+2026-04-07. It cannot establish new-card coverage for this refresh. No empirical
+cross-dataset membership parity is claimed.
+[Ignis databases](https://github.com/ProjectIgnis/BabelCDB) introduce setcode
+decoding, separate prerelease IDs and another redistribution assessment; no
+observed gap justifies adding that dependency here. No external pipeline code
+is copied. Existing YAML Yugi compilation credit and rights-holder attribution
+apply. New spelling, aliases, match rules and disputed memberships remain human
+review decisions; the monthly bot publishes evidence rather than adopting tags.
+
 `prepare-catalog.mjs` projects the YGOPRODeck full response into the compact `CardInfo` JSON asset used by local search. It keeps card identity, name, objective metadata, and numeric artwork IDs. Version 2 also contains offline-resolved `resolvedArchetypes`; it drops the provider's association tag, descriptions, prices, set data, and image URLs. It never fetches artwork. The asset URL remains `card-catalog.v1.json` for deployment compatibility; its internal format version is independent of session schema 5.
 
 Refresh from an already downloaded official response without network access:
@@ -8,7 +142,62 @@ Refresh from an already downloaded official response without network access:
 node infrastructure/card-catalog/prepare-catalog.mjs --catalog cardinfo.json --output YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json --audit membership-audit.json
 ```
 
-Omitting `--catalog` makes one full metadata request. Add `--save-source cardinfo.json` to retain its exact bytes for subsequent offline rebuilds. The catalog is validated and serialized before the output is atomically replaced. The normal app build and test suite never call the provider. Identical saved source and checked-in policy produce byte-identical catalog and audit JSON, independently of response order.
+Omitting `--catalog` makes one full metadata request with `misc=yes` (including format metadata). Add `--save-source cardinfo.json` to retain its exact bytes for subsequent offline rebuilds. The catalog is validated and serialized before the output is atomically replaced. The normal app build and test suite never call the provider. Identical saved source and checked-in policy produce byte-identical catalog and audit JSON, independently of response order.
+
+## Main Deck eligibility
+
+`card-eligibility.mjs` is the shared policy for canonical generation, retained
+translation projections, locale assets and coverage denominators:
+
+- Keep the explicitly recognized Main Deck monster types, including Ritual,
+  Ritual/Pendulum, Normal/Pendulum, Tuner and Flip variants, plus Spells and Traps.
+- Fusion, Synchro, Xyz or Link in either type or frame classification wins over
+  Pendulum/Effect/Ritual classifications. Exclude Tokens and Skills.
+- Exclude records whose supplied format metadata lists Speed Duel without TCG or
+  OCG. Shared TCG/OCG/Speed Duel cards remain eligible. Missing formats do not by
+  themselves exclude unreleased cards; save the full `misc=yes` response for refreshes.
+- Promotional printing is not a card type or an exclusion rule. Ordinary Main Deck
+  cards remain eligible even if their only release is a magazine/promo release,
+  they have Speed Duel/promotional printings, or they are currently forbidden.
+  The reviewed `eligibility-policy.json` excludes special promotional identities:
+  the four Anotherverse prize monsters, seven early World Championship prize
+  monsters, Get Your Game On!, Tyler the Great Warrior and Decoy. It also excludes
+  the provider's unrevealed deck-profile placeholder. Entries include exact ID,
+  English name, type and evidence; changed identities require review. These are
+  scope decisions, not claims that all prize cards are illegal. New Main Deck
+  records with exclusively Championship-prize/Make-A-Wish set metadata stop for
+  review; never exclude every card with a matching individual printing.
+- Unrecognized types stop generation for review rather than silently disappearing.
+  No ID-range, translated-name, arbitrary substring or banlist heuristics apply.
+
+The initial trim filters the existing catalogue from commit `b3c3296` through
+`eligibleCatalog`, without refreshing provider identities or recomputing memberships.
+Every retained object, including English identity, artwork aliases, metadata,
+resolved archetypes and reviewed name clauses, is byte-for-byte equivalent as JSON.
+`snapshots/main-deck-migration.audit.json` records the input/output hashes and counts.
+To reproduce this one-time trim offline, extract the old asset from that commit,
+parse it and serialize `eligibleCatalog(previous)` followed by one newline.
+Subsequent full-source refreshes use the normal offline command above.
+
+| Pool | Before | Shipped eligible pool |
+| --- | ---: | ---: |
+| Canonical cards | 14,607 | 12,156 |
+| Retained YAML Yugi name records | 14,414 | 12,106 |
+| German canonical labels | 14,125 | 11,956 |
+| Missing/withheld German labels | 482 | 200 |
+
+Removed canonical records: 2,206 Extra Deck, 124 Skills, 106 Tokens, 14 special
+promotional identities and one placeholder. Canonical JSON is 3,597,796 bytes;
+German JSON is 415,971 bytes. All 24 example entries remain covered.
+
+The full-response floor is 14,000 records **before filtering**, with a separate
+11,000 eligible-card floor. The canonical CLI compares against the existing output
+(or explicit `--previous FILE`) before writing; unexplained eligible-card removals
+fail even above those floors. A reviewed `--allow-removals FILE` lists exact IDs,
+not a percentage exemption. Always supply `--previous` when generating a new path
+for a refresh. Translation removals likewise require explicit accepted IDs; the
+initial trim allowed only names belonging to policy-excluded canonical cards.
+Do not lower baselines or automatically accept removals to make a partial response pass.
 
 ## Membership policy and limits
 
@@ -22,7 +211,10 @@ Unknown/malformed permanent declarations and missing descriptions produce an off
 
 Quoted identity statements without an explicit permanence marker or zone/activation condition are also audited. `reviewed-name-clauses.json` accepts three verified older clauses only when their original ID, English name, type and complete normalized sentence match: Neo-Spacian Marine Dolphin and Neo-Spacian Twinkle Moss add a name; Lemuria, the Forgotten City replaces its effective name with Umi, consistent with Konami's current permanent wording. Changed or unreviewed wording still requires audit. This affects archetype classification only: the catalog and workspace retain original names and IDs, and direct combo card requirements select the exact workspace entry even when two entries share a treated-as name.
 
-It's a Toon World! remains `null` with audit reason `out-of-scope-skill-identity-clause`. Skill identity is applied through Speed Duel setup/effects, outside this deck/hand model; unqualified Skill identity statements are not accepted as Main Deck aliases, even if they say `always`. The full-source review additionally surfaces Tomb of the Pharaoh's permanent Necrovalley wording as out of scope (previously a verified empty set); explicit field conditions such as Mythic Depths remain ignored. The follow-up changes the unresolved count from four to two out-of-scope Skill records; only the three reviewed records gain memberships. See the [official Skill rules update](https://yugiohblog.konami.com/2021/news-updates/skillcard-update/). The reviewed clauses link their primary card-text sources and remain offline data; neither descriptions nor alternate-name tags are shipped.
+Skill identity clauses remain out of scope in the membership parser. Skills and
+Extra Deck cards no longer ship in the eligible catalogue; parser unit cases and
+reviewed clauses remain available for source review. Lemuria's permanent Umi name
+rule remains in the shipped pool.
 
 Representative primary checks: [Summoned Skull](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=4028&ope=2&request_locale=en), [Hardened Armed Dragon](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=8374&ope=2&request_locale=en), [Double Iris Magician](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=12908&ope=2&request_locale=en), and [Harpie Perfumer](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=14165&ope=2&request_locale=en). Provider field/endpoint documentation: [API guide](https://ygoprodeck.com/api-guide/).
 
@@ -30,7 +222,7 @@ Representative primary checks: [Summoned Skull](https://www.db.yugioh-card.com/y
 
 All objective archetype properties consume resolved data. Catalog lookups support canonical IDs and unique artwork aliases; an editable display name cannot override a known ID. Unknown live/API/cache records have no objective archetype claim. Old v1 catalogs remain readable, but their association tags cannot become memberships. Historical caches cannot smuggle resolved claims into the current catalog.
 
-Session load, share acceptance and recovery reconcile only automatic archetype properties against the bundled catalog before optional legacy enrichment. Exact unique names are used only when there is no external ID. Unknown/ambiguous identities and unverified membership sets remain unchanged. User categories, unrelated metadata, explicit manual keys and saved simulation plans/provenance are preserved. If an old automatic membership previously absorbed a manual assignment, the missing provenance cannot be reconstructed: only explicitly stored override keys are preserved. An already-correct card retains its reference; reconciliation does not itself write browser storage or bump session schema.
+Session load, share acceptance and recovery reconcile only automatic archetype properties against the bundled catalog before optional legacy enrichment. Exact unique names are used only when there is no external ID. Unknown/ambiguous identities and unverified membership sets remain unchanged. Cards absent after eligibility trimming remain in saved sessions; import still attempts targeted metadata lookup and preserves an unresolved imported ID/copy count when lookup fails. User categories, unrelated metadata, explicit manual keys and saved simulation plans/provenance are preserved. If an old automatic membership previously absorbed a manual assignment, the missing provenance cannot be reconstructed: only explicitly stored override keys are preserved. An already-correct card retains its reference; reconciliation does not itself write browser storage or bump session schema.
 
 The same saved provider response can also refresh the artwork allowlist:
 
@@ -43,3 +235,194 @@ Run the generator's offline tests with:
 ```sh
 node --test infrastructure/card-catalog/*.test.mjs
 ```
+
+## German search names
+
+[**YAML Yugi**](https://github.com/DawnbrandBots/yaml-yugi) is the sole source of
+German card names. YGOPRODeck continues to supply the canonical English metadata
+catalog and artwork; it is no longer a second translation source. The runtime
+asset contains only `[canonical ID, German name]` pairs, used for display and
+bilingual search. Selecting either language returns the original English card.
+Saved names, custom labels, session/share JSON, archetype keys and membership,
+effects and probability inputs remain unchanged.
+
+### Source and compilation credit
+
+The name-only projection is pinned to
+[86c467a8e14e633a6210458905f5a479c4836405](https://github.com/DawnbrandBots/yaml-yugi/tree/86c467a8e14e633a6210458905f5a479c4836405)
+(October 31, 2026). The downloaded OCG/TCG aggregate has 110,194,011 bytes and
+SHA-256 `c41ad997e6bf5fa3431feaf5c425967c5c9306d06ad1eae5d4a592277f55222b`.
+Before this eligibility trim, its complete identity/English/German-name projection was checked against
+all individual `data/cards/*.json` records from that revision. The pinned source
+archive has SHA-256
+`b37373450e0c7d4dde033150984b3a11e8cb9d1e3fd72b3d081f935929d2ecd9`.
+Verify the moving Pages aggregate against an immutable revision before refreshing;
+the old `aggregate` branch is not the current published snapshot.
+
+Credit **YAML Yugi and its upstream contributors for compiling translation data**, including
+the [Yugipedia source cache](https://github.com/DawnbrandBots/yaml-yugipedia).
+The [upstream README](https://github.com/DawnbrandBots/yaml-yugi/blob/86c467a8e14e633a6210458905f5a479c4836405/README.md)
+attributes underlying card content to Studio Dice/SHUEISHA, TV TOKYO and KONAMI;
+its AGPL license covers pipeline code. No upstream pipeline code is copied, and
+this project's software license does not relicense rights-holder card content.
+Compilation credit appears in Help and the repository README.
+
+`snapshots/names.de.yaml-yugi.2026-10-31.json` retains only eligible canonical/unique-artwork source IDs and
+English/German names, explicit source-assigned-ID markers, revision and retrieval
+metadata, and the full aggregate's hash/size. No descriptions, artwork, prices,
+foreign rules or archetype data are retained. The old German YGOPRODeck projection
+and the two-source merge path have been removed.
+
+### Identity and validation
+
+Printed `password` values map first to exact canonical IDs, then to **unique**
+artwork aliases already verified in the canonical catalog. This uses the same
+precedence as the runtime catalog index. Source `fake_password` values explicitly
+identify passwordless records such as the Egyptian Gods; they are marked
+`assigned: true` in the retained projection and audited separately. These are
+source-assigned identifiers, not claims about printed passcodes.
+
+No English/German name matching establishes identity. Unknown or ambiguous IDs
+are withheld. Repeated aliases on the same card do not create ambiguity. Distinct
+canonical cards sharing a German name remain distinct choices; multiple source
+IDs resolving to one canonical card coalesce only when their German labels agree.
+A disagreement fails generation for review. Spelling differences from canonical
+English are audited without changing the English identity.
+
+The existing conservative label policy withholds controls, HTML entities and
+angle brackets. Seven eligible literal Maliss `<P>` or `<C>` names therefore remain
+withheld; this does not mean they are malicious or lack official translations.
+Missing/withheld labels use English fallback.
+
+### Coverage and source choice
+
+Coverage uses the 12,156 eligible canonical cards as its denominator: 11,956
+German labels and 200 missing/withheld labels. The retained projection contains
+12,106 eligible source identities, including alias records and missing labels.
+Excluded cards, unknown identities and ambiguous artwork joins are not retained
+as translation-maintenance gaps. The audit lists missing eligible IDs, rejected
+labels, alias/source-assigned matches, spelling differences, repeated labels,
+source hashes, sizes and actual example labels/fallback reasons. All 24 example
+entries are covered; five K9 names equal their English spelling. Coverage does not
+establish complete official translations or native-speaker review.
+
+### Offline generation and refresh
+
+Regenerate the shipped asset and complete audit **offline**:
+
+```sh
+node infrastructure/card-catalog/prepare-localized-names.mjs --snapshot infrastructure/card-catalog/snapshots/names.de.yaml-yugi.2026-10-31.json --catalog YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json --example YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json --output YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.de.v1.json --audit infrastructure/card-catalog/snapshots/names.de.yaml-yugi.2026-10-31.audit.json
+node --test infrastructure/card-catalog/prepare-localized-names.test.mjs
+```
+
+To refresh, download the aggregate separately and verify its name/ID projection
+against the chosen immutable repository revision. Add
+`--provider PATH_TO_AGGREGATE.json --revision COMMIT_SHA --retrieved-at ISO_TIMESTAMP`
+to the command above and choose a new dated snapshot/audit path. The existing
+output is the required coverage baseline; use `--previous PATH_TO_SHIPPED_ASSET`
+when writing a new output path. Removed labels fail validation before any output
+is written. Intentional changes such as a reviewed source migration require
+`--allow-removals FILE`, a JSON array listing the exact accepted canonical IDs;
+it does not permit any other removals. Review all source/identity/coverage changes
+before publishing. Retain only the name projection, never the full aggregate.
+
+The generator never fetches the network. Builds, tests, publishing and startup
+make no translation-provider requests. The existing lazy loader requests just
+`data/card-names.de.v1.json` when German search or verified deck display needs it.
+English, Help, an empty calculator and synchronous label reads do not load names.
+Concurrent display/search requests share one task, including a failed result.
+Failure falls back to English and manual entry; regional UI cultures use their
+supported parent locale. The runtime name asset format and loader are unchanged.
+
+Exact, prefix and substring searches use both languages with the existing English
+name/ID tie order and 20-result limit. Matching is ordinal and case-insensitive;
+umlauts and ß remain distinct, with no accent stripping or ß/ss conflation.
+Display labels require a verified external ID and an exact stored English name;
+custom labels stay verbatim. The data-label accessor accepts only verified
+catalog objects, and no localized fields are added to sessions.
+
+## Additional locales
+
+Japanese uses the same ID-based YAML Yugi projection and demand-loaded runtime
+format. Its terminology is documented in [localization-ja.md](../../docs/localization-ja.md).
+For the 12,156 eligible canonical cards it provides 12,080 labels, with 76 English
+fallbacks: 50 cards have no matching source identity and 26 have no Japanese name.
+All 24 bundled example entries have labels. No eligible source identity is joined
+through an unknown or ambiguous artwork ID. The audit records 17 unique-artwork
+matches and six explicitly source-assigned IDs.
+
+The pinned revision remains `86c467a8e14e633a6210458905f5a479c4836405`.
+The November 1 projections were read directly from `data/cards/*.json` in that
+revision's archive; no upstream pipeline was executed. The downloaded archive's
+SHA-256 is `12767a9b89a61c06a2f19c5e6d2e8f3fbf46d0a66ceec6cd092772b079143144`.
+Archive packaging bytes differ from the earlier German download; the eligible
+German identity/name tuples were compared and are identical. Each retained
+projection records the name-only input's hash and size, and each audit records
+the projection, canonical catalog and example hashes. Canonical/example text
+checksums use UTF-8 with LF line endings so Git checkout conversion cannot change them. Canonical/example text
+checksums use UTF-8 with LF line endings so Git checkout conversion cannot change them.
+
+Japanese source names contain furigana. Only the exact structure
+`<ruby>base<rt>reading</rt></ruby>` is converted to its base text; malformed or other
+markup remains rejected by the label policy. The snapshot keeps the original
+text and the audit records all 7,592 transformed labels. Readings and romanization
+are not added as search aliases. No width, accent or kana folding is introduced.
+Representative printed names were checked against the official database:
+[VS Razen](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=18727&ope=2&request_locale=ja)
+and [Pot of Desires](https://www.db.yugioh-card.com/yugiohdb/card_search.action?cid=12465&ope=2&request_locale=ja).
+This is a bounded source/identity check, not a claim of comprehensive official or
+native-speaker review.
+
+Rebuild the Japanese runtime asset and full audit offline:
+
+```sh
+node infrastructure/card-catalog/prepare-localized-names.mjs --locale ja --snapshot infrastructure/card-catalog/snapshots/names.ja.yaml-yugi.2026-11-01.json --catalog YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json --example YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json --output YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.ja.v1.json --audit infrastructure/card-catalog/snapshots/names.ja.yaml-yugi.2026-11-01.audit.json
+```
+
+For a source refresh, `fetch-refresh.py --output SOURCE_DIRECTORY` retains all
+language names from one immutable source revision in `yaml-cards.json` and records
+its revision/retrieval time in `sources.json`. Supply those values and the file
+with `--provider`, `--revision`, and `--retrieved-at`, keeping the shipped locale
+asset as the coverage baseline. Use `--previous` when the output path changes.
+Only the first generation of a new locale may use `--initial`; it rejects an
+existing output or a previous baseline. Review the per-locale identity,
+normalization, missing-name and example audit before committing. Retain the
+compact projection, not the full archive. Builds and tests need no provider access.
+
+The monthly workflow refreshes every registered translation locale automatically
+from that same pinned source, with individual coverage guards, projections and
+audits. The dated commands above reproduce historical source snapshots; replay a
+monthly bundle with `refresh-card-data.mjs` and its retained workflow inputs.
+Use the manual path for an explicitly reviewed repair or a new locale's initial
+baseline, then register that locale for subsequent monthly refreshes. Existing
+compilation credit and rights-holder attribution apply to every language.
+
+### French names (`fr`)
+
+The same pinned revision supplies 11,956 labels and 200 English fallbacks
+for 12,156 eligible cards; all 24 example entries are covered. There are 50 missing
+source identities, 143 missing translations and seven literal Maliss labels
+withheld by the existing angle-bracket policy. See [French terminology](../../docs/localization-fr.md).
+Rebuild with the command above, replacing every `ja` locale/path segment with `fr`;
+the dated snapshot and audit use the same November 1 date. Refresh and identity
+validation follow the same manual path; no additional catalog is loaded at startup.
+
+### Italian names (`it`)
+
+The same pinned revision supplies 11,956 labels and 200 English fallbacks
+for 12,156 eligible cards; all 24 example entries are covered. There are 50 missing
+source identities, 143 missing translations and seven literal Maliss labels
+withheld by the existing angle-bracket policy. See [Italian terminology](../../docs/localization-it.md).
+Rebuild with the command above, replacing every `ja` locale/path segment with `it`;
+the dated snapshot and audit use the same November 1 date. Refresh and identity
+validation follow the same manual path; no additional catalog is loaded at startup.
+
+### Portuguese names (`pt`)
+
+The same pinned revision supplies 11,952 labels and 204 English fallbacks
+for 12,156 eligible cards; all 24 example entries are covered. There are 50 missing
+source identities, 147 missing translations and seven literal Maliss labels
+withheld by the existing angle-bracket policy. See [Portuguese terminology](../../docs/localization-pt.md).
+Rebuild with the command above, replacing every `ja` locale/path segment with `pt`;
+the dated snapshot and audit use the same November 1 date. Refresh and identity
+validation follow the same manual path; no additional catalog is loaded at startup.

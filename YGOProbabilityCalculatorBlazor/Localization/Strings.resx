@@ -1,5 +1,14 @@
 <?xml version='1.0' encoding='utf-8'?>
 <root>
+  <data name="Ui.Excavate0" xml:space="preserve"><value>Excavate {0}</value></data>
+  <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>Excavation configured (off)</value></data>
+  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Excavate {0}; add 1 to hand</value></data>
+  <data name="Effect.NoPriorEffectDraw" xml:space="preserve"><value>Unavailable after an effect draw</value></data>
+  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>After draws, only one eligible excavation activates before searches; the largest excavation is prioritized.</value></data>
+  <data name="Effects.98645731.Limitations" xml:space="preserve"><value></value></data>
+  <data name="Effects.98645731.Summary" xml:space="preserve"><value>Excavate 3; add 1 to hand; shuffle the rest back.</value></data>
+  <data name="Effects.84211599.Summary" xml:space="preserve"><value>Excavate 6; add 1 to hand; put the rest on the bottom of the deck.</value></data>
+  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Always excavates 6, assuming six Extra Deck cards are available. Skipped after an effect draw.</value></data>
   <data name="Card.SearchPlaceholder" xml:space="preserve"><value>Search cards or enter a name</value></data>
   <data name="Combo.GroupLabel" xml:space="preserve"><value>Group: {0}</value></data>
   <data name="Combo.MoreRequirements" xml:space="preserve"><value>+{0} more</value></data>
@@ -502,12 +511,6 @@
   <data xml:space="preserve" name="Ui.Activate">
     <value>Activate</value>
   </data>
-  <data xml:space="preserve" name="Ui.ActivateAtLeastOneCardToCalculate">
-    <value>Add or enable at least one deck card to calculate.</value>
-  </data>
-  <data xml:space="preserve" name="Ui.ActivateAtLeastOneComboToCalculate">
-    <value>Activate at least one combo to calculate.</value>
-  </data>
   <data xml:space="preserve" name="Ui.Add">
     <value>Add</value>
   </data>
@@ -523,11 +526,16 @@
   <data xml:space="preserve" name="Ui.AddAlternativeOR">
     <value>Add alternative (OR)</value>
   </data>
+  <data name="Ui.AddOR" xml:space="preserve"><value>Add OR</value></data>
+  <data name="Ui.AddAND" xml:space="preserve"><value>Add AND</value></data>
   <data xml:space="preserve" name="Ui.AddAnAlternativeOR">
     <value>Add an alternative · OR</value>
   </data>
   <data xml:space="preserve" name="Ui.AddCard">
     <value>Add card</value>
+  </data>
+  <data xml:space="preserve" name="Ui.AddCategory">
+    <value>Add category</value>
   </data>
   <data xml:space="preserve" name="Ui.AddCardByName">
     <value>Add card by name</value>
@@ -1923,6 +1931,8 @@
   <data name="Help.Footer.Credits.Part0" xml:space="preserve"><value>SeyTi01</value></data>
   <data name="Help.Footer.Credits.Part1" xml:space="preserve"><value>YGOPRODeck</value></data>
   <data name="Help.Footer.Credits" xml:space="preserve"><value>Created by {0}. Card artwork is supplied by {1} and retained on project hosting. Missing artwork does not affect calculations; third-party artwork is outside the software license.</value></data>
+  <data name="Help.Footer.NameCompilation.Part0" xml:space="preserve"><value>YAML Yugi</value></data>
+  <data name="Help.Footer.NameCompilation" xml:space="preserve"><value>Translation data compilation: {0} and its upstream contributors. Card content remains the property of its respective rights holders.</value></data>
   <data name="Accuracy.ExactRange" xml:space="preserve"><value>≈ {0}% (exact)</value></data>
   <data name="Ui.Share" xml:space="preserve"><value>Share</value></data>
   <data name="Ui.TargetsInThisDeck" xml:space="preserve">
@@ -1934,4 +1944,52 @@
   <data name="Result.DeckSize" xml:space="preserve">
     <value>Deck size: {0}</value>
   </data>
+  <data name="Property.Archetype" xml:space="preserve">
+    <value>Archetype: {0}</value>
+  </data>
+  <data name="OperatorEdit.ConditionsChanged" xml:space="preserve">
+    <value>The edited conditions changed. Reopen the group.</value>
+  </data>
+  <data name="OperatorEdit.CompleteConditionRequired" xml:space="preserve">
+    <value>Choose an operator and at least one complete condition.</value>
+  </data>
+  <data name="OperatorEdit.CategoryOperandsRequired" xml:space="preserve">
+    <value>Same-card AND requires category/property operands. Direct-card conditions can use + or OR.</value>
+  </data>
+  <data name="OperatorEdit.SavedAnyMaximaDiffer" xml:space="preserve">
+    <value>The saved Any maxima differ. Choose one shared fixed maximum to combine without discarding a saved bound.</value>
+  </data>
+  <data name="OperatorEdit.MatchingBoundsRequired" xml:space="preserve">
+    <value>Same-card AND requires matching bounds. Set every operand to the same minimum and fixed/Any maximum, then save.</value>
+  </data>
+  <data name="OperatorEdit.IrreversibleChange" xml:space="preserve">
+    <value>This operator change cannot be reversed without losing requirements or grouping.</value>
+  </data>
+  <data name="OperatorEdit.ExistingAlternativesOnly" xml:space="preserve">
+    <value>Change only the operator of the existing alternatives.</value>
+  </data>
+  <data name="Property.Identity" xml:space="preserve">
+    <value>Identity: {0}</value>
+  </data>
+  <data name="Property.Name" xml:space="preserve">
+    <value>Name: {0}</value>
+  </data>
+  <data name="Property.Type" xml:space="preserve">
+    <value>Type: {0}</value>
+  </data>
+  <data name="Property.Attribute" xml:space="preserve">
+    <value>Attribute: {0}</value>
+  </data>
+  <data name="Property.Mentions" xml:space="preserve">
+    <value>Mentions: {0}</value>
+  </data>
+  <data name="Preference.Current" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Requirement.HintSeparate" xml:space="preserve"><value>Add a separate card requirement.</value></data>
+  <data name="Requirement.HintAnd" xml:space="preserve"><value>The same card must match both.</value></data>
+  <data name="Requirement.HintOr" xml:space="preserve"><value>The same card can match either.</value></data>
+  <data name="Requirement.Groups" xml:space="preserve"><value>Requirement groups</value></data>
+  <data name="Requirement.All" xml:space="preserve"><value>All</value></data>
+  <data name="Requirement.Properties" xml:space="preserve"><value>Properties</value></data>
 </root>

@@ -210,7 +210,7 @@ public class BackgroundCalculationComponentTest {
         CategoryBase role = new("Role");
         IRenderedComponent<CategoryListEditor> categories = _cut.FindComponent<CategoryListEditor>();
         categories.Find("[aria-label='Category name']").Input(role.Name);
-        categories.Find("button.btn-primary").Click();
+        categories.Find("[aria-label='Add category']").Click();
         Task accepted = Start();
         _calculator.Jobs[0].SetResult(Result("accepted"));
         await accepted;
@@ -219,7 +219,7 @@ public class BackgroundCalculationComponentTest {
         Task pending = Start();
         _cut.Find("[aria-label='Edit category Role']").Click();
         _cut.Find("[aria-label='Define by properties']").Click();
-        _cut.Find("[aria-label='Add rule alternative']").Change("metadata:kind:monster");
+        _cut.Find("select[aria-label='Add rule alternative']").Change("metadata:kind:monster");
         _cut.FindComponent<CategoryRuleEditor>().Find("button.btn-primary").Click();
         Assert.That(_calculator.Tokens[1].IsCancellationRequested, Is.True);
         _calculator.Jobs[1].SetResult(Result("late rule result"));
@@ -504,6 +504,25 @@ public class BackgroundCalculationComponentTest {
             _calculator.Jobs[0].SetResult(Result("late"));
         }
         await first;
+    }
+
+    [Test]
+    public async Task LeavingTheCalculatorCancelsItsRunAndLateRepliesCannotOwnTheReturn() {
+        Task first = Start();
+        _cut.SetParametersAndRender(parameters => parameters.Add(component => component.Active, false));
+        Assert.That(_calculator.Tokens[0].IsCancellationRequested, Is.True);
+        Assert.That(_calculator.Disposals, Is.EqualTo(1));
+        await Start();
+        Assert.That(_calculator.Jobs, Has.Count.EqualTo(1));
+        _cut.SetParametersAndRender(parameters => parameters.Add(component => component.Active, true));
+        Task next = Start();
+        _calculator.Jobs[0].SetResult(Result("before Help"));
+        await first;
+        Assert.That(_cut.Markup, Does.Not.Contain("before Help"));
+        Assert.That(_cut.Find(".calculate-action > button").GetAttribute("aria-busy"), Is.EqualTo("true"));
+        _calculator.Jobs[1].SetResult(Result("after Help"));
+        await next;
+        Assert.That(_cut.Markup, Does.Contain("after Help"));
     }
 
     [Test]

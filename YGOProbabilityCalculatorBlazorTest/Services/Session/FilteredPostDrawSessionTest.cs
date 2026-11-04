@@ -1,30 +1,27 @@
 using YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 using System.Text.Json;
-using Microsoft.JSInterop;
-using Moq;
 using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Session;
+using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.Session;
 
 [TestFixture]
 public class FilteredPostDrawSessionTest {
-    private static SessionService Codec() => new(Mock.Of<IJSRuntime>(), new YGOProbabilityCalculatorBlazor.Services.Shared.JsonSerializer());
-
     [TestCase(1475311), TestCase(20508881)]
     public async Task FilteredPostDrawSessionShareAndCalculationWireRoundTrip(int id) {
         Card card = CuratedDrawEffectPresets.CreateImportedCard(new() { Id = id, Name = "Effect" }, 1, id);
         SessionState session = new() { Cards = [card, new([], 3, id: "f")], Combos = [new([])], HandSize = 1 };
-        string json = Codec().SerializeSession(session);
+        string json = SessionFixture.CreateCodec().SerializeSession(session);
         string fragment = new Uri(SessionShareCodec.CreateLink("https://example.invalid/", json)).Fragment;
-        SessionState loaded = await Codec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
+        SessionState loaded = await SessionFixture.CreateCodec().LoadSessionAsync(SessionShareCodec.Decode(fragment));
         Assert.That(loaded.SchemaVersion, Is.EqualTo(SessionState.CurrentSchemaVersion));
         Assert.That(loaded.Cards[0].PostDrawSelector, Is.EqualTo(card.PostDrawSelector));
         Assert.That(loaded.Cards[0].PostDrawFailureBehavior, Is.EqualTo(PostDrawFailureBehavior.FailBranch));
-        Assert.That(Codec().SerializeSession(loaded), Is.EqualTo(json));
+        Assert.That(SessionFixture.CreateCodec().SerializeSession(loaded), Is.EqualTo(json));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, 1, [], options: new());
         CalculationInput input = JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!;
         Assert.That(input.Cards[0].PostDrawSelector, Is.EqualTo(card.PostDrawSelector));
@@ -35,12 +32,12 @@ public class FilteredPostDrawSessionTest {
     [TestCase(1475311), TestCase(20508881)]
     public async Task FilteredPostDrawOldSchemaFourNeverInfersCuratedBehavior(int id) {
         string json = $$"""{"SchemaVersion":4,"Cards":[{"Categories":[],"Copies":1,"Name":"Old","ExternalCardId":{{id}},"DrawCount":2}]}""";
-        Card card = (await Codec().LoadSessionAsync(json)).Cards.Single();
+        Card card = (await SessionFixture.CreateCodec().LoadSessionAsync(json)).Cards.Single();
         Assert.That(card.PostDrawDiscardCount, Is.Zero);
         Assert.That(card.PostDrawSelector, Is.EqualTo(CardSelector.Any));
         Assert.That(card.WithObjectiveMetadata([], id).PostDrawSelector, Is.EqualTo(CardSelector.Any));
         Assert.That(CuratedDrawEffectPresets.ApplyToSelectedCardIfPristine(card, new() { Id = id }).PostDrawDiscardCount, Is.Zero);
-        Card unrestricted = (await Codec().LoadSessionAsync(json.Replace("\"DrawCount\":2", "\"DrawCount\":2,\"PostDrawDiscardCount\":1"))).Cards.Single();
+        Card unrestricted = (await SessionFixture.CreateCodec().LoadSessionAsync(json.Replace("\"DrawCount\":2", "\"DrawCount\":2,\"PostDrawDiscardCount\":1"))).Cards.Single();
         Assert.That(unrestricted.PostDrawSelector, Is.EqualTo(CardSelector.Any));
     }
 
@@ -72,6 +69,6 @@ public class FilteredPostDrawSessionTest {
     [TestCase("\"PostDrawFailureBehavior\":\"FailBranch\",\"postdrawfailurebehavior\":\"FailBranch\"")]
     public void FilteredPostDrawSessionRejectsMalformedRequirements(string field) {
         string json = "{\"SchemaVersion\":4,\"Cards\":[{\"Categories\":[],\"Copies\":1,\"Name\":null,\"DrawCount\":2,\"PostDrawDiscardCount\":1," + field + "}]}";
-        Assert.ThrowsAsync<InvalidOperationException>(() => Codec().LoadSessionAsync(json));
+        Assert.ThrowsAsync<InvalidOperationException>(() => SessionFixture.CreateCodec().LoadSessionAsync(json));
     }
 }

@@ -12,6 +12,24 @@ namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 [TestFixture]
 public sealed class CalculatorEditorPerformanceTest : CalculatorEditorTestBase {
+    [Test]
+    public async Task ExcavationWarningTracksModeAndSimulationWithoutCalculating() {
+        Mock<IProbabilityCalculatorService> compiler = new(MockBehavior.Strict);
+        context.Services.AddSingleton(compiler.Object);
+        SessionState session = ExcavationBenchmark.Fixtures().Single(fixture => fixture.Name == "40-duality-hidden-search").Session;
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(session);
+        foreach (string mode in new[] { "Fast", "Exact", "OpeningHand", "Fast" }) {
+            await cut.Find("#calculationModel").ChangeAsync(new() { Value = mode });
+            Assert.That(cut.FindAll(".draw-complexity-notice[role=note]"), Has.Count.EqualTo(mode == "OpeningHand" ? 0 : 1));
+        }
+        IRenderedComponent<CardEditor> pot = cut.FindComponents<CardEditor>().Single(editor => editor.Instance.Card.Id == "pot");
+        pot.Find(".simulation-toggle").Click();
+        Assert.That(cut.FindAll(".draw-complexity-notice"), Is.Empty);
+        pot.Find(".simulation-toggle").Click();
+        Assert.That(cut.FindAll(".draw-complexity-notice"), Has.Count.EqualTo(1));
+        compiler.VerifyNoOtherCalls();
+    }
+
     private static Card BuiltIn(int identity) => CardEffectRegistry.Default.RestoreBuiltIn(new([], 1, externalCardId: identity));
 
     [TestCase("Fast", true, 1)]

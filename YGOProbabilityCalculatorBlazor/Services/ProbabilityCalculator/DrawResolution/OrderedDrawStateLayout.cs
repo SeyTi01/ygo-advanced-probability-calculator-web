@@ -15,12 +15,14 @@ internal readonly struct OrderedDrawStateLayout {
     internal int HiddenCount { get; }
     // 0 = no activation, 1 = activated, 2 = draws locked. Part of state identity.
     internal int ActivationState { get; }
+    internal int EffectDrawOccurred { get; }
     internal int QueueStart { get; }
     internal int SearchQueueStart { get; }
     internal int SearchQueueCapacity { get; }
     internal bool HasSearchQueue => SearchQueueCapacity > 0;
     internal bool HasHiddenCount => HiddenCount >= 0;
     internal bool HasActivationState => ActivationState >= 0;
+    internal bool TracksEffectDraw => EffectDrawOccurred >= 0;
 
     internal OrderedDrawStateLayout(IReadOnlyList<Card> cards, bool trackSearchOrder = false) {
         RowCount = cards.Count;
@@ -37,9 +39,12 @@ internal readonly struct OrderedDrawStateLayout {
         DrawsLeft = 2 * RowCount + optCount;
         bool hasHidden = cards.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0);
         bool hasRestrictions = cards.Any(card => card.EffectPlan.HasActivationRestrictions);
+        bool trackEffectDraw = cards.Any(card => card.Excavation?.RequiresNoPriorEffectDraw == true);
         HiddenCount = hasHidden ? CompletionSource + 1 : -1;
         ActivationState = hasRestrictions ? CompletionSource + 1 + (hasHidden ? 1 : 0) : -1;
-        SearchQueueStart = CompletionSource + 1 + (hasHidden ? 1 : 0) + (hasRestrictions ? 1 : 0);
+        int afterActivation = CompletionSource + 1 + (hasHidden ? 1 : 0) + (hasRestrictions ? 1 : 0);
+        EffectDrawOccurred = trackEffectDraw ? afterActivation : -1;
+        SearchQueueStart = afterActivation + (trackEffectDraw ? 1 : 0);
         SearchQueueCapacity = trackSearchOrder ? cards.Where(card => card.Search is not null).Sum(card => card.Copies) : 0;
         QueueStart = SearchQueueStart + SearchQueueCapacity;
     }

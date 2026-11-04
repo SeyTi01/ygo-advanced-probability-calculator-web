@@ -53,6 +53,29 @@ async function usable(page, locator) {
         'page must fit the viewport');
 }
 
+async function publishedExports(page) {
+    return page.evaluate(() => new Promise((resolve, reject) => {
+        const framework = new URL('/_framework/dotnet.js', location.href).href;
+        const script = `import { dotnet } from ${JSON.stringify(framework)};
+            try {
+                const runtime = await dotnet.create();
+                const api = await runtime.getAssemblyExports(runtime.getConfig().mainAssemblyName);
+                self.postMessage({ names: Object.keys(api.YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation) });
+            } catch (error) { self.postMessage({ error: String(error) }); }`;
+        const source = URL.createObjectURL(new Blob([script], { type: 'text/javascript' }));
+        const worker = new Worker(source, { type: 'module' });
+        const timer = setTimeout(() => finish(new Error('Published-export inspection timed out')), 30000);
+        function finish(error, names) {
+            clearTimeout(timer);
+            worker.terminate();
+            URL.revokeObjectURL(source);
+            error ? reject(error) : resolve(names);
+        }
+        worker.onerror = event => finish(new Error(event.message));
+        worker.onmessage = ({ data }) => finish(data.error ? new Error(data.error) : null, data.names);
+    }));
+}
+
 const launchOptions = () => ({ headless: true, executablePath: process.env.YGO_BROWSER_EXECUTABLE,
     ...(process.env.YGO_BROWSER_CHANNEL ? { channel: process.env.YGO_BROWSER_CHANNEL } : {}) });
-module.exports = { serve, load, mode, usable, launchOptions };
+module.exports = { serve, load, mode, usable, publishedExports, launchOptions };

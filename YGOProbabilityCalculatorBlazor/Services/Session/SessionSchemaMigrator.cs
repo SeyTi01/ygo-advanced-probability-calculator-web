@@ -29,7 +29,8 @@ public sealed class SessionSchemaMigrator {
                 SetSchemaVersion(root, 11);
             },
             [11] = root => SetSchemaVersion(root, 12),
-            [12] = MigrateV12ToV13
+            [12] = MigrateV12ToV13,
+            [13] = MigrateV13ToV14
         };
 
     public string MigrateToCurrent(string json) {
@@ -145,6 +146,20 @@ public sealed class SessionSchemaMigrator {
         }
 
         return version;
+    }
+
+    private static void MigrateV13ToV14(JsonObject root) {
+        // Earlier readers ignored excavation fields. Do not silently activate
+        // a new effect in a historical snapshot, even for a newly maintained card.
+        JsonArray? cards = root.FirstOrDefault(property => property.Key.Equals("Cards", StringComparison.OrdinalIgnoreCase)).Value as JsonArray;
+        foreach (JsonObject card in cards?.OfType<JsonObject>() ?? []) {
+            foreach (string field in card.Select(property => property.Key)
+                .Where(name => name.Equals("Excavation", StringComparison.OrdinalIgnoreCase)).ToArray()) {
+                card.Remove(field);
+            }
+        }
+
+        SetSchemaVersion(root, 14);
     }
 
     private static void MigrateV12ToV13(JsonObject root) {

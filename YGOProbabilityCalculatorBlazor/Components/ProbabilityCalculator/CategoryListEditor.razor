@@ -2,9 +2,9 @@
 @using YGOProbabilityCalculatorBlazor.Components.Shared
 
 <div class="mb-4">
-    <div class="editor-add-row">
+    <div class="editor-add-row layout-row layout-input-action">
         <div class="editor-select-field">
-            <input @ref="_newCategoryInput" @bind="_newCategoryName"
+            <input @ref="_newCategoryInput" @bind="_newCategoryName" data-language-draft-input="true"
                    @bind:event="oninput"
                    @onkeyup="@(async e => {
                                  if (e.Key == "Enter") {
@@ -16,7 +16,7 @@
                    placeholder="@(UiText.Get("Ui.CategoryName"))"/>
         </div>
         <div class="editor-add-action">
-            <button class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(_newCategoryName)" @onclick="AddCategoryBase">@(UiText.Get("Ui.Add"))</button>
+            <AddAction AccessibleLabel="@(UiText.Get("Ui.AddCategory"))" Disabled="@string.IsNullOrWhiteSpace(_newCategoryName)" OnClick="AddCategoryBase" />
         </div>
     </div>
 
@@ -26,16 +26,16 @@
         </div>
     }
 
-    <div class="mt-2">
+    <div class="mt-2 category-chip-list">
         @for (int index = 0; index < CategoryBases.Count; index++) {
             CategoryBase category = CategoryBases[index];
             if (category.Source != CategorySource.User) {
                 continue;
             }
 
-            <span @key="category" class="badge me-2 category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
+            <span @key="category" class="badge category-chip category-tag @CategoryColorPalette.GetCssClass(category.Name, CategoryColorIndices)">
                 @if (ReferenceEquals(_editingCategory, category)) {
-                    <input @ref="_renameInputReference"
+                    <input @ref="_renameInputReference" data-language-edit="true"
                            class="form-control form-control-sm category-rename-input"
                            aria-label="@(UiText.Format("Ui.NewNameForCategory0", DisplayLabels.Category(category)))"
                            @bind="_editingCategoryName"
@@ -91,11 +91,12 @@
                 <CategoryRuleSummary Category="category" CategoryBases="CategoryBases" />
             }
             @if (ReferenceEquals(_editingCategory, category) && _colorPickerExpanded) {
-                <div id="categoryColorPalette@(index)" class="category-color-palette mt-2" role="group"
+                <div class="category-chip-detail">
+                <div id="categoryColorPalette@(index)" class="category-color-palette surface-panel mt-2" role="group"
                      aria-label="@(UiText.Format("Ui.ChooseAColorForCategory0", DisplayLabels.Category(category)))">
                     @foreach (CategoryColorOption color in CategoryColorPalette.Options) {
                         bool isSelected = SelectedColorIndex(category) == color.Index;
-                        <button type="button" class="category-color-swatch @color.CssClass"
+                        <button type="button" class="category-color-swatch control-focus-ring @color.CssClass"
                                 aria-label="@(UiText.Format("Ui.Set0ColorTo1", DisplayLabels.Category(category), DisplayLabels.Color(color.Name)))"
                                 title="@(UiText.Format("Ui.Set0ColorTo1", DisplayLabels.Category(category), DisplayLabels.Color(color.Name)))"
                                 aria-pressed="@(isSelected ? "true" : "false")"
@@ -107,6 +108,7 @@
                             }
                         </button>
                     }
+                </div>
                 </div>
             }
         }

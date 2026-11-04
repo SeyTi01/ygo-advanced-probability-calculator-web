@@ -26,6 +26,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = CardTarget("r") });
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "3" });
         await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "4" });
@@ -39,6 +40,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "8" });
         await Button(editor, "Cancel").ClickAsync(new());
         Assert.That(editor.Instance.Combo, Is.SameAs(before));
+        OpenNewRequirement(editor);
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(CardTarget("r")));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("3"));
         Assert.That(RequirementField(editor, "#maxCount0").GetAttribute("value"), Is.EqualTo("4"));
@@ -56,6 +58,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponent<ComboEditor>();
         await editor.Find(".accordion-button").ClickAsync(new());
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "4" });
         await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "5" });
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
@@ -70,6 +73,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         await Button(editor, "Cancel").ClickAsync(new());
 
         Assert.That(editor.Instance.Combo, Is.SameAs(original));
+        OpenNewRequirement(editor);
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("4"));
         Assert.That(RequirementField(editor, "#maxCount0").GetAttribute("value"), Is.EqualTo("5"));
@@ -87,6 +91,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(added.MinCount, Is.EqualTo(2));
         Assert.That(added.MaxCount, Is.EqualTo(3));
         Assert.That(group.Alternatives[0].Category, Is.SameAs(original.Categories[0]));
+        OpenNewRequirement(editor);
         Assert.That(RequirementField(editor, "#comboTarget0").GetAttribute("value"), Is.EqualTo(b.Identity));
         Assert.That(RequirementField(editor, "#minCount0").GetAttribute("value"), Is.EqualTo("4"));
         Assert.That(RequirementField(editor, "#maxCount0").GetAttribute("value"), Is.EqualTo("5"));
@@ -117,6 +122,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(editor.Instance.Combo.Categories.Single(c => c.BaseCategory.Identity == b.Identity).MinCount, Is.EqualTo(1));
         Assert.That(editor.FindAll(".alternative-scope"), Is.Empty);
         Assert.That(editor.FindAll("select[id^='alternativeTarget']"), Is.Empty);
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = b.Identity });
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "0" });
         await RequirementField(editor, "#maxCount0").InputAsync(new() { Value = "0" });
@@ -192,6 +198,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         });
         IRenderedComponent<ComboEditor> editor = cut.FindComponents<ComboEditor>().ToArray()[0];
         await editor.Find(".accordion-button").ClickAsync(new());
+        OpenNewRequirement(editor);
         await RequirementField(editor, "#comboTarget0").ChangeAsync(new() { Value = a.Identity });
         await RequirementField(editor, "#minCount0").InputAsync(new() { Value = "3" });
         await ChooseAlternativeTarget(editor, "category:0");
@@ -206,6 +213,7 @@ public sealed class CalculatorEditorTestAlternatives : CalculatorEditorTestBase 
         Assert.That(RequirementField(editor, "#comboTarget1").GetAttribute("value"), Is.EqualTo("user:Renamed"));
         await Button(editor, "Add alternative").ClickAsync(new());
         Assert.That(editor.Instance.Combo.AlternativeGroups.Single().Alternatives[1].Category!.MinCount, Is.EqualTo(2));
+        OpenNewRequirement(editor);
         Assert.That(RequirementField(editor, "#minCount1").GetAttribute("value"), Is.EqualTo("3"));
         Assert.That(cut.FindComponents<ComboEditor>().ToArray()[0].Instance.Combo.AlternativeGroups, Is.Empty);
     }

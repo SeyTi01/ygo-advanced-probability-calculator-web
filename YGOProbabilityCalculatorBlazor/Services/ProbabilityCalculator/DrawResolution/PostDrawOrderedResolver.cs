@@ -335,6 +335,10 @@ internal sealed partial class PostDrawCalculation {
                 values[layout.ActivationState] = 1;
             }
 
+            if (layout.TracksEffectDraw && cards[source].DrawCount > 0) {
+                values[layout.EffectDrawOccurred] = 1;
+            }
+
             values[layout.HandStart + source]--;
 
             if (layout.OptSlot(source) >= 0) {
@@ -431,7 +435,9 @@ internal sealed partial class PostDrawCalculation {
                 if (searchPolicy is not null) {
                     int searchCapacity = remaining - (reservedSource < 0 ? 0 : cards[reservedSource].DrawCount!.Value
                         + cards[reservedSource].PreDrawDeckRemovalCount + cards[reservedSource].PostDrawDeckMillCount);
-                    tier = Math.Min(tier, searchPolicy.Tier(i, values, layout.HandStart, searchCapacity));
+                    bool effectDrawOccurred = (layout.TracksEffectDraw && values[layout.EffectDrawOccurred] != 0)
+                        || (reservedSource >= 0 && cards[reservedSource].DrawCount > 0);
+                    tier = Math.Min(tier, searchPolicy.Tier(i, values, layout.HandStart, searchCapacity, effectDrawOccurred));
                 }
 
                 if (tier >= worstTier) {

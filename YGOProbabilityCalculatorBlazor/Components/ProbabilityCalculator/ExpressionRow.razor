@@ -1,16 +1,22 @@
-<div class="requirement-row">
+<div class="@(CenterContent ? "requirement-row requirement-row-centered" : "requirement-row")">
     @if (InteractiveSummary) {
-        <div class="requirement-interactive-summary" @onclick="OnEdit">
-            <span class="requirement-description">@ChildContent</span>
-            <button type="button" class="requirement-edit" @attributes="AdditionalAttributes" aria-label="@Label"
-                    aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @onclick:stopPropagation @ref="_button">@(UiText.Get("Ui.Edit"))</button>
+        <div class="requirement-interactive-summary @(HideEditLabel ? "requirement-summary-full-box" : null)" @onclick="OnEdit">
+            @if (HideEditLabel) {
+                <button type="button" class="requirement-edit requirement-edit-overlay control-focus-ring" @attributes="AdditionalAttributes" aria-label="@Label"
+                        title="@Label" aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @onclick:stopPropagation @ref="_button"></button>
+            }
+            <span class="requirement-description"><CascadingValue Value="this" IsFixed="true">@ChildContent</CascadingValue></span>
+            @if (!HideEditLabel) {
+                <button type="button" class="requirement-edit control-focus-ring" @attributes="AdditionalAttributes" aria-label="@Label"
+                        aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @onclick:stopPropagation @ref="_button">@(UiText.Get("Ui.Edit"))</button>
+            }
         </div>
     }
     else {
-        <button type="button" class="requirement-edit" @attributes="AdditionalAttributes" aria-label="@Label"
-                aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @ref="_button">
+        <button type="button" class="requirement-edit control-focus-ring" @attributes="AdditionalAttributes" aria-label="@Label"
+                title="@(HideEditLabel ? Label : null)" aria-expanded="@Expanded.ToString().ToLowerInvariant()" @onclick="OnEdit" @ref="_button">
             <span class="requirement-description">@ChildContent</span>
-            <span class="requirement-edit-label">@(UiText.Get("Ui.Edit"))</span>
+            @if (!HideEditLabel) { <span class="requirement-edit-label">@(UiText.Get("Ui.Edit"))</span> }
         </button>
     }
     @if (Controls is not null) { <div class="expression-row-controls">@Controls</div> }
@@ -21,6 +27,8 @@
     [Parameter] public string Label { get; set; } = UiText.Get("Ui.EditRequirement");
     [Parameter] public bool Expanded { get; set; }
     [Parameter] public bool InteractiveSummary { get; set; }
+    [Parameter] public bool CenterContent { get; set; }
+    [Parameter] public bool HideEditLabel { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? EditorContent { get; set; }
     [Parameter] public RenderFragment? Controls { get; set; }
@@ -28,6 +36,13 @@
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     private ElementReference _button;
+    private ExpressionMember? _lastMember;
 
-    public ValueTask FocusAsync(bool preventScroll = false) => _button.FocusAsync(preventScroll);
+    internal void RememberMember(ExpressionMember member) => _lastMember = member;
+    internal void ForgetMember(ExpressionMember member) {
+        if (ReferenceEquals(_lastMember, member)) { _lastMember = null; }
+    }
+
+    public ValueTask FocusAsync(bool preventScroll = false) => _lastMember is { } member
+        ? member.FocusAsync(preventScroll) : _button.FocusAsync(preventScroll);
 }

@@ -6,6 +6,43 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 [TestFixture]
 public class DrawExecutionAssessmentTest {
     [Test]
+    public void ExcavationBenchmarksWarnForTheExpensiveHiddenSearchCombination() {
+        foreach ((string name, SessionState session) in ExcavationBenchmark.Fixtures()) {
+            Assert.That(Assess(session).ElevatedRisk, Is.EqualTo(name == "40-duality-hidden-search"), name);
+        }
+    }
+
+    [Test]
+    public void ExcavationWarningIncludesHiddenMillsButExcludesUnpayableDraws() {
+        SessionState session = ExcavationBenchmark.Fixtures().Single(fixture => fixture.Name == "40-duality-hidden-search").Session;
+        int index = session.Cards.FindIndex(card => card.Id == "draw");
+        session.Cards[index] = session.Cards[index].WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(10);
+        Assert.That(Assess(session).ElevatedRisk, Is.True);
+        Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 35, true).ElevatedRisk, Is.False);
+    }
+
+    [TestCase("pot")]
+    [TestCase("draw")]
+    [TestCase("search-a")]
+    public void ExcavationWarningRequiresActiveEnabledEffects(string source) {
+        SessionState session = ExcavationBenchmark.Fixtures().Single(fixture => fixture.Name == "40-duality-hidden-search").Session;
+        if (source == "search-a") {
+            session.Cards.RemoveAll(card => card.Id == "search-any");
+        }
+        int index = session.Cards.FindIndex(card => card.Id == source);
+        Card original = session.Cards[index];
+        foreach (Card disabled in new[] { original.WithSimulationEnabled(false), original.WithActive(false), original.WithCopies(0) }) {
+            session.Cards[index] = disabled;
+            Assert.That(Assess(session).ElevatedRisk, Is.False);
+        }
+        session.Cards[index] = original;
+        Assert.That(Assess(session).ElevatedRisk, Is.True);
+        Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, session.HandSize, false).ElevatedRisk, Is.False);
+        session.Combos.RemoveRange(3, session.Combos.Count - 3);
+        Assert.That(Assess(session).ElevatedRisk, Is.False);
+    }
+
+    [Test]
     public void SearchHandOperationsDoNotClaimNoSearchExchangeability() {
         CategoryBase role = new("Role");
         List<Card> cards = [new([], id: "draw", drawCount: 2, drawOncePerTurn: false, postDrawDiscardCount: 1),

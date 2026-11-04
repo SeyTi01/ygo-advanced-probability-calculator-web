@@ -1,7 +1,9 @@
 using YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Net;
 using System.Text.Json;
+using YGOProbabilityCalculatorBlazor.Localization;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -10,6 +12,63 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.DeckImport;
 
 [TestFixture]
 public class CardInfoServiceTests {
+    private static IEnumerable<string> ProductionLanguages =>
+        LocalePreference.Available.Where(locale => locale.CardNames is not null).Select(locale => locale.Id);
+
+    [TestCaseSource(nameof(ProductionLanguages))]
+    public async Task BundledNamesResolveBothLanguagesToCanonicalCards(string language) {
+        string expectedName = language switch {
+            "de" => "Bezwingerseele Razen",
+            "ja" => "ＶＳ ラゼン",
+            "fr" => "Âme du Vainqueur Razen",
+            "it" => "Sgomina Anima Razen",
+            "pt" => "Alma Aniquiladora Razen",
+            _ => throw new InvalidOperationException($"Add reviewed card-name expectations for {language}.")
+        };
+        string missingName = language == "ja" ? "Lunalight Scarlet Tiger" : "Mooyan Curry";
+        string assetFile = $"card-names.{language}.v1.json";
+        string nameAssetPath = $"YGOProbabilityCalculatorBlazor/wwwroot/data/{assetFile}";
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, nameAssetPath))) {
+            directory = directory.Parent;
+        }
+        Assert.That(directory, Is.Not.Null, "Bundled card names must be available to the integration test.");
+        string data = Path.Combine(directory!.FullName, "YGOProbabilityCalculatorBlazor/wwwroot/data");
+        string catalog = await File.ReadAllTextAsync(Path.Combine(data, "card-catalog.v1.json"));
+        string names = await File.ReadAllTextAsync(Path.Combine(data, assetFile));
+        RecordingHttpMessageHandler handler = new((request, _) => Task.FromResult(Response(HttpStatusCode.OK,
+            request.RequestUri!.AbsolutePath.EndsWith(assetFile) ? names : catalog)));
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://calculator.test/") };
+        CardInfoService service = new(new TestLocalStorage(null), client);
+
+        CultureInfo previous = CultureInfo.CurrentUICulture;
+        try {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+            CardInfo localized = (await service.SearchCardsAsync(expectedName)).Single();
+            CardInfo english = (await service.SearchCardsAsync("Vanquish Soul Razen")).Single();
+            Assert.That(localized, Is.SameAs(english));
+            Assert.That((localized.Id, localized.Name), Is.EqualTo((29302858, "Vanquish Soul Razen")));
+            Assert.That(service.GetLocalizedCardName(localized), Is.EqualTo(expectedName));
+            Assert.That(localized.ResolvedArchetypes, Does.Contain("Vanquish Soul"));
+
+            Card imported = CuratedDrawEffectPresets.CreateImportedCard(localized, 3, localized.Id);
+            string before = JsonSerializer.Serialize(imported);
+            await service.EnsureLocalizedCardNamesAsync([imported]);
+            Assert.That(service.GetLocalizedCardName(imported), Is.EqualTo(expectedName));
+            Assert.That(JsonSerializer.Serialize(imported), Is.EqualTo(before));
+            Assert.That(service.GetLocalizedCardName(imported.WithName("My Razen")), Is.Null);
+            if (language == "de") {
+                Assert.That((await service.SearchCardsAsync("Wiedergeburt")).First().Id, Is.EqualTo(83764719));
+                Assert.That((await service.SearchCardsAsync("Slifer der Himmelsdrache")).First().Id, Is.EqualTo(10000020));
+            }
+            CardInfo missing = (await service.SearchCardsAsync(missingName)).Single();
+            Assert.That(service.GetLocalizedCardName(missing), Is.Null);
+            Assert.That(missing.Name, Is.EqualTo(missingName));
+            Assert.That(handler.Requests, Has.Length.EqualTo(2));
+        }
+        finally { CultureInfo.CurrentUICulture = previous; }
+    }
+
     [Test]
     [SetUICulture("fr")]
     public async Task ArtworkSharesPendingCatalogWithoutWaitingForLocalizedNames() {
@@ -873,24 +932,8 @@ public class CardInfoServiceTests {
         Assert.That(storage.WriteCount, Is.Zero);
     }
 
-    [Test]
-    public async Task MalformedCache_DoesNotBreakImportAndAttemptsFreshFetch() {
-        TestLocalStorage storage = new("{malformed json");
-        RecordingHttpMessageHandler handler = HandlerWithTargetedCards(200, (5678, "Dark Magician"));
-
-        using HttpClient httpClient = new(handler);
-        CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
-
-        string result = (await service.GetCardInfoAsync(5678)).Name;
-
-        Assert.That(result, Is.EqualTo("Dark Magician"));
-        Assert.That(handler.Requests, Has.Length.EqualTo(1));
-        AssertPersistedCache(storage.RawCache, null, (5678, "Dark Magician"));
-    }
-
-    [TestCase(null)]
-    [TestCase("{}")]
-    public async Task MissingOrEmptyCache_FetchesOnlyRequestedCard(string? rawCache) {
+    [TestCaseSource(nameof(UnusableCacheCases))]
+    public async Task UnusableCache_FetchesOnlyRequestedCard(string? rawCache) {
         TestLocalStorage storage = new(rawCache);
         RecordingHttpMessageHandler handler = HandlerWithTargetedCards(200, (5678, "Dark Magician"));
 
@@ -904,32 +947,14 @@ public class CardInfoServiceTests {
         AssertPersistedCache(storage.RawCache, null, (5678, "Dark Magician"));
     }
 
-    [Test]
-    public async Task UnsupportedCacheVersion_IsDiscardedAndRefreshed() {
-        TestLocalStorage storage = new("{\"SchemaVersion\":99,\"Cards\":{\"1234\":{\"Name\":\"Future Name\"}}}");
-        RecordingHttpMessageHandler handler = HandlerWithTargetedCards(200, (5678, "Dark Magician"));
-
-        using HttpClient httpClient = new(handler);
-        CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
-
-        string result = (await service.GetCardInfoAsync(5678)).Name;
-
-        Assert.That(result, Is.EqualTo("Dark Magician"));
-        Assert.That(handler.Requests, Has.Length.EqualTo(1));
-        AssertPersistedCache(storage.RawCache, null, (5678, "Dark Magician"));
-    }
-
-    [Test]
-    public async Task MalformedEnvelopeWithFreshTimestamp_IsDiscardedAndRefreshed() {
-        TestLocalStorage storage = new("{\"SchemaVersion\":1,\"LastFullRefreshUtc\":\"2026-10-01T09:00:00Z\",\"Cards\":{\"not-a-card-id\":{\"Name\":\"Unusable\"}}}");
-        RecordingHttpMessageHandler handler = HandlerWithTargetedCards(200, (5678, "Dark Magician"));
-
-        using HttpClient httpClient = new(handler);
-        CardInfoService service = new(storage, httpClient, new TestTimeProvider(Now));
-
-        Assert.That((await service.GetCardInfoAsync(5678)).Name, Is.EqualTo("Dark Magician"));
-        Assert.That(handler.Requests, Has.Length.EqualTo(1));
-        AssertPersistedCache(storage.RawCache, null, (5678, "Dark Magician"));
+    private static IEnumerable<TestCaseData> UnusableCacheCases() {
+        yield return new TestCaseData((object?)null).SetName("Missing cache");
+        yield return new TestCaseData("{}").SetName("Empty cache");
+        yield return new TestCaseData("{malformed json").SetName("Malformed JSON cache");
+        yield return new TestCaseData("{\"SchemaVersion\":99,\"Cards\":{\"1234\":{\"Name\":\"Future Name\"}}}")
+            .SetName("Unsupported cache version");
+        yield return new TestCaseData("{\"SchemaVersion\":1,\"LastFullRefreshUtc\":\"2026-10-01T09:00:00Z\",\"Cards\":{\"not-a-card-id\":{\"Name\":\"Unusable\"}}}")
+            .SetName("Invalid card key in fresh cache envelope");
     }
 
     [Test]

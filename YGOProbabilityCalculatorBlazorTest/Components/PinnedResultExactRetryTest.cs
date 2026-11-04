@@ -20,12 +20,12 @@ public partial class PinnedResultTest {
             HandSize = 2
         });
         Task calculation = Start();
-        int job = _worker.Jobs.Count - 1;
-        ProbabilityCalculationResult fast = CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[job].Json));
+        int job = _worker.Calls.Count - 1;
+        ProbabilityCalculationResult fast = CalculationWire.ReadResult(CalculationWire.Execute(_worker.Calls[job].Snapshot.Json));
         Assert.That(fast.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Bounded));
         // Exercise the accepted Uncertified contract too, without inventing a certified bound.
         CalculationResultContract contract = fast.Contract with { Accuracy = accuracy, AutomaticExact = AutomaticExactOutcome.Deadline };
-        _worker.Jobs[job].SetResult(fast with {
+        _worker.Calls[job].Completion.SetResult(fast with {
             Contract = contract,
             SearchAvailability = accuracy == CalculationAccuracy.Uncertified ? null : fast.SearchAvailability
         });
@@ -55,7 +55,7 @@ public partial class PinnedResultTest {
     public async Task ExactRetryPreservesManualPinPreferenceAndEveryInput(CalculationAccuracy accuracy, bool hasPin) {
         PinnedResultSnapshot? previous = await CreatePreviousPin(hasPin);
         PinnedResultSnapshot fast = await AcceptUncertainFast(accuracy);
-        int fastJob = _worker.Jobs.Count - 1;
+        int fastJob = _worker.Calls.Count - 1;
         string saved = _sessions.SerializeSession(FieldSession());
         Assert.That(_cut.FindAll(".calculation-feedback-slot .exact-retry > button"), Has.Count.EqualTo(1));
         Assert.That(_cut.FindAll("#exactRetryWarning, .exact-retry-confirmation"), Is.Empty);
@@ -63,16 +63,16 @@ public partial class PinnedResultTest {
         int exactJob = fastJob + 1;
         AssertPinUnchanged(previous);
         Assert.That(Accepted, Is.SameAs(fast));
-        Assert.That(_worker.Inputs[exactJob].RequestedMode, Is.EqualTo(CalculationModel.Exact));
-        JsonNode original = JsonNode.Parse(_worker.Inputs[fastJob].Json)!;
+        Assert.That(_worker.Calls[exactJob].Snapshot.RequestedMode, Is.EqualTo(CalculationModel.Exact));
+        JsonNode original = JsonNode.Parse(_worker.Calls[fastJob].Snapshot.Json)!;
         original["Options"]!["Mode"] = (int)CalculationModel.Exact;
-        Assert.That(JsonNode.DeepEquals(original, JsonNode.Parse(_worker.Inputs[exactJob].Json)), Is.True,
+        Assert.That(JsonNode.DeepEquals(original, JsonNode.Parse(_worker.Calls[exactJob].Snapshot.Json)), Is.True,
             "Only the request-local mode changes; Work, Storage, policy and workspace stay intact.");
         Assert.That(_cut.FindAll(".exact-retry > button"), Is.Empty);
         await Call("RequestExactRetry");
-        Assert.That(_worker.Jobs, Has.Count.EqualTo(exactJob + 1));
-        ProbabilityCalculationResult physical = CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[exactJob].Json), CalculationModel.Exact);
-        _worker.Jobs[exactJob].SetResult(physical);
+        Assert.That(_worker.Calls, Has.Count.EqualTo(exactJob + 1));
+        ProbabilityCalculationResult physical = CalculationWire.ReadResult(CalculationWire.Execute(_worker.Calls[exactJob].Snapshot.Json), CalculationModel.Exact);
+        _worker.Calls[exactJob].Completion.SetResult(physical);
         await exact;
         AssertPinUnchanged(previous);
         Assert.That(Accepted.Contract, Is.SameAs(physical.Contract));
@@ -85,8 +85,8 @@ public partial class PinnedResultTest {
         Assert.That(fast.Contract!.AutomaticExact, Is.EqualTo(AutomaticExactOutcome.Deadline));
         Task normal = Start();
         int normalJob = exactJob + 1;
-        Assert.That(_worker.Inputs[normalJob].RequestedMode, Is.EqualTo(CalculationModel.Fast));
-        _worker.Jobs[normalJob].SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[normalJob].Json)));
+        Assert.That(_worker.Calls[normalJob].Snapshot.RequestedMode, Is.EqualTo(CalculationModel.Fast));
+        _worker.Calls[normalJob].Completion.SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Calls[normalJob].Snapshot.Json)));
         await normal;
         AssertPinUnchanged(previous);
     }
@@ -99,7 +99,7 @@ public partial class PinnedResultTest {
         PinnedResultSnapshot? previous = await CreatePreviousPin(hasPin);
         PinnedResultSnapshot fast = await AcceptUncertainFast();
         Task retry = RetryExact();
-        int exactJob = _worker.Jobs.Count - 1;
+        int exactJob = _worker.Calls.Count - 1;
         AssertPinUnchanged(previous);
         if (ending is "cancel" or "late") {
             await _cut.Find("[aria-label='Cancel calculation']").ClickAsync(new());
@@ -114,25 +114,25 @@ public partial class PinnedResultTest {
         switch (ending) {
             case "work":
             case "storage":
-                _worker.Jobs[exactJob].SetException(new ProbabilityCalculationLimitException(ending == "work"
+                _worker.Calls[exactJob].Completion.SetException(new ProbabilityCalculationLimitException(ending == "work"
                     ? ProbabilityCalculationLimitReason.Work : ProbabilityCalculationLimitReason.Storage));
                 break;
             case "unsupported":
-                _worker.Jobs[exactJob].SetException(new UnsupportedExactCalculationException(fast.Contract! with {
+                _worker.Calls[exactJob].Completion.SetException(new UnsupportedExactCalculationException(fast.Contract! with {
                     RequestedMode = CalculationModel.Exact, ExecutedMode = CalculationModel.Exact,
                     Completion = CalculationCompletion.Unsupported, Accuracy = null
                 }));
                 break;
             case "error":
-                _worker.Jobs[exactJob].SetException(new InvalidOperationException("Exact worker failed"));
+                _worker.Calls[exactJob].Completion.SetException(new InvalidOperationException("Exact worker failed"));
                 break;
             case "late":
             case "edit":
             case "dispose":
-                _worker.Jobs[exactJob].SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[exactJob].Json)));
+                _worker.Calls[exactJob].Completion.SetResult(CalculationWire.ReadResult(CalculationWire.Execute(_worker.Calls[exactJob].Snapshot.Json)));
                 break;
             default:
-                _worker.Jobs[exactJob].SetCanceled();
+                _worker.Calls[exactJob].Completion.SetCanceled();
                 break;
         }
         await retry;
@@ -151,7 +151,7 @@ public partial class PinnedResultTest {
         await AcceptUncertainFast();
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "3" });
         await Call("RequestExactRetry");
-        Assert.That(_worker.Jobs, Has.Count.EqualTo(1));
+        Assert.That(_worker.Calls, Has.Count.EqualTo(1));
         Assert.That(_cut.FindAll(".exact-retry > button"), Is.Empty);
         AssertPinUnchanged(null);
     }
@@ -174,18 +174,18 @@ public partial class PinnedResultTest {
     public async Task InvalidOrIncompleteAcceptedResultsCannotLaunchExactRetry(string failure) {
         await AcceptUncertainFast();
         Task calculation = Start();
-        ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(_worker.Inputs[1].Json));
+        ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(_worker.Calls[1].Snapshot.Json));
         CalculationResultContract? contract = failure switch {
             "missing-contract" => null,
             "missing-accuracy" => result.Contract! with { Accuracy = null },
             "failed-contract" => result.Contract! with { Completion = CalculationCompletion.Error },
             _ => result.Contract
         };
-        _worker.Jobs[1].SetResult(result with { TotalProbability = failure == "invalid-value" ? double.NaN : result.TotalProbability, Contract = contract });
+        _worker.Calls[1].Completion.SetResult(result with { TotalProbability = failure == "invalid-value" ? double.NaN : result.TotalProbability, Contract = contract });
         await calculation;
         Assert.That(_cut.FindAll(".exact-retry > button"), Is.Empty);
         await Call("RequestExactRetry");
-        Assert.That(_worker.Jobs, Has.Count.EqualTo(2));
+        Assert.That(_worker.Calls, Has.Count.EqualTo(2));
         Assert.That(_cut.FindAll(".pinned-result"), Is.Empty);
     }
 }

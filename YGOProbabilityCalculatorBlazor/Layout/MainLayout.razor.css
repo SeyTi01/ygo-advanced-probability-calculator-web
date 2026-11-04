@@ -1,6 +1,4 @@
 .page {
-    --app-workspace-width: 60rem;
-    --app-page-gutter: clamp(0.75rem, 2.5vw, 2rem);
     position: relative;
     display: flex;
     flex-direction: column;
@@ -18,14 +16,14 @@ main {
 }
 
 .top-row-inner {
+    --layout-row-gap: 0;
     max-width: var(--app-workspace-width);
     margin-inline: auto;
     min-height: 3.5rem;
-    display: flex;
-    align-items: center;
 }
 
 .app-title {
+    margin: 0;
     flex-grow: 1;
     min-width: 0;
     overflow: hidden;
@@ -34,15 +32,67 @@ main {
 }
 
 .top-row-controls {
-    display: flex;
+    --header-control-size: calc(2.25rem + 2px);
+    --layout-row-gap: 0.5rem;
     flex: 0 0 auto;
-    align-items: center;
-    gap: 0.75rem;
 }
 
-.theme-select, .language-select {
+.preference-control {
+    position: relative;
     flex: 0 0 auto;
-    width: 6.5rem;
+    width: var(--header-control-size);
+    height: var(--header-control-size);
+    color: var(--bs-secondary-color);
+}
+
+.preference-select {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    color: transparent;
+    background-image: none;
+    cursor: pointer;
+}
+
+.preference-select:hover:not(:disabled) {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.preference-select option {
+    padding-inline: .5rem;
+    color: var(--bs-body-color);
+    background-color: var(--bs-body-bg);
+}
+
+.preference-icon {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 1.125rem;
+    height: 1.125rem;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.preference-select:disabled + .preference-icon {
+    opacity: .45;
+}
+
+.theme-icon-dark {
+    display: none;
+}
+
+:root[data-bs-theme="dark"] .theme-icon-light {
+    display: none;
+}
+
+:root[data-bs-theme="dark"] .theme-icon-dark {
+    display: inline;
+}
+
+.header-navigation {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--header-control-size);
 }
 
 .top-row ::deep a, .top-row ::deep .btn-link {
@@ -65,8 +115,8 @@ article {
 
 @media (max-width: 767.98px) {
     .top-row-inner {
+        --layout-row-gap: 0.75rem;
         flex-wrap: wrap;
-        gap: 0.75rem;
         padding-block: 0.75rem;
     }
 
@@ -78,15 +128,12 @@ article {
     }
 
     .top-row-controls {
+        --header-control-size: max(calc(2.25rem + 2px), var(--app-touch-target-size));
         margin-inline-start: auto;
         flex-wrap: wrap;
         justify-content: flex-end;
-        gap: 0.5rem;
     }
 
-    .theme-select, .language-select, .top-row a {
-        min-height: 2.75rem;
-    }
 }
 
 @media (min-width: 1024px) {

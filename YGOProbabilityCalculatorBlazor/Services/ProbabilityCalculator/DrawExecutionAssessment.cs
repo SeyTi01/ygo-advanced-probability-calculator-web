@@ -40,12 +40,12 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
             return new(DrawExecutionPath.Unknown, false);
         }
 
-        if (cards.Any(card => card.Active && card.Copies > 0
-            && card.EffectProfile.ExecutionModel != EffectExecutionModel.DrawSequenceV1)) {
+        Card[] active = [.. cards.Where(card => card.Active && card.Copies > 0).Select(card => card.ForCalculation())];
+
+        if (active.Any(card => card.EffectProfile.ExecutionModel != EffectExecutionModel.DrawSequenceV1)) {
             return new(DrawExecutionPath.Unknown, false);
         }
 
-        Card[] active = [.. cards.Where(card => card.Active && card.Copies > 0)];
         long copies = active.Sum(card => (long)card.Copies);
 
         if (copies > int.MaxValue || handSize < 1 || handSize > copies) {
@@ -54,6 +54,17 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
 
         HashSet<Card>? inert = DrawEffectFeasibility.FindInert(active, (int)copies, handSize);
         Card[] effects = [.. active.Where(card => card.DrawCount is not null && (inert is null || !inert.Contains(card)))];
+        Combo[] routes = [.. combos.Where(combo => combo.Active)];
+
+        // Excavation resolves physical target availability even when the draws alone
+        // fit count-state processing. Hidden losses plus searches made this shape
+        // expensive in the excavation benchmark; retain the existing size thresholds.
+        bool excavationWithHiddenSearch = active.Any(card => card.Excavation is { } excavation && excavation.Count <= copies - handSize)
+            && effects.Any(card => card.PreDrawDeckRemovalCount > 0 || card.PostDrawDeckMillCount > 0)
+            && active.Any(card => card.Search is not null);
+        if (excavationWithHiddenSearch && active.Length >= 8 && routes.Length >= 4) {
+            return new(DrawExecutionPath.OrderedFrontier, true);
+        }
 
         if (effects.Length == 0) {
             return new(DrawExecutionPath.Ordinary, false);
@@ -69,8 +80,6 @@ public readonly record struct DrawExecutionAssessment(DrawExecutionPath Path, bo
         if (!conditional) {
             return new(countStateFits ? DrawExecutionPath.DrawCountState : DrawExecutionPath.OrderedFrontier, false);
         }
-
-        Combo[] routes = [.. combos.Where(combo => combo.Active)];
 
         if (active.Any(card => card.Search is not null)) {
             // Search hand operations use the ordered resolver, possibly with a

@@ -1,16 +1,22 @@
 using YGOProbabilityCalculatorBlazor.Localization;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 using YGOProbabilityCalculatorBlazor.Models;
+using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 
 namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 
 // Every workspace replacement checks the same request, draft, and accepted-model boundary.
 public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
+    [Parameter] public bool Active { get; set; } = true;
+
     private int _autosaveReplacementVersion;
     private long _sessionLoadVersion;
     private bool _sessionInitialized;
+    private bool _inactive;
     private long _workspaceEditVersion;
     private long? _loadingSessionVersion;
     private long? _pendingLanguageLoad;
@@ -361,13 +367,64 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
         }
 
         if (LanguageWorkspace?.Pending is { } checkpoint) {
+            _pendingSessionService.PendingSession = null;
             try {
                 await RestoreLanguageWorkspaceAsync(checkpoint);
                 _languageWorkspaceApplied = true;
             }
             catch (Exception ex) { LanguageWorkspace.Reject(ex.Message); }
         }
-        else if (_sharedFragment is null && _pendingSessionService.PendingSession is { } session) {
+        else {
+            await LoadPendingSessionAsync();
+        }
+
+        if (_disposed) {
+            return;
+        }
+
+        _sessionInitialized = true;
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        if (_disposed) {
+            return;
+        }
+
+        if (!Active) {
+            if (!_inactive) {
+                // Keep accepted data and drafts, but release the route's work and worker owner.
+                _inactive = true;
+                InvalidateSessionLoad();
+                _ydkeImportRequest = null;
+                _calculation.Stop();
+                await _backgroundCalculator.DisposeAsync();
+            }
+            return;
+        }
+
+        if (_inactive) {
+            _inactive = false;
+            _backgroundCalculator = _services.GetRequiredService<IBackgroundCalculator>();
+        }
+
+        // Route rendering may precede our LocationChanged callback. Incoming links
+        // must take precedence over an example queued while Help was visible.
+        ObserveShareLocation(SharingNavigation.Uri);
+        await LoadPendingSessionAsync();
+    }
+
+    private async Task LoadPendingSessionAsync() {
+        if (_disposed || LanguageWorkspace?.Restoring == true) {
+            return;
+        }
+
+        if (_sharedFragment is not null) {
+            _pendingSessionService.PendingSession = null;
+            return;
+        }
+
+        if (_pendingSessionService.PendingSession is { } session) {
             SessionLoadRequest request = BeginSessionLoad(fullSession: true);
 
             try {
@@ -387,12 +444,5 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
                 EndSessionLoad(request);
             }
         }
-
-        if (_disposed) {
-            return;
-        }
-
-        _sessionInitialized = true;
-        await base.OnInitializedAsync();
     }
 }
