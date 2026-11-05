@@ -1,8 +1,6 @@
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -144,10 +142,6 @@ public sealed partial class SearchEffectsTest {
             new([A], id: "ordinary-a"), new([], id: "ordinary-blank")];
         List<Combo> combos = [new([new(A, 1, 2)], groupId: "g1"), new([new(Spell, 1, 2)], groupId: "g2"),
             new([], cards: [new("target", 1, 2)], groupId: "g1")];
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        PostDrawCalculation calculation = new(deck, 2, budget);
-        calculation.CalculateSearch(combos, Groups, false, new(deck, budget));
-        Assert.That(calculation.DeferredRows, Is.EqualTo(4));
         Compare(deck, combos, 2);
     }
 }

@@ -5,7 +5,6 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 

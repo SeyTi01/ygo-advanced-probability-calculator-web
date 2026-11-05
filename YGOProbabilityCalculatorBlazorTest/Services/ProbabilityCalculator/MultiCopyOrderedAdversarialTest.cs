@@ -2,25 +2,21 @@ using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture, NonParallelizable]
 public sealed class MultiCopyOrderedAdversarialTest {
-    [TestCase("searchable-source-no-removal", true)]
-    [TestCase("full-depletion", true)]
-    [TestCase("selective-failure", true)]
-    [TestCase("hidden-source-copies", true)]
-    [TestCase("saved-limit-one", true)]
-    [TestCase("only-source-copies", true)]
-    [TestCase("repeatable-copies", false)]
-    [TestCase("saved-limit-two", false)]
-    [TestCase("short-deck", false)]
-    public void LabeledPhysicalOrdersChallengeSourceMultiplicityAndJointSearch(string boundary, bool aggregated) {
+    [TestCase("searchable-source-no-removal")]
+    [TestCase("full-depletion")]
+    [TestCase("selective-failure")]
+    [TestCase("hidden-source-copies")]
+    [TestCase("saved-limit-one")]
+    [TestCase("only-source-copies")]
+    [TestCase("repeatable-copies")]
+    [TestCase("saved-limit-two")]
+    [TestCase("short-deck")]
+    public void LabeledPhysicalOrdersChallengeSourceMultiplicityAndJointSearch(string boundary) {
         CategoryBase first = new("First");
         CategoryBase second = new("Second");
         bool limitOne = boundary == "saved-limit-one";
@@ -68,51 +64,26 @@ public sealed class MultiCopyOrderedAdversarialTest {
         SearchCertificateOracle.Counts truth = SearchCertificateOracle.Enumerate(referenceCards, hand, combos, groups,
             collapseIdenticalCopies: false);
 
-        SearchCountingDiagnostics diagnostics = new();
-        WorkBudget exactBudget = new(CalculationWorkPolicy.Unlimited) { SearchDiagnostics = diagnostics };
-        BigInteger completedMass = BigInteger.Zero;
-        PostDrawCalculation exact = new(cards, hand, exactBudget, deferIdentities: false) {
-            ObservePhysicalOutcome = (_, _, _, mass) => completedMass += mass
-        };
-        ExactCalculationResult physical = exact.CalculateSearch(combos, groups, false, new(cards, exactBudget),
-            physical: true, method: PhysicalEnumerationMethod.SingleSource, coalesceOrdinary: false);
-        ExactProbability[] physicalRows = Rows(physical);
-        for (int row = 0; row < physicalRows.Length; row++) {
-            Assert.That(physicalRows[row].Numerator * truth.Outcomes,
-                Is.EqualTo(truth.Wins[1][row] * physicalRows[row].Denominator), boundary + "/physical/" + row);
+        ProbabilityCalculatorService service = new();
+        ProbabilityCalculationResult exact = service.CalculateProbabilityResults(cards, combos, hand, groups,
+            CalculationWorkPolicy.Unlimited, new(Mode: CalculationModel.Exact));
+        ApplicationFraction[] physical = Rows(ApplicationResultFractions.From(exact));
+        for (int row = 0; row < physical.Length; row++) {
+            Assert.That(physical[row].Numerator * truth.Outcomes,
+                Is.EqualTo(truth.Wins[1][row] * physical[row].Denominator), boundary + "/physical/" + row);
         }
-        Assert.That(completedMass + truth.Failed, Is.EqualTo(truth.Outcomes), boundary + "/complete sample space");
-        Assert.That(diagnostics.Counts.GetValueOrDefault("primary/physical single-source frames") > 0, Is.EqualTo(aggregated));
+        Assert.That(exact.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
         if (boundary == "selective-failure") {
             Assert.That(truth.Failed, Is.GreaterThan(BigInteger.Zero));
         }
-
-        ExactCalculationResult[][] results = new ExactCalculationResult[2][];
-        for (int path = 0; path < results.Length; path++) {
-            WorkBudget budget = new(CalculationWorkPolicy.Unlimited);
-            PostDrawCalculation calculation = new(cards, hand, budget, deferIdentities: false) {
-                StreamSearchTerminals = path == 1
-            };
-            results[path] = [calculation.CalculateSearch(combos, groups, false, new(cards, budget)),
-                calculation.CalculateSearchLower(combos, groups, true),
-                calculation.CalculateSearchLower(combos, groups, false)];
-        }
-        for (int pass = 0; pass < results[0].Length; pass++) {
-            Assert.That(Rows(results[1][pass]).Select(value => value.ToFraction()),
-                Is.EqualTo(Rows(results[0][pass]).Select(value => value.ToFraction())), boundary + "/pass/" + pass);
-        }
-        for (int row = 0; row < physicalRows.Length; row++) {
-            ExactProbability upper = Rows(results[1][0])[row];
-            ExactProbability witness = Rows(results[1][1])[row];
-            ExactProbability lower = Rows(results[1][2])[row];
-            Assert.That(upper.Numerator * truth.Outcomes,
-                Is.GreaterThanOrEqualTo(truth.Wins[1][row] * upper.Denominator), boundary + "/upper/" + row);
-            Assert.That(witness.Numerator * truth.Outcomes,
-                Is.EqualTo(truth.Wins[4][row] * witness.Denominator), boundary + "/witness/" + row);
-            Assert.That(lower.Numerator * truth.Outcomes,
-                Is.LessThanOrEqualTo(truth.Wins[1][row] * lower.Denominator), boundary + "/lower/" + row);
+        ProbabilityCalculationResult projected = service.CalculateProbabilityResults(cards, combos, hand, groups,
+            CalculationWorkPolicy.Unlimited, new(CertifySearchAvailability: true));
+        ApplicationFraction[] upper = Rows(ApplicationResultFractions.From(projected));
+        for (int row = 0; row < upper.Length; row++) {
+            Assert.That(upper[row].Numerator * truth.Outcomes,
+                Is.EqualTo(truth.Wins[2][row] * upper[row].Denominator), boundary + "/optimistic/" + row);
         }
     }
 
-    private static ExactProbability[] Rows(ExactCalculationResult result) => [result.Total, .. result.Combos, .. result.Groups];
+    private static ApplicationFraction[] Rows(ApplicationResultFractions result) => [result.Total, .. result.Combos, .. result.Groups];
 }

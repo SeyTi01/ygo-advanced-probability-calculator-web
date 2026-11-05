@@ -4,10 +4,6 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -73,41 +69,14 @@ public sealed class BoundedSearchMixedPhaseTest {
         OracleCounts oracle = EnumerateLabeledOrders(deck, 2, targetKind, requiredTargets: 1);
         Assert.That(oracle.HiddenTargetLossWitnesses, Is.GreaterThan(0));
         BigInteger[] expected = [oracle.Wins, oracle.Wins, oracle.Wins, BigInteger.Zero];
-        PhysicalEnumerationMethod[] methods = [
-            PhysicalEnumerationMethod.Streaming,
-            PhysicalEnumerationMethod.BatchStreaming,
-            PhysicalEnumerationMethod.SingleSource,
-            PhysicalEnumerationMethod.Frontier
-        ];
-        foreach (PhysicalEnumerationMethod method in methods) {
-            foreach (bool pool in new[] { false, true }) {
-                SearchCountingDiagnostics? diagnostics = method == PhysicalEnumerationMethod.SingleSource ? new() : null;
-                WorkBudget budget = new(CalculationWorkPolicy.Unlimited) { SearchDiagnostics = diagnostics };
-                PostDrawCalculation calculation = new(deck, 2, budget, deferIdentities: false);
-                ExactCalculationResult result = calculation.CalculateSearch(
-                    combos,
-                    groups,
-                    false,
-                    new(deck, budget),
-                    physical: true,
-                    method: method,
-                    coalesceOrdinary: pool
-                );
-                string description = $"bounded search and hidden loss/{method}/{pool}";
-                Assert.That(calculation.ReducedRows, Is.EqualTo(pool ? 5 : 6), description);
-                if (diagnostics is not null) {
-                    Assert.That(diagnostics.Counts.GetValueOrDefault("primary/physical single-source frames"), Is.EqualTo(2),
-                        "The combined-source route must run before bounded search pays its filtered hand cost.");
-                }
-                ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
-                Assert.That(rows, Has.Length.EqualTo(expected.Length), description);
-                for (int row = 0; row < rows.Length; row++) {
-                    Assert.That(
-                        rows[row].Numerator * oracle.Orders,
-                        Is.EqualTo(expected[row] * rows[row].Denominator),
-                        description + "/" + row
-                    );
-                }
+        foreach (CalculationModel mode in new[] { CalculationModel.Fast, CalculationModel.Exact }) {
+            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 2, groups,
+                CalculationWorkPolicy.Unlimited, new(Mode: mode));
+            ApplicationResultFractions fractions = ApplicationResultFractions.From(result);
+            ApplicationFraction[] rows = [fractions.Total, .. fractions.Combos, .. fractions.Groups];
+            Assert.That(rows, Has.Length.EqualTo(expected.Length));
+            for (int row = 0; row < rows.Length; row++) {
+                Assert.That(rows[row].Numerator * oracle.Orders, Is.EqualTo(expected[row] * rows[row].Denominator), mode + "/" + row);
             }
         }
     }

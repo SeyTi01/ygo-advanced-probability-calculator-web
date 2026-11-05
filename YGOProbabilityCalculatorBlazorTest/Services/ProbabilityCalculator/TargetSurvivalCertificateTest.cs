@@ -6,11 +6,6 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
-using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -60,19 +55,19 @@ public sealed class TargetSurvivalCertificateTest {
                 }
             }
         }
-        ExactProbability eventProbability = new(survive, denominator);
-        ExactProbability actualProbability = new(success, denominator);
+        ApplicationFraction eventProbability = new(survive, denominator);
+        ApplicationFraction actualProbability = new(success, denominator);
         ProbabilityCalculatorService engine = new();
         foreach (CalculationWorkPolicy work in new[] { CalculationWorkPolicy.Default, CalculationWorkPolicy.Interactive }) {
             ProbabilityCalculationResult fast = engine.CalculateProbabilityResults(state.Cards, state.Combos, 5, [], work);
             ProbabilityCalculationResult exact = engine.CalculateProbabilityResults(state.Cards, state.Combos, 5, [], work, new(Mode: CalculationModel.Exact));
             Assert.That(fast.Contract!.Fractions!.Total, Is.EqualTo(new ProbabilityFraction("1969", "1976")));
-            Assert.That(exact.Contract!.Fractions!.Total, Is.EqualTo(actualProbability.ToFraction()));
+            Assert.That(exact.Contract!.Fractions!.Total, Is.EqualTo(actualProbability.ToAppFraction()));
             Assert.That(exact.Contract.Fractions.Total, Is.EqualTo(new ProbabilityFraction("35017811", "47851804")));
             Assert.That(exact.SearchAvailability, Is.Null, "Exact must not run the optional certificate");
             foreach (SearchAvailabilityInterval row in new[] { fast.SearchAvailability!.Total!, fast.SearchAvailability.Combos[0] }) {
                 Assert.That(row.Lower, Is.EqualTo(new ProbabilityFraction("17290681", "26100984")));
-                Assert.That(row.Upper, Is.EqualTo(eventProbability.ToFraction()));
+                Assert.That(row.Upper, Is.EqualTo(eventProbability.ToAppFraction()));
                 Assert.That(survive * 10000, Is.LessThanOrEqualTo(denominator * 7325));
                 Assert.That(success, Is.LessThan(survive), "Survival alone is not sufficient");
             }
@@ -83,7 +78,7 @@ public sealed class TargetSurvivalCertificateTest {
         Assert.That(loaded.Cards.Single(card => card.Id == "target").ManualMetadataCategoryKeys, Does.Contain("kind:monster"));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(loaded.Cards, loaded.Combos, loaded.HandSize, loaded.ComboGroups);
         ProbabilityCalculationResult wire = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
-        Assert.That(wire.SearchAvailability!.Total!.Upper, Is.EqualTo(eventProbability.ToFraction()));
+        Assert.That(wire.SearchAvailability!.Total!.Upper, Is.EqualTo(eventProbability.ToAppFraction()));
     }
 
     [TestCase(0)] [TestCase(1)] [TestCase(2)] [TestCase(3)]
@@ -115,14 +110,9 @@ public sealed class TargetSurvivalCertificateTest {
             new([], "Consumed source", cards: [new("d", deck.Single(card => card.Id == "d").Copies, 5)])];
         List<ComboGroup> groups = [new("all", "All"), new("mixed", "Mixed"), new("empty", "Empty")];
         if (variant % 2 != 0) { deck.Reverse(); }
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        DrawEffectCalculation execution = new(deck, 2, budget);
-        ExactCalculationResult primary = execution.Calculate(combos, groups);
-        ExactCalculationResult baseline = execution.SearchExecution!.CalculateLower(combos, groups, false);
-        if (execution.SearchExecution.CanRefineKnownSourceLoss()) {
-            baseline = execution.SearchExecution.CalculateLower(combos, groups, false, baseline);
-        }
-        SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(combos, groups, primary, budget, execution);
+        ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+            deck, combos, 2, groups, CalculationWorkPolicy.Interactive, new(CertifySearchAvailability: true));
+        SearchAvailabilityCertificate certificate = result.SearchAvailability!;
         // Repeated bounds on the identical direct selector intersect in the
         // existing model; they do not create another positive role. The generic
         // labeled oracle expects normalized roles. Keep the duplicate in the
@@ -134,16 +124,15 @@ public sealed class TargetSurvivalCertificateTest {
         Assert.That(certificate.Status, Is.AnyOf(SearchAvailabilityStatus.Bounded, SearchAvailabilityStatus.Exact), certificate.Detail);
         Assert.That(certificate.Detail, Does.Not.Contain("refinement failed"));
         SearchAvailabilityInterval[] intervals = [certificate.Total!, .. certificate.Combos, .. certificate.Groups];
-        ExactProbability[] oldLower = [baseline.Total, .. baseline.Combos, .. baseline.Groups];
-        ExactProbability[] oldUpper = [primary.Total, .. primary.Combos, .. primary.Groups];
+
+        ProbabilityFraction[] primary = [result.Contract!.Fractions!.Total, .. result.Contract.Fractions.Combos, .. result.Contract.Fractions.Groups];
         for (int row = 0; row < intervals.Length; row++) {
-            ExactProbability lower = Parse(intervals[row].Lower);
-            ExactProbability upper = Parse(intervals[row].Upper);
+            ApplicationFraction lower = Parse(intervals[row].Lower);
+            ApplicationFraction upper = Parse(intervals[row].Upper);
             using (Assert.EnterMultipleScope()) {
-                LessOrEqual(oldLower[row], lower, $"old lower row {row}");
                 LessOrEqual(lower, new(physical.Wins[1][row], physical.Outcomes), $"lower row {row}");
                 LessOrEqual(new(physical.Wins[1][row], physical.Outcomes), upper, $"upper row {row}");
-                LessOrEqual(upper, oldUpper[row], $"old upper row {row}");
+                LessOrEqual(upper, Parse(primary[row]), $"primary upper row {row}");
             }
         }
     }
@@ -164,19 +153,16 @@ public sealed class TargetSurvivalCertificateTest {
     public void CopyCapDoesNotTruncateCountsOrChangePrimary(int copies) {
         SessionState state = Motivating();
         state.Cards[2] = state.Cards[2].WithCopies(copies - 8);
-        WorkBudget budget = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation execution = new(state.Cards, 5, budget);
-        ExactCalculationResult primary = execution.Calculate(state.Combos, []);
-        SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(state.Combos, [], primary, budget, execution);
+        ProbabilityCalculationResult primary = new ProbabilityCalculatorService().CalculateProbabilityResults(
+            state.Cards, state.Combos, 5, [], CalculationWorkPolicy.Default, new(CertifySearchAvailability: true));
+        SearchAvailabilityCertificate certificate = primary.SearchAvailability!;
         Assert.That(certificate.Total, Is.Not.Null);
-        if (copies > 64) { Assert.That(certificate.Total!.Upper, Is.EqualTo(primary.Total.ToFraction())); }
-        Assert.That(budget.PeakEntries, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.EntryLimit));
-        Assert.That(budget.PeakCells, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.CellLimit));
+        if (copies > 64) { Assert.That(certificate.Total!.Upper, Is.EqualTo(primary.Contract!.Fractions!.Total)); }
     }
 
-    private static ExactProbability Parse(ProbabilityFraction value) => new(BigInteger.Parse(value.Numerator), BigInteger.Parse(value.Denominator));
+    private static ApplicationFraction Parse(ProbabilityFraction value) => ApplicationFraction.From(value);
 
-    private static void LessOrEqual(ExactProbability left, ExactProbability right, string message) =>
+    private static void LessOrEqual(ApplicationFraction left, ApplicationFraction right, string message) =>
         Assert.That(left.Numerator * right.Denominator, Is.LessThanOrEqualTo(right.Numerator * left.Denominator), message);
 
     private static BigInteger Binomial(int n, int k) {
@@ -202,22 +188,6 @@ public sealed class TargetSurvivalCertificateTest {
             ["Numerator"] = numerator, ["Denominator"] = denominator
         };
         Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(response.ToJsonString()));
-    }
-
-    [Test]
-    public void OversizedScenarioAndIdentityProofsSkipWithoutSpendingTheirRequest() {
-        SessionState state = Motivating();
-        ExactCalculationResult primary = new(ExactProbability.One, [ExactProbability.One], []);
-        DrawResolutionResult oversized = new(Enumerable.Range(0, 65).ToDictionary(
-            count => new DrawComposition(count, [0, 0]), _ => ExactProbability.One));
-        WorkBudget budget = new(CalculationWorkPolicy.Default);
-        Assert.That(TargetSurvivalUpperBound.TryCalculate(state.Cards, [state.Cards[0]], oversized, state.Combos, [], primary, budget), Is.Null);
-        Assert.That(budget.Spent, Is.Zero);
-        Assert.That(budget.PeakCells, Is.Zero);
-        state.Combos[0] = new([], cards: Enumerable.Repeat(new ComboCard("target", 5, 5), 5));
-        DrawResolutionResult small = new(new() { [new(5, [0, 35])] = ExactProbability.One });
-        Assert.That(TargetSurvivalUpperBound.TryCalculate(state.Cards, [state.Cards[0]], small, state.Combos, [], primary, budget), Is.Null);
-        Assert.That(budget.Spent, Is.LessThan(100));
     }
 
     [Test, Explicit("Frozen survival native/WASM matrix export")]

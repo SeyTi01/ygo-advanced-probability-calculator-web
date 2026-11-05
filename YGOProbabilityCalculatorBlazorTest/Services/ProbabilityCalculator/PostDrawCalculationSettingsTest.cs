@@ -1,16 +1,22 @@
+using System.Numerics;
 using System.Text.Json.Nodes;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
+using CP = CardProbability;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture]
 public class PostDrawCalculationSettingsTest {
+    private static CP.CalculationResult RunEngine(List<Card> deck, int hand, List<Combo> combos, IReadOnlyList<ComboGroup> groups, CalculationStoragePolicy policy) {
+        CP.CalculationRequest request = new CalculationRequestAdapter(deck, true).Create(combos, hand, groups);
+        return CP.CalculationEngine.Calculate(request, new CP.CalculationOptions(CP.CalculationMode.Exact,
+            new CP.ExecutionPolicy(CalculationWorkPolicy.Interactive.WorkUnits, policy.EntryLimit, policy.CellLimit)));
+    }
+
     [Test]
     public void MissingAndDefaultNativeAndWorkerOptionsHonorSavedCosts() {
         CategoryBase role = new("Role");
@@ -18,15 +24,13 @@ public class PostDrawCalculationSettingsTest {
         List<Combo> combos = [new([new(role, 5, 5)], "Five", groupId: "g")];
         List<ComboGroup> groups = [new("g", "Group")];
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 5, combos, groups);
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult result = new DrawEffectCalculation(deck, 5, budget).Calculate(combos, groups);
-        ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+        ProbabilityCalculatorService service = new();
+        ProbabilityCalculationResult expected = service.CalculateProbabilityResults(deck, combos, 5, groups);
+        ApplicationResultFractions result = ApplicationResultFractions.From(expected);
+        ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
         for (int i = 0; i < rows.Length; i++) {
             Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator));
         }
-        ProbabilityCalculatorService service = new();
-        ProbabilityCalculationResult expected = result.ToPublic(combos, groups, budget);
-        SearchAvailabilityCertificateTest.AssertPrimary(expected, service.CalculateProbabilityResults(deck, combos, 5, groups));
         Assert.That(service.CalculateProbabilityForCombos(deck, combos, 5), Is.EqualTo(expected.TotalProbability));
         Assert.That(service.CalculateProbabilityForCombos(deck, combos, 5, CalculationWorkPolicy.Default, options: new()), Is.EqualTo(expected.TotalProbability));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 5, groups);
@@ -55,19 +59,6 @@ public class PostDrawCalculationSettingsTest {
     }
 
     [Test]
-    public void AdvancedWithoutDiscardsHasIdenticalFixedDrawWork() {
-        List<Card> deck = [new([], 3, id: "effect", drawCount: 2), new([], 37, id: "r")];
-        List<Combo> combos = [new([], cards: [new("effect", 1, 5)])];
-        WorkBudget basic = new(CalculationWorkPolicy.Interactive);
-        WorkBudget advanced = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult expected = new DrawEffectCalculation(deck, 5, basic).Calculate(combos, []);
-        ExactCalculationResult actual = new DrawEffectCalculation(deck, 5, advanced).Calculate(combos, []);
-        Assert.That(actual.Total, Is.EqualTo(expected.Total));
-        Assert.That(actual.Combos, Is.EqualTo(expected.Combos));
-        Assert.That(advanced.Spent, Is.EqualTo(basic.Spent));
-    }
-
-    [Test]
     public void MixedPostDrawMapsMatchPhysicalOracleAcrossAllStorageTiers() {
         CategoryBase a = new("A");
         CategoryBase b = new("B");
@@ -82,18 +73,17 @@ public class PostDrawCalculationSettingsTest {
         foreach (CalculationStoragePolicy policy in new[] {
             CalculationStoragePolicy.Standard, CalculationStoragePolicy.High, CalculationStoragePolicy.VeryHigh
         }) {
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive, policy);
-            PostDrawCalculation calculation = new(deck, 2, budget);
-            ExactCalculationResult result = calculation.Calculate(combos, groups);
-            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+            CP.CalculationResult result = RunEngine(deck, 2, combos, groups, policy);
+            Assert.That(result.Status, Is.EqualTo(CP.CalculationStatus.Completed));
+            CP.RationalProbability[] rows = [result.Total!.Primary, .. result.Goals.Select(goal => goal.Value.Primary), .. result.Groups.Select(group => group.Value.Primary)];
             for (int i = 0; i < rows.Length; i++) {
-                Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator));
+                Assert.That(BigInteger.Parse(rows[i].Numerator) * oracle.Total,
+                    Is.EqualTo(oracle.Wins[i] * BigInteger.Parse(rows[i].Denominator)));
             }
-            Assert.That(calculation.TerminalStates, Is.GreaterThan(0));
             if (work is not null) {
-                Assert.That(budget.Spent, Is.EqualTo(work));
+                Assert.That(result.Metrics.WorkSpent, Is.EqualTo(work));
             }
-            work = budget.Spent;
+            work = result.Metrics.WorkSpent;
         }
     }
 
@@ -105,25 +95,22 @@ public class PostDrawCalculationSettingsTest {
         List<Card> deck = [new([role], 358, id: "r"), new([], id: "f"),
             new([], id: "effect", drawCount: 3, drawOncePerTurn: false, postDrawDiscardCount: 2)];
         List<Combo> combos = [new([new(role, 1, 0, RequirementMaximumMode.HandSize)])];
-        ProbabilityCalculationLimitException failure = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new PostDrawCalculation(deck, 5, new(CalculationWorkPolicy.Interactive)).Calculate(combos, []))!;
-        Assert.That(failure.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-        ExactCalculationResult? previous = null;
+        Assert.That(RunEngine(deck, 5, combos, [], CalculationStoragePolicy.Standard).Status, Is.EqualTo(CP.CalculationStatus.StorageLimit));
+        CP.CalculationResult? previous = null;
         long? work = null;
         foreach (CalculationStoragePolicy policy in new[] { CalculationStoragePolicy.High, CalculationStoragePolicy.VeryHigh }) {
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive, policy);
-            PostDrawCalculation calculation = new(deck, 5, budget);
-            ExactCalculationResult result = calculation.Calculate(combos, []);
-            Assert.That(result.Total.Numerator, Is.EqualTo(result.Total.Denominator));
-            Assert.That(calculation.PeakCells, Is.GreaterThan(CalculationStoragePolicy.Standard.CellLimit));
-            Assert.That(calculation.PeakCells, Is.LessThanOrEqualTo(policy.CellLimit));
+            CP.CalculationResult result = RunEngine(deck, 5, combos, [], policy);
+            Assert.That(result.Status, Is.EqualTo(CP.CalculationStatus.Completed));
+            Assert.That(result.Total!.Primary.Numerator, Is.EqualTo(result.Total.Primary.Denominator));
+            Assert.That(result.Metrics.PeakCells, Is.GreaterThan(CalculationStoragePolicy.Standard.CellLimit));
+            Assert.That(result.Metrics.PeakCells, Is.LessThanOrEqualTo(policy.CellLimit));
             if (previous is not null) {
                 Assert.That(result.Total, Is.EqualTo(previous.Total));
-                Assert.That(result.Combos, Is.EqualTo(previous.Combos));
-                Assert.That(budget.Spent, Is.EqualTo(work));
+                Assert.That(result.Goals, Is.EqualTo(previous.Goals));
+                Assert.That(result.Metrics.WorkSpent, Is.EqualTo(work));
             }
             previous = result;
-            work = budget.Spent;
+            work = result.Metrics.WorkSpent;
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, combos, 5, [], CalculationWorkPolicy.Interactive,
                 storagePolicy: policy, options: new());
             Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability, Is.EqualTo(1));

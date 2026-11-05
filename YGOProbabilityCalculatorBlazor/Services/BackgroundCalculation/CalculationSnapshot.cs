@@ -4,7 +4,6 @@ using System.Globalization;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 
@@ -190,7 +189,6 @@ public static class CalculationWire {
     ) {
         CalculationResponse response;
         CalculationModel mode = CalculationModel.Fast;
-        WorkBudget? budget = null;
         remaining = 0;
 
         try {
@@ -261,15 +259,15 @@ public static class CalculationWire {
                 }
                 workPolicy = new(allowance);
             }
-            budget = new(execution == WorkExecution.Bounded ? workPolicy : CalculationWorkPolicy.Unlimited, storagePolicy);
-
-            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateWithBudget(
+            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateCore(
                 cards,
                 combos,
                 input.HandSize,
                 input.Groups,
-                budget,
+                execution == WorkExecution.Bounded ? workPolicy : CalculationWorkPolicy.Unlimited,
+                storagePolicy,
                 input.Options,
+                out remaining,
                 physicalFast: remainingWork is not null || execution == WorkExecution.ProgressiveExact
             );
 
@@ -292,10 +290,6 @@ public static class CalculationWire {
         catch (Exception ex) {
             response = new(null, ex.Message, FailureKind: CalculationFailureKind.Error);
         }
-        finally {
-            remaining = budget?.Remaining ?? 0;
-        }
-
         return JsonSerializer.Serialize(response, CalculationJsonContext.Default.CalculationResponse);
     }
 

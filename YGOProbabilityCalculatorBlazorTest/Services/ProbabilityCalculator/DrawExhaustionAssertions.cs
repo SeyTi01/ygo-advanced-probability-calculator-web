@@ -2,9 +2,8 @@ using System.Globalization;
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -22,50 +21,45 @@ internal static class DrawExhaustionAssertions {
         ];
         List<ComboGroup> groups = [new("routes", "Routes"), new("empty", "Empty")];
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, handSize, combos, groups);
-
-        ExactCalculationResult basic = new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive))
-            .Calculate(combos, groups);
-        ExactCalculationResult advanced = new PostDrawCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive))
-            .Calculate(combos, groups);
-
-        AssertRows(basic, oracle);
-        AssertRows(advanced, oracle);
-        AssertHandCompositions(new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive)), oracle);
-        AssertHandCompositions(new PostDrawCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive)), oracle);
+        foreach (CalculationModel mode in new[] { CalculationModel.Fast, CalculationModel.Exact }) {
+            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+                deck, combos, handSize, groups, CalculationWorkPolicy.Interactive, new(Mode: mode));
+            AssertRows(ApplicationResultFractions.From(result), oracle);
+            AssertHandCompositions(deck, handSize, mode, oracle);
+        }
     }
 
     internal static void AssertAdvancedMatchesOracle(List<Card> deck, int handSize, List<Combo> combos, List<ComboGroup> groups) {
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, handSize, combos, groups);
-        ExactCalculationResult result = new PostDrawCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive))
-            .Calculate(combos, groups);
-
-        AssertRows(result, oracle);
+        ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+            deck, combos, handSize, groups, CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.Exact));
+        AssertRows(ApplicationResultFractions.From(result), oracle);
     }
 
-    private static void AssertRows(ExactCalculationResult result, DrawSequenceOracle.Counts oracle) {
-        ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+    private static void AssertRows(ApplicationResultFractions result, DrawSequenceOracle.Counts oracle) {
+        ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
         Assert.That(rows.Length, Is.EqualTo(oracle.Wins.Length));
         for (int i = 0; i < rows.Length; i++) {
             AssertProbability(rows[i], oracle.Wins[i], oracle.Total, $"Result row {i}");
         }
     }
 
-    private static void AssertHandCompositions(
-        DrawEffectCalculation calculation,
-        DrawSequenceOracle.Counts oracle
-    ) {
+    private static void AssertHandCompositions(List<Card> deck, int handSize, CalculationModel mode, DrawSequenceOracle.Counts oracle) {
         List<Combo> handCombos = CreateHandCombos(oracle);
-        ExactCalculationResult result = calculation.Calculate(handCombos, [new("all-hands", "All final hands")]);
-        AssertHandRows(result, oracle);
-    }
-
-    private static void AssertHandCompositions(
-        PostDrawCalculation calculation,
-        DrawSequenceOracle.Counts oracle
-    ) {
-        List<Combo> handCombos = CreateHandCombos(oracle);
-        ExactCalculationResult result = calculation.Calculate(handCombos, [new("all-hands", "All final hands")]);
-        AssertHandRows(result, oracle);
+        List<KeyValuePair<string, BigInteger>> expectedHands = oracle.Hands.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToList();
+        CardProbability.CalculationRequest request = new CalculationRequestAdapter(deck, true).Create(
+            handCombos, handSize, [new("all-hands", "All final hands")]);
+        CardProbability.CalculationResult result = CardProbability.CalculationEngine.Calculate(request, new(
+            mode == CalculationModel.Exact ? CardProbability.CalculationMode.Exact : CardProbability.CalculationMode.Fast));
+        Assert.That(result.Status, Is.EqualTo(CardProbability.CalculationStatus.Completed));
+        ApplicationResultFractions fractions = ApplicationResultFractions.From(result);
+        Assert.That(fractions.Combos, Has.Length.EqualTo(expectedHands.Count));
+        for (int i = 0; i < expectedHands.Count; i++) {
+            AssertProbability(fractions.Combos[i], expectedHands[i].Value, oracle.Total, $"Final hand {expectedHands[i].Key}");
+        }
+        BigInteger successful = oracle.Total - oracle.Failed;
+        AssertProbability(fractions.Total, successful, oracle.Total, "All successful final hands");
+        AssertProbability(fractions.Groups.Single(), successful, oracle.Total, "Final hand group");
     }
 
     private static List<Combo> CreateHandCombos(DrawSequenceOracle.Counts oracle) {
@@ -82,19 +76,6 @@ internal static class DrawExhaustionAssertions {
         return combos;
     }
 
-    private static void AssertHandRows(ExactCalculationResult result, DrawSequenceOracle.Counts oracle) {
-        List<KeyValuePair<string, BigInteger>> expectedHands = oracle.Hands.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToList();
-        Assert.That(result.Combos.Length, Is.EqualTo(expectedHands.Count));
-        for (int i = 0; i < expectedHands.Count; i++) {
-            AssertProbability(result.Combos[i], expectedHands[i].Value, oracle.Total, $"Final hand {expectedHands[i].Key}");
-        }
-
-        BigInteger successfulOrders = oracle.Total - oracle.Failed;
-        AssertProbability(result.Total, successfulOrders, oracle.Total, "All successful final hands");
-        AssertProbability(result.Groups.Single(), successfulOrders, oracle.Total, "Final hand group");
-    }
-
-    private static void AssertProbability(ExactProbability actual, BigInteger expectedNumerator, BigInteger expectedDenominator, string message) {
-        Assert.That(actual.Numerator * expectedDenominator, Is.EqualTo(expectedNumerator * actual.Denominator), message);
-    }
+    private static void AssertProbability(ApplicationFraction actual, BigInteger numerator, BigInteger denominator, string message) =>
+        Assert.That(actual.Numerator * denominator, Is.EqualTo(numerator * actual.Denominator), message);
 }

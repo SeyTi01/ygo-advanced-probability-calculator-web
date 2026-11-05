@@ -29,7 +29,7 @@ public sealed record SearchAvailabilityCertificate(
     ImmutableArray<SearchAvailabilityInterval> Combos = default,
     ImmutableArray<SearchAvailabilityInterval> Groups = default
 ) {
-    public string Reference => ProbabilityCalculator.Certification.CalculationCapability.Reference;
+    public string Reference => CalculationResultContract.EffectsReference;
 
     internal static SearchAvailabilityCertificate Unavailable(SearchAvailabilityStatus status, string detail) =>
         new(status, detail, null, [], []);

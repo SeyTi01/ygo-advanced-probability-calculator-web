@@ -3,8 +3,6 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -119,9 +117,6 @@ public class MixedDeferredTest {
         Assert.That(Cost.Identity, Is.Not.EqualTo(Removal.Identity));
         Assert.That(DrawSequenceOracle.Resolve([source, eligible, deck[5], pooled], 1, Combos()), Is.Not.Null);
         Assert.That(DrawSequenceOracle.Resolve([source, pooled, deck[5], eligible], 1, Combos()), Is.Null);
-        PostDrawCalculation calculation = new(deck, 2, new(CalculationWorkPolicy.Interactive));
-        calculation.Calculate(Combos(), Groups());
-        Assert.That(calculation.DeferredRows, Is.EqualTo(3));
         AssertExact(deck, 2);
     }
 
@@ -167,7 +162,6 @@ public class MixedDeferredTest {
                 .Concat(actual.GroupProbabilities.Select(row => row.Probability)),
                 Is.EqualTo(expected.Wins.Select(win => (double)win / (double)expected.Total)).Within(1e-14));
         }
-        Assert.That(DrawExecutionAssessment.Assess(deck, Combos(), 2, true).Path, Is.EqualTo(DrawExecutionPath.DeferredConditional));
         Assert.That(deck[0].PreDrawRemovalCount, Is.EqualTo(1));
         Assert.That(deck[1].PostDrawDiscardCount, Is.EqualTo(1));
     }
@@ -175,13 +169,10 @@ public class MixedDeferredTest {
     [TestCase(true), TestCase(false)]
     public async Task CompleteMixedExampleUsesStandardStorage(bool vision) {
         SessionState session = await RealisticMixedFixture.Load(vision);
-        PostDrawCalculation calculation = new(session.Cards, 5, new(CalculationWorkPolicy.Interactive));
-        ExactCalculationResult result = calculation.Calculate(session.Combos, session.ComboGroups);
+        ApplicationResultFractions result = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            session.Cards, session.Combos, 5, session.ComboGroups, CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.Exact)));
         Assert.That(result.Combos, Has.Length.EqualTo(8));
         Assert.That(result.Groups, Has.Length.EqualTo(2));
-        Assert.That(calculation.DeferredRows, Is.GreaterThan(1));
-        Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 5, true).Path,
-            Is.EqualTo(DrawExecutionPath.DeferredConditional));
     }
 
     private static DrawSequenceOracle.Counts AssertExact(List<Card> deck, int hand, bool deferred = true) {
@@ -197,33 +188,20 @@ public class MixedDeferredTest {
                 encounter = expected;
             }
             foreach (List<Card> ordered in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
-                PostDrawCalculation calculation = new(ordered, hand, new(CalculationWorkPolicy.Interactive), priority);
-                AssertRows(calculation.Calculate(Combos(), Groups()), expected);
-                Assert.That(calculation.DeferredRows > 0, Is.EqualTo(deferred));
-                AssertRows(new PostDrawCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), priority,
-                    deferIdentities: false).Calculate(Combos(), Groups()), expected);
-                // Exercise the representation change even on these small labeled decks,
-                // with and without deferred identities. Keep the oracle independent.
-                foreach (bool pool in new[] { false, true }) {
-                    PostDrawCalculation packed = new(ordered, hand, new(CalculationWorkPolicy.Interactive), priority,
-                        deferIdentities: pool, compactFrontierThreshold: 0);
-                    AssertRows(packed.Calculate(Combos(), Groups()), expected);
-                    Assert.That(packed.PackedLayers, Is.GreaterThan(0));
-                }
-                AssertRows(new DrawEffectCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), priority)
-                    .Calculate(Combos(), Groups()), expected);
-                ExactCalculationResult total = new PostDrawCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), priority)
-                    .Calculate(Combos(), Groups(), totalOnly: true);
-                Assert.That(total.Total.Numerator * expected.Total, Is.EqualTo(expected.Wins[0] * total.Total.Denominator));
+                ProbabilityCalculatorService service = new();
+                ProbabilityCalculationResult result = service.CalculateProbabilityResults(ordered, Combos(), hand, Groups(),
+                    CalculationWorkPolicy.Interactive, new(priority, Mode: CalculationModel.Exact));
+                AssertRows(ApplicationResultFractions.From(result), expected);
+                double total = service.CalculateProbabilityForCombos(ordered, Combos(), hand,
+                    CalculationWorkPolicy.Interactive, new(priority, Mode: CalculationModel.Exact));
+                Assert.That(total, Is.EqualTo((double)expected.Wins[0] / (double)expected.Total).Within(1e-14));
             }
         }
-        Assert.That(DrawExecutionAssessment.Assess(deck, Combos(), hand, true).Path,
-            Is.EqualTo(deferred ? DrawExecutionPath.DeferredConditional : DrawExecutionPath.OrderedFrontier));
         return encounter;
     }
 
-    private static void AssertRows(ExactCalculationResult result, DrawSequenceOracle.Counts expected) {
-        ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+    private static void AssertRows(ApplicationResultFractions result, DrawSequenceOracle.Counts expected) {
+        ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
         Assert.That(rows, Has.Length.EqualTo(expected.Wins.Length));
         for (int i = 0; i < rows.Length; i++) {
             Assert.That(rows[i].Numerator * expected.Total, Is.EqualTo(expected.Wins[i] * rows[i].Denominator), $"row {i}");

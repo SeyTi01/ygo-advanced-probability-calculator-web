@@ -3,47 +3,37 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture, NonParallelizable]
 public sealed class OrderedSearchCertificateTest {
-    [TestCase(false, false), TestCase(false, true), TestCase(true, false), TestCase(true, true)]
-    public void ForcedOrderedPoolsAndClassesBoundEveryLabeledPhysicalRow(bool defer, bool merge) {
-        int deferred = 0;
+    [Test]
+    public void OrderedPublishedBoundsCoverEveryLabeledPhysicalRow() {
         int strictImprovements = 0;
         foreach (SearchCertificateFixtures.Fixture fixture in SearchCertificateFixtures.OrderedCoverage()) {
-            WorkBudget budget = new(CalculationWorkPolicy.Default);
             DrawActivationPriority? priority = fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority);
-            PostDrawCalculation execution = new(fixture.Deck, fixture.Hand, budget, priority, deferIdentities: defer);
-            ExactCalculationResult upper = execution.CalculateSearch(fixture.Combos, fixture.Groups, false,
-                new(fixture.Deck, budget), coalesceOrdinary: merge);
-            ExactCalculationResult witness = execution.CalculateSearchLower(fixture.Combos, fixture.Groups, declineSearch: true);
-            ExactCalculationResult elementary = execution.CalculateSearchLower(fixture.Combos, fixture.Groups, declineSearch: false, useKnownLoss: false);
-            ExactCalculationResult lower = execution.CalculateSearchLower(fixture.Combos, fixture.Groups, declineSearch: false);
+            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+                fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default, new(priority, true));
+            ApplicationResultFractions fractions = ApplicationResultFractions.From(result);
+            ApplicationFraction[] primary = [fractions.Total, .. fractions.Combos, .. fractions.Groups];
+            SearchAvailabilityCertificate certificate = result.SearchAvailability!;
+            SearchAvailabilityInterval[] bounds = [certificate.Total!, .. certificate.Combos, .. certificate.Groups];
             SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, fixture.Priority);
-            ExactProbability[] u = Rows(upper), l = Rows(lower), w = Rows(witness), old = Rows(elementary);
-            for (int row = 0; row < u.Length; row++) {
-                Assert.That(u[row].Numerator * oracle.Outcomes, Is.EqualTo(oracle.Wins[2][row] * u[row].Denominator), fixture.Name);
-                Assert.That(w[row].Numerator * oracle.Outcomes, Is.EqualTo(oracle.Wins[4][row] * w[row].Denominator), fixture.Name);
-                Assert.That(l[row].Numerator * w[row].Denominator, Is.GreaterThanOrEqualTo(w[row].Numerator * l[row].Denominator), fixture.Name);
-                Assert.That(l[row].Numerator * oracle.Outcomes, Is.LessThanOrEqualTo(oracle.Wins[1][row] * l[row].Denominator), fixture.Name);
-                Assert.That(old[row].Numerator * l[row].Denominator, Is.LessThanOrEqualTo(l[row].Numerator * old[row].Denominator), fixture.Name);
-                Assert.That(old[row].Numerator * oracle.Outcomes, Is.LessThanOrEqualTo(oracle.Wins[3][row] * old[row].Denominator),
-                    fixture.Name + ": the elementary bound covers arbitrary losses; known consumption excludes some of those allocations");
-                if (l[row].Numerator * w[row].Denominator > w[row].Numerator * l[row].Denominator) { strictImprovements++; }
-            }
-            if (execution.Route == SolverRoute.SearchOrderedDeferred) { deferred++; }
-            if (defer && merge) {
-                TestContext.Out.WriteLine($"{fixture.Name}: combo 1 witness={w[1].ToFraction()}, class={l[1].ToFraction()}, upper={u[1].ToFraction()}");
+            for (int row = 0; row < primary.Length; row++) {
+                ApplicationFraction lower = ApplicationFraction.From(bounds[row].Lower);
+                ApplicationFraction upper = ApplicationFraction.From(bounds[row].Upper);
+                Assert.That(primary[row].Numerator * oracle.Outcomes, Is.EqualTo(oracle.Wins[2][row] * primary[row].Denominator), fixture.Name);
+                Assert.That(lower.Numerator * oracle.Outcomes, Is.GreaterThanOrEqualTo(oracle.Wins[4][row] * lower.Denominator), fixture.Name);
+                Assert.That(lower.Numerator * oracle.Outcomes, Is.GreaterThanOrEqualTo(oracle.Wins[0][row] * lower.Denominator), fixture.Name);
+                Assert.That(lower.Numerator * oracle.Outcomes, Is.LessThanOrEqualTo(oracle.Wins[1][row] * lower.Denominator), fixture.Name);
+                Assert.That(upper.Numerator * oracle.Outcomes, Is.GreaterThanOrEqualTo(oracle.Wins[1][row] * upper.Denominator), fixture.Name);
+                if (lower.Numerator * oracle.Outcomes > oracle.Wins[4][row] * lower.Denominator) {
+                    strictImprovements++;
+                }
             }
         }
-        Assert.That(strictImprovements, Is.GreaterThan(0), "Actually exercises search survival beyond the empty assignment.");
-        Assert.That(deferred, defer ? Is.GreaterThan(0) : Is.Zero);
+        Assert.That(strictImprovements, Is.GreaterThan(0));
     }
 
     [Test]
@@ -84,30 +74,34 @@ public sealed class OrderedSearchCertificateTest {
     [Test]
     public void WorkLimitedRefinementRetainsOnlyACompletedWitness() {
         SearchCertificateFixtures.Fixture fixture = SearchCertificateFixtures.Fixtures().Single(value => value.Name == "minimal-filtered-target-discard");
-        // Locate a deterministic boundary after the cheap pass, then rerun with
-        // a request-wide limit there. Never feed partial terminal sums to the UI.
-        WorkBudget measure = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation first = new(fixture.Deck, fixture.Hand, measure);
-        ExactCalculationResult upper = first.Calculate(fixture.Combos, fixture.Groups);
-        first.DescribeCapability();
-        long primaryWork = measure.Spent;
-        ExactCalculationResult witness = first.SearchExecution!.CalculateLower(fixture.Combos, fixture.Groups, true);
-        long witnessWork = measure.Spent - primaryWork;
+        ProbabilityCalculatorService service = new();
+        ProbabilityCalculationResult reference = service.CalculateProbabilityResults(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups,
+            CalculationWorkPolicy.Default, new(CertifySearchAvailability: true));
+        SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups);
+        ApplicationFraction witness = new(oracle.Wins[4][0], oracle.Outcomes);
         bool found = false;
-        for (long allowance = primaryWork + witnessWork; allowance < primaryWork + witnessWork + 5000; allowance += 100) {
-            WorkBudget budget = new(new(allowance));
-            DrawEffectCalculation execution = new(fixture.Deck, fixture.Hand, budget);
-            ExactCalculationResult actual = execution.Calculate(fixture.Combos, fixture.Groups);
-            SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(fixture.Combos, fixture.Groups, actual, budget, execution);
-            if (certificate.Status == SearchAvailabilityStatus.Bounded && certificate.Detail.Contains("Limited refinement")
+        for (long allowance = 100; allowance <= 50000; allowance += 100) {
+            ProbabilityCalculationResult result;
+            try {
+                result = service.CalculateProbabilityResults(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups,
+                    new(allowance), new(CertifySearchAvailability: true));
+            }
+            catch (ProbabilityCalculationLimitException) {
+                continue;
+            }
+            SearchAvailabilityCertificate? certificate = result.SearchAvailability;
+            if (certificate?.Status == SearchAvailabilityStatus.Bounded && certificate.Detail.Contains("Limited refinement")
                 && certificate.Total!.Lower.Numerator != "0") {
-                Assert.That(certificate.Total.Lower, Is.EqualTo(witness.Total.ToFraction()));
-                Assert.That(certificate.Total.Upper, Is.EqualTo(upper.Total.ToFraction()));
+                Assert.That(certificate.Total.Lower, Is.EqualTo(witness.ToFraction()));
+                Assert.That(certificate.Total.Upper, Is.EqualTo(reference.Contract!.Fractions!.Total));
+                Assert.That(result.Contract!.Fractions!.Total, Is.EqualTo(reference.Contract.Fractions.Total));
+                Assert.That(result.Contract.Fractions.Combos, Is.EqualTo(reference.Contract.Fractions.Combos));
+                Assert.That(result.Contract.Fractions.Groups, Is.EqualTo(reference.Contract.Fractions.Groups));
                 found = true;
                 break;
             }
         }
-        Assert.That(found, Is.True, "The completed witness must survive exhaustion in the stronger pass.");
+        Assert.That(found, Is.True);
     }
 
     [Test]
@@ -121,11 +115,10 @@ public sealed class OrderedSearchCertificateTest {
             Assert.That(certificate.Total, Is.Not.Null, fixture.Name + ": " + certificate.Detail);
             Assert.That(certificate.Combos.Length, Is.EqualTo(fixture.Combos.Count));
             Assert.That(certificate.Groups.Length, Is.EqualTo(fixture.Groups.Count));
-            string key = $"{result.Contract!.SolverRoute}/{certificate.Status}/{certificate.Total!.Informativeness}";
+            string key = $"{result.Contract!.Accuracy}/{certificate.Status}/{certificate.Total!.Informativeness}";
             coverage[key] = coverage.GetValueOrDefault(key) + 1;
         }
         foreach ((string key, int count) in coverage.OrderBy(pair => pair.Key)) { TestContext.Out.WriteLine($"{key}: {count}"); }
     }
 
-    private static ExactProbability[] Rows(ExactCalculationResult result) => [result.Total, .. result.Combos, .. result.Groups];
 }

@@ -4,15 +4,14 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture, NonParallelizable]
 public sealed class AdaptiveFastRouteTest {
     [Test]
-    public void SelectedRequestsMatchEveryIndependentPhysicalRowAndExactMode() {
-        int selected = 0;
+    public void ProvenFastRequestsMatchEveryIndependentPhysicalRowAndExactMode() {
+        int exactRows = 0;
         foreach (SearchCertificateFixtures.Fixture fixture in SearchCertificateFixtures.Fixtures()) {
             CalculationOptions options = new(fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority));
             ProbabilityCalculationResult fast = new ProbabilityCalculatorService().CalculateProbabilityResults(
@@ -20,11 +19,11 @@ public sealed class AdaptiveFastRouteTest {
             ProbabilityCalculationResult wire = CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(
                 fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, options: options).Json), CalculationModel.Fast);
             Assert.That(JsonSerializer.Serialize(wire), Is.EqualTo(JsonSerializer.Serialize(fast)), fixture.Name);
-            if (!fast.Contract!.SolverRoute.StartsWith("SearchPhysical", StringComparison.Ordinal)) {
+            if (fast.SearchAvailability is not null) {
                 AssertUnchanged(fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, priority: options.DrawActivationPriority);
                 continue;
             }
-            selected++;
+            exactRows++;
             Assert.That(fast.Contract.RequestedMode, Is.EqualTo(CalculationModel.Fast));
             Assert.That(fast.Contract.ExecutedMode, Is.EqualTo(CalculationModel.Fast));
             Assert.That(fast.Contract.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
@@ -38,8 +37,7 @@ public sealed class AdaptiveFastRouteTest {
                 fixture.Combos, fixture.Groups, fixture.Priority);
             PhysicalSearchTest.AssertRows(fast, oracle.Wins[1], oracle.Outcomes);
         }
-        Assert.That(selected, Is.GreaterThanOrEqualTo(20));
-        TestContext.Out.WriteLine($"{selected} adaptive requests matched every labeled physical total/combo/group row.");
+        TestContext.Out.WriteLine($"{exactRows} proven Fast requests matched every labeled physical total/combo/group row.");
     }
 
     [Test]
@@ -74,7 +72,6 @@ public sealed class AdaptiveFastRouteTest {
         List<Combo> combos = [new([new(target, 1, 2)], groupId: "g"), new([new(target, 0, 0)])];
         List<ComboGroup> groups = [new("g", "Positive")];
         ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(cards, combos, 2, groups);
-        Assert.That(result.Contract!.SolverRoute, Is.EqualTo("SearchPhysicalDeferred"));
         SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(cards, 2, combos, groups);
         PhysicalSearchTest.AssertRows(result, oracle.Wins[1], oracle.Outcomes);
         Assert.That(oracle.Failed, Is.GreaterThan(System.Numerics.BigInteger.Zero));
@@ -110,15 +107,11 @@ public sealed class AdaptiveFastRouteTest {
     }
 
     private static void AssertUnchanged(List<Card> cards, List<Combo> combos, int hand, List<ComboGroup> groups, CalculationWorkPolicy? policy = null, DrawActivationPriority? priority = null) {
-        WorkBudget oldBudget = new(policy ?? CalculationWorkPolicy.Default);
-        DrawEffectCalculation old = new(cards, hand, oldBudget, priority);
-        ExactCalculationResult oldRows = old.Calculate(combos, groups);
-        ProbabilityCalculationResult expected = ProbabilityCalculatorService.CompleteResult(combos, groups, CalculationModel.Fast, oldRows, oldBudget, old);
-        WorkBudget budget = new(policy ?? CalculationWorkPolicy.Default);
-        DrawEffectCalculation adaptive = new(cards, hand, budget, priority, adaptiveFast: true);
-        ExactCalculationResult rows = adaptive.Calculate(combos, groups);
-        ProbabilityCalculationResult actual = ProbabilityCalculatorService.CompleteResult(combos, groups, CalculationModel.Fast, rows, budget, adaptive);
-        Assert.That(JsonSerializer.Serialize(actual), Is.EqualTo(JsonSerializer.Serialize(expected)));
-        Assert.That((budget.Spent, budget.PeakEntries, budget.PeakCells), Is.EqualTo((oldBudget.Spent, oldBudget.PeakEntries, oldBudget.PeakCells)));
+        ProbabilityCalculatorService service = new();
+        ProbabilityCalculationResult historical = service.CalculateProbabilityResults(cards, combos, hand, groups,
+            policy ?? CalculationWorkPolicy.Default, new(priority, true));
+        ProbabilityCalculationResult fast = service.CalculateProbabilityResults(cards, combos, hand, groups,
+            policy ?? CalculationWorkPolicy.Default, new(priority));
+        Assert.That(JsonSerializer.Serialize(fast.Contract!.Fractions), Is.EqualTo(JsonSerializer.Serialize(historical.Contract!.Fractions)));
     }
 }

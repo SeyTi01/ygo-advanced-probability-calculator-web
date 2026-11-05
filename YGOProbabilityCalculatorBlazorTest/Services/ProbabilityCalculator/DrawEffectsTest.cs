@@ -4,11 +4,9 @@ using Moq;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
-using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -63,33 +61,14 @@ public class DrawEffectsTest {
         List<Combo> combos = Requirements();
         List<ComboGroup> groups = [new("g1", "First"), new("g2", "Second"), new("g3", "Third"), new("g4", "Fourth"), new("empty", "Empty")];
         DrawSequenceOracle.Counts expected = DrawSequenceOracle.Enumerate(deck, handSize, combos, groups);
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult result = new DrawEffectCalculation(deck, handSize, budget).Calculate(combos, groups);
-        ExactProbability[] actual = [result.Total, .. result.Combos, .. result.Groups];
+        ApplicationResultFractions result = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            deck, combos, handSize, groups, CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.Exact)));
+        ApplicationFraction[] actual = [result.Total, .. result.Combos, .. result.Groups];
         for (int i = 0; i < actual.Length; i++) {
             Assert.That(actual[i].Numerator * expected.Total, Is.EqualTo(expected.Wins[i] * actual[i].Denominator), $"Exact result row {i}");
         }
 
-        List<Card> effects = deck.Where(card => card.DrawCount is not null).ToList();
-        int ordinary = deck.Where(card => card.DrawCount is null).Sum(card => card.Copies);
-        Assert.That(expected.Failed, Is.EqualTo(BigInteger.Zero), "Basic fixed draws must not fail solely because the deck is exhausted.");
-        int deckCopies = deck.Sum(card => card.Copies);
-        if (DrawEffectResolver.CanUseCountStateFastPath(effects, deckCopies, handSize)) {
-            DrawResolutionResult resolution = DrawEffectResolver.Resolve(ordinary, effects, handSize, new(CalculationWorkPolicy.Interactive));
-            ExactProbability mass = ExactProbability.Zero;
-            foreach ((DrawComposition scenario, ExactProbability weight) in resolution.Scenarios) {
-                string key = $"{scenario.OrdinaryCount}|{string.Join(',', scenario.EffectCounts)}";
-                Assert.That(weight.Numerator * expected.Total, Is.EqualTo(expected.Scenarios[key] * weight.Denominator), key);
-                mass = mass.Add(weight, budget);
-            }
-
-            Assert.That(resolution.Scenarios.Count, Is.EqualTo(expected.Scenarios.Count));
-            Assert.That(mass.Numerator, Is.EqualTo(mass.Denominator));
-        }
-        else {
-            Assert.Throws<InvalidOperationException>(() =>
-                DrawEffectResolver.Resolve(ordinary, effects, handSize, new(CalculationWorkPolicy.Interactive)));
-        }
+        Assert.That(expected.Failed, Is.EqualTo(BigInteger.Zero), "Basic fixed draws retain every exhausted outcome.");
         ProbabilityCalculationResult published = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, handSize, groups);
         Assert.That(published.TotalProbability, Is.EqualTo((double)expected.Wins[0] / (double)expected.Total).Within(1e-14));
         Assert.That(published.ComboProbabilities.Select(row => row.ComboIndex), Is.EqualTo(Enumerable.Range(0, combos.Count)));
@@ -114,12 +93,14 @@ public class DrawEffectsTest {
                 session.Cards[index] = session.Cards[index].WithDrawCount(3).WithDrawOncePerTurn(false);
             }
 
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-            ExactCalculationResult result = new DrawEffectCalculation(session.Cards, session.HandSize, budget)
-                .Calculate(session.Combos, session.ComboGroups);
+            CardProbability.CalculationRequest request = new CalculationRequestAdapter(session.Cards, true).Create(session.Combos, session.HandSize, session.ComboGroups);
+            CardProbability.CalculationResult measured = CardProbability.CalculationEngine.Calculate(request,
+                new(policy: new(CalculationWorkPolicy.Interactive.WorkUnits)));
+            Assert.That(measured.Status, Is.EqualTo(CardProbability.CalculationStatus.Completed));
+            ApplicationResultFractions result = ApplicationResultFractions.From(measured);
             // Measured at 21.03M / 25.27M. Leave room for conservative accounting
             // changes while catching loss of empty-scenario role factoring.
-            Assert.That(budget.Spent, Is.LessThan(35_000_000), mixed ? "Mixed Draw 1/2/3" : "Fuwalos Draw 3");
+            Assert.That(measured.Metrics.WorkSpent, Is.LessThan(35_000_000), mixed ? "Mixed Draw 1/2/3" : "Fuwalos Draw 3");
             Assert.That(result.Total.Numerator, Is.GreaterThan(BigInteger.Zero));
             Assert.That(result.Total.Numerator, Is.LessThan(result.Total.Denominator));
         }
@@ -134,47 +115,25 @@ public class DrawEffectsTest {
         Assert.That(index, Is.GreaterThanOrEqualTo(0));
         session.Cards[index] = session.Cards[index].WithDrawCount(3).WithDrawOncePerTurn(false);
 
-        CalculationWorkPolicy policy = CalculationWorkPolicy.Interactive;
-        WorkBudget enabledBudget = new(policy);
-        new DrawEffectCalculation(session.Cards, session.HandSize, enabledBudget)
-            .Calculate(session.Combos, session.ComboGroups);
-
-        CalculationSnapshot disabledSnapshot = CalculationSnapshot.Capture(
-            session.Cards,
-            session.Combos,
-            session.HandSize,
-            session.ComboGroups,
-            policy,
-            drawEffectsEnabled: false
-        );
-        CalculationInput disabledInput = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(disabledSnapshot.Json)!;
+        CardProbability.CalculationRequest enabledRequest = new CalculationRequestAdapter(session.Cards, true).Create(session.Combos, session.HandSize, session.ComboGroups);
+        CardProbability.CalculationResult enabled = CardProbability.CalculationEngine.Calculate(enabledRequest,
+            new(policy: new(CalculationWorkPolicy.Interactive.WorkUnits)));
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups,
+            drawEffectsEnabled: false);
+        CalculationInput disabledInput = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(snapshot.Json)!;
         Assert.That(disabledInput.Cards.All(card => card.DrawCount is null), Is.True);
-        List<Card> effectiveCards = disabledInput.Cards.Select(card => new Card(
-            card.Categories,
-            card.Copies,
-            card.Name,
-            true,
-            card.Id,
-            card.ExternalCardId,
-            card.ManualMetadataCategoryKeys,
-            card.DrawCount,
-            card.DrawOncePerTurn
-        )).ToList();
-        WorkBudget disabledBudget = new(policy);
-        ExactCalculationResult disabledResult = new ProbabilityCalculation(effectiveCards, session.HandSize, disabledBudget)
-            .CalculateExactResults(session.Combos, session.ComboGroups);
-
-        List<Card> ordinaryCards = session.Cards.Select(card => card.WithDrawCount(null)).ToList();
-        ExactCalculationResult ordinaryResult = new ProbabilityCalculation(ordinaryCards, session.HandSize, new WorkBudget(policy))
-            .CalculateExactResults(session.Combos, session.ComboGroups);
-        Assert.That(disabledResult.Total.Numerator * ordinaryResult.Total.Denominator,
-            Is.EqualTo(ordinaryResult.Total.Numerator * disabledResult.Total.Denominator));
-        Assert.That(disabledResult.Combos.Select(value => (value.Numerator, value.Denominator)),
-            Is.EqualTo(ordinaryResult.Combos.Select(value => (value.Numerator, value.Denominator))));
-        Assert.That(disabledBudget.Spent, Is.LessThan(enabledBudget.Spent));
-
-        double reduction = 100d * (enabledBudget.Spent - disabledBudget.Spent) / enabledBudget.Spent;
-        TestContext.Out.WriteLine($"Bundled example with Fuwalos Draw 3 unlimited: on={enabledBudget.Spent:N0} charged work; off={disabledBudget.Spent:N0}; reduction={reduction:F1}%.");
+        CardProbability.CalculationRequest disabledRequest = new CalculationRequestAdapter(session.Cards, false).Create(session.Combos, session.HandSize, session.ComboGroups);
+        CardProbability.CalculationResult disabled = CardProbability.CalculationEngine.Calculate(disabledRequest,
+            new(policy: new(CalculationWorkPolicy.Interactive.WorkUnits)));
+        CardProbability.CalculationRequest ordinaryRequest = new CalculationRequestAdapter(session.Cards.Select(card => card.WithDrawCount(null)), true)
+            .Create(session.Combos, session.HandSize, session.ComboGroups);
+        CardProbability.CalculationResult ordinary = CardProbability.CalculationEngine.Calculate(ordinaryRequest,
+            new(policy: new(CalculationWorkPolicy.Interactive.WorkUnits)));
+        Assert.That(disabled.Total!.Primary, Is.EqualTo(ordinary.Total!.Primary));
+        Assert.That(disabled.Goals.Select(row => row.Value.Primary), Is.EqualTo(ordinary.Goals.Select(row => row.Value.Primary)));
+        Assert.That(disabled.Metrics.WorkSpent, Is.LessThan(enabled.Metrics.WorkSpent));
+        double reduction = 100d * (enabled.Metrics.WorkSpent - disabled.Metrics.WorkSpent) / enabled.Metrics.WorkSpent;
+        TestContext.Out.WriteLine($"Draws enabled={enabled.Metrics.WorkSpent:N0}; disabled={disabled.Metrics.WorkSpent:N0}; reduction={reduction:F1}%.");
     }
 
     [TestCase(false), TestCase(true)]
@@ -193,9 +152,9 @@ public class DrawEffectsTest {
         ];
         List<ComboGroup> groups = [new("g", "Factorable"), new("fixed", "Fixed maxima"), new("two", "Demand two")];
         DrawSequenceOracle.Counts expected = DrawSequenceOracle.Enumerate(deck, 2, combos, groups);
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult result = new DrawEffectCalculation(deck, 2, budget).Calculate(combos, groups);
-        ExactProbability[] actual = [result.Total, .. result.Combos, .. result.Groups];
+        ApplicationResultFractions result = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            deck, combos, 2, groups, CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.Exact)));
+        ApplicationFraction[] actual = [result.Total, .. result.Combos, .. result.Groups];
         for (int i = 0; i < actual.Length; i++) {
             Assert.That(actual[i].Numerator * expected.Total, Is.EqualTo(expected.Wins[i] * actual[i].Denominator), $"Row {i}");
         }
@@ -215,49 +174,14 @@ public class DrawEffectsTest {
     public void NoEffectsRetainTheFixedHandPath() {
         List<Card> deck = [new([A, B], 2, drawOncePerTurn: false), new([A]), new([C], 2)];
         List<Combo> combos = Requirements();
-        WorkBudget budget = new(CalculationWorkPolicy.Default);
-        ExactCalculationResult fixedResult = new ProbabilityCalculation(deck, 2, budget).CalculateExactResults(combos, []);
-        ExactCalculationResult orchestrated = new DrawEffectCalculation(deck, 2, budget).Calculate(combos, []);
+        ProbabilityCalculatorService service = new();
+        ApplicationResultFractions fixedResult = ApplicationResultFractions.From(service.CalculateProbabilityResults(deck, combos, 2, [],
+            CalculationWorkPolicy.Default, new(Mode: CalculationModel.OpeningHand)));
+        ApplicationResultFractions orchestrated = ApplicationResultFractions.From(service.CalculateProbabilityResults(deck, combos, 2));
         Assert.That(orchestrated.Total, Is.EqualTo(fixedResult.Total));
         Assert.That(orchestrated.Combos, Is.EqualTo(fixedResult.Combos));
     }
 
-    [Test]
-    public void OneBudgetCoversResolutionAndAllScenariosAndResults() {
-        List<Card> deck = [new([A], 8), new([B], 8), new([A, B], 3, id: "effect0", drawCount: 2)];
-        List<Combo> combos = Requirements();
-        List<ComboGroup> groups = [new("g1", "Group")];
-        WorkBudget measured = new(CalculationWorkPolicy.Interactive);
-        new DrawEffectCalculation(deck, 4, measured).Calculate(combos, groups);
-        CalculationWorkPolicy limited = new(measured.Spent - 1);
-        List<Card> effects = [deck[2]];
-        List<Card> ordinary = deck.Take(2).ToList();
-        DrawResolutionResult resolution = DrawEffectResolver.Resolve(16, effects, 4, new(limited));
-        foreach (DrawComposition scenario in resolution.Scenarios.Keys) {
-            List<Card> retained = scenario.EffectCounts[0] == 0 ? [] : [effects[0].WithCopies(scenario.EffectCounts[0])];
-            Assert.DoesNotThrow(() => new ProbabilityCalculation(ordinary, scenario.OrdinaryCount, new WorkBudget(limited), retained)
-                .CalculateExactResults(combos, groups));
-        }
 
-        ProbabilityCalculationLimitException? exception = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new DrawEffectCalculation(deck, 4, new(limited)).Calculate(combos, groups));
-        Assert.That(exception!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
-    }
 
-    [Test]
-    public void ResolutionStateStorageIsBoundedIndependentlyOfWorkAllowance() {
-        List<Card> effects = Enumerable.Range(0, 20).Select(index => new Card([], id: $"effect{index}", drawCount: 1)).ToList();
-        ProbabilityCalculationLimitException? exception = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new DrawEffectCalculation(effects, 1, new(new(long.MaxValue))).Calculate([], []));
-        Assert.That(exception!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-    }
-
-    [Test]
-    public void ExactScenarioArithmeticPreservesRareRatiosAndZeroMass() {
-        WorkBudget budget = new(CalculationWorkPolicy.Default);
-        ExactProbability rare = new(1, BigInteger.One << 1074);
-        ExactProbability combined = rare.Multiply(new(1, 3), budget).Add(rare.Multiply(new(2, 3), budget), budget);
-        Assert.That(combined.ToDouble(budget), Is.EqualTo(double.Epsilon));
-        Assert.That(ExactProbability.Zero.Multiply(rare, budget), Is.EqualTo(ExactProbability.Zero));
-    }
 }

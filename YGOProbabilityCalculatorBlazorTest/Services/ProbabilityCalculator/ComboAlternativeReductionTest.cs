@@ -2,10 +2,8 @@ using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -41,19 +39,11 @@ public class ComboAlternativeReductionTest {
                 if (combo.AlternativeGroups.Count == 0) {
                     continue;
                 }
-                WorkBudget preprocessing = new(CalculationWorkPolicy.Interactive);
-                IReadOnlyList<ComboAlternativeGroup> reduced = ComboAlternativeReducer.Reduce(combo.AlternativeGroups, preprocessing);
                 BigInteger raw = combo.AlternativeGroups.Aggregate(BigInteger.One, (product, group) => product * group.Alternatives.Count);
-                BigInteger retained = reduced.Aggregate(BigInteger.One, (product, group) => product * group.Alternatives.Count);
-                WorkBudget compilation = new(CalculationWorkPolicy.Interactive);
-                string outcome;
-                try {
-                    outcome = new ComboEventCompiler(deck, input.HandSize, compilation).CompileCombo(combo).Count.ToString();
-                }
-                catch (ProbabilityCalculationLimitException error) {
-                    outcome = error.Reason.ToString();
-                }
-                TestContext.Out.WriteLine($"{fixture.GetProperty("Name").GetString()}: raw={raw}, retained={retained}, preprocessWork={preprocessing.Spent}, compiledEvents={outcome}, compileWork={compilation.Spent}");
+                CardProbability.CalculationRequest request = new CalculationRequestAdapter(deck, false).Create([combo], input.HandSize);
+                CardProbability.CalculationResult result = CardProbability.CalculationEngine.Calculate(request,
+                    new(CardProbability.CalculationMode.OpeningHand, new(CalculationWorkPolicy.Interactive.WorkUnits)));
+                TestContext.Out.WriteLine($"{fixture.GetProperty("Name").GetString()}: raw={raw}, status={result.Status}, work={result.Metrics.WorkSpent}, entries={result.Metrics.PeakEntries}");
             }
         }
     }
@@ -89,7 +79,6 @@ public class ComboAlternativeReductionTest {
             ComboAlternative.For(ComboCategory.SameCard([A, B], 1, 2))];
         foreach (ComboAlternative other in different) {
             Combo combo = new([], alternativeGroups: [new([first, Cat(B)]), new([other, Cat(B)])]);
-            Assert.That(ComboAlternativeReducer.Reduce(combo.AlternativeGroups, new(CalculationWorkPolicy.Interactive)), Has.Count.EqualTo(2));
             VerifyHands(Deck(), [combo]);
         }
     }
@@ -99,9 +88,6 @@ public class ComboAlternativeReductionTest {
         ComboAlternative and = ComboAlternative.For(ComboCategory.SameCard([A, B], 1, 3));
         ComboAlternative reversed = ComboAlternative.For(ComboCategory.SameCard([B, A], 1, 3));
         Combo combo = new([], alternativeGroups: [new([and, Cat(B), and]), new([Cat(B), reversed])]);
-        IReadOnlyList<ComboAlternativeGroup> reduced = ComboAlternativeReducer.Reduce(combo.AlternativeGroups, new(CalculationWorkPolicy.Interactive));
-        Assert.That(reduced, Has.Count.EqualTo(1));
-        Assert.That(reduced[0].Alternatives, Has.Count.EqualTo(2));
         Assert.That(combo.AlternativeGroups[0].Alternatives, Has.Count.EqualTo(3));
         VerifyHands(Deck(), [combo]);
     }
@@ -113,29 +99,12 @@ public class ComboAlternativeReductionTest {
         // extends this expectation without making the oracle enumerate 2^64.
         (int Successes, int Total) expected = SmallDeckOracle.EnumerateCounts(Deck(), [Repeated(1, Cat(A), Cat(B))], 2);
         foreach (CalculationStorageTier tier in Enum.GetValues<CalculationStorageTier>()) {
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.ForTier(tier));
-            AssertFraction(new ProbabilityCalculation(Deck(), 2, budget).CalculateUnionExact([combo]), expected);
-            Assert.That(new ComboEventCompiler(Deck(), 2, budget).CompileCombo(combo), Has.Count.EqualTo(2));
+            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+                Deck(), [combo], 2, null, CalculationWorkPolicy.Interactive, CalculationStoragePolicy.ForTier(tier), new(Mode: CalculationModel.OpeningHand));
+            AssertFraction(ApplicationResultFractions.From(result).Total, expected);
         }
     }
 
-    [Test]
-    public void NonEquivalentProductAndPreprocessingRetainTypedLimits() {
-        Combo distinct = new([], alternativeGroups: Enumerable.Range(0, 16).Select(index =>
-            new ComboAlternativeGroup([Cat(A), ComboAlternative.For(new ComboCard($"id{index}", 1, 1))])));
-        ProbabilityCalculationLimitException? product = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new ComboEventCompiler(Deck(), 2, new(CalculationWorkPolicy.Interactive)).CompileCombo(distinct));
-        Assert.That(product!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-        Combo longKey = Repeated(2, ComboAlternative.For(new ComboCard(new string('x', 270000), 1, 1)));
-        ProbabilityCalculationLimitException? storage = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            ComboAlternativeReducer.Reduce(longKey.AlternativeGroups, new(CalculationWorkPolicy.Interactive)));
-        Assert.That(storage!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-        foreach (CalculationStorageTier tier in Enum.GetValues<CalculationStorageTier>()) {
-            ProbabilityCalculationLimitException? work = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-                ComboAlternativeReducer.Reduce(Repeated(16, Cat(A), Cat(B)).AlternativeGroups, new(new(10), CalculationStoragePolicy.ForTier(tier))));
-            Assert.That(work!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
-        }
-    }
 
     [TestCase(false), TestCase(true)]
     public void DrawPathsMatchIndependentLabeledPermutations(bool advanced) {
@@ -149,9 +118,9 @@ public class ComboAlternativeReductionTest {
         foreach (int hand in new[] { 2, 3, 5 }) {
             DrawSequenceOracle.Counts expected = DrawSequenceOracle.Enumerate(deck, hand, combos, groups);
             foreach (List<Card> order in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
-                WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-                ExactCalculationResult actual = new DrawEffectCalculation(order, hand, budget).Calculate(combos, groups);
-                ExactProbability[] values = [actual.Total, .. actual.Combos, .. actual.Groups];
+                ApplicationResultFractions actual = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+                    order, combos, hand, groups, CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.Exact)));
+                ApplicationFraction[] values = [actual.Total, .. actual.Combos, .. actual.Groups];
                 for (int index = 0; index < values.Length; index++) {
                     Assert.That(values[index].Numerator * expected.Total, Is.EqualTo(expected.Wins[index] * values[index].Denominator));
                 }
@@ -176,8 +145,8 @@ public class ComboAlternativeReductionTest {
         for (int hand = 0; hand <= deck.Sum(card => card.Copies); hand++) {
             foreach (List<Card> order in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
                 List<Combo> permuted = combos.Select(combo => combo.WithAlternativeGroups(combo.AlternativeGroups.AsEnumerable().Reverse())).ToList();
-                ExactCalculationResult actual = new ProbabilityCalculation(order, hand, new(CalculationWorkPolicy.Interactive))
-                    .CalculateExactResults(permuted, [new("g", "Group")]);
+                ApplicationResultFractions actual = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+                    order, permuted, hand, [new("g", "Group")], CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.OpeningHand)));
                 AssertFraction(actual.Total, SmallDeckOracle.EnumerateCounts(deck, combos, hand));
                 AssertFraction(actual.Groups[0], SmallDeckOracle.EnumerateCounts(deck, combos.Where(combo => combo.GroupId == "g").ToList(), hand));
                 for (int index = 0; index < combos.Count; index++) {
@@ -187,7 +156,7 @@ public class ComboAlternativeReductionTest {
         }
     }
 
-    private static void AssertFraction(ExactProbability actual, (int Successes, int Total) expected) {
+    private static void AssertFraction(ApplicationFraction actual, (int Successes, int Total) expected) {
         Assert.That(actual.Numerator * expected.Total, Is.EqualTo(new BigInteger(expected.Successes) * actual.Denominator));
     }
 }

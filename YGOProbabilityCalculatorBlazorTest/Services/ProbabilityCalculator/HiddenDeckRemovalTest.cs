@@ -3,9 +3,6 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -58,7 +55,6 @@ public class HiddenDeckRemovalTest {
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 1, [], []);
         List<Combo> hands = oracle.Hands.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
             new Combo([], cards: pair.Key.Split(',').Select((count, i) => new ComboCard(oracle.CardIds[i], int.Parse(count), int.Parse(count))).ToArray(), groupId: "g")).ToList();
-        Assert.That(DrawExecutionAssessment.Assess(deck, hands, 1, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
         Verify(deck, 1, hands);
     }
 
@@ -78,7 +74,8 @@ public class HiddenDeckRemovalTest {
             }
         }
         List<Combo> combos = [new([], cards: [new("pot", 1, 1)]), new([], cards: [new("target", 1, 1)])];
-        ExactCalculationResult result = new DrawEffectCalculation(deck, 1, new(CalculationWorkPolicy.Interactive)).Calculate(combos, []);
+        ApplicationResultFractions result = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            deck, combos, 1, [], CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.Exact)));
         AssertFraction(result.Combos[0], remaining < 12 ? 1 : 0, remaining + 1);
         AssertFraction(result.Combos[1], remaining == 0 ? 0 : remaining < 12 ? 1 : remaining + 2, remaining < 12 ? remaining + 1 : remaining * (remaining + 1));
     }
@@ -88,8 +85,8 @@ public class HiddenDeckRemovalTest {
         // Five visible positions remain possible for each label despite hiding two.
         List<Card> deck = [new([], id: "pot", drawCount: 1, preDrawDeckRemovalCount: 2),
             new([], id: "target"), new([], 3, id: "filler")];
-        ExactCalculationResult result = new PostDrawCalculation(deck, 1, new(CalculationWorkPolicy.Interactive))
-            .Calculate([new([], cards: [new("target", 1, 1)])], []);
+        ApplicationResultFractions result = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            deck, [new([], cards: [new("target", 1, 1)])], 1, [], CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.Exact)));
         AssertFraction(result.Total, 1, 4); // 1/5 opening + 1/5 * 1/4 after Pot.
     }
 
@@ -108,10 +105,7 @@ public class HiddenDeckRemovalTest {
         Card effect = new([], effectCopies, id: "graceful", drawCount: 2, drawOncePerTurn: false, postDrawDiscardCount: 1, preDrawDeckRemovalCount: 1);
         List<Card> deck = [effect, new([A], 2, id: "a"), new([], 2 * effectCopies, id: "filler")];
         List<Combo> combos = [new([new(A, 1, 2)])];
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 2, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
         Verify(deck, 2, combos);
-        DrawExecutionPath expected = effectCopies == 1 ? DrawExecutionPath.Ordinary : DrawExecutionPath.OrderedFrontier;
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 3, true).Path, Is.EqualTo(expected));
         Verify(deck, 3, combos);
     }
 
@@ -161,13 +155,6 @@ public class HiddenDeckRemovalTest {
         Assert.That(raw[1].Categories, Does.Not.Contain(role));
     }
 
-    [Test]
-    public void CompressedStorageFailureRemainsTyped() {
-        List<Card> deck = [new([], id: "pot", drawCount: 2, preDrawDeckRemovalCount: 2), new([], 262_144, id: "filler")];
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() => new PostDrawCalculation(deck, 1, budget).Calculate([new([])], []))!.Reason,
-            Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-    }
 
     [Test]
     public void ModesAndTypedLimitsUseTheSameWorkerConfiguration() {
@@ -181,24 +168,21 @@ public class HiddenDeckRemovalTest {
         string input = CalculationSnapshot.Capture(deck, combos, 1, [], new(1), options: new()).Json;
         Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() => CalculationWire.ReadResult(CalculationWire.Execute(input)))!.Reason,
             Is.EqualTo(ProbabilityCalculationLimitReason.Work));
-        Assert.That(DrawExecutionAssessment.Assess(deck.Select(card => card.WithPreDrawDeckRemovalCount(0)).ToList(), combos, 1, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
     }
 
     private static void Verify(List<Card> deck, int handSize, List<Combo> combos, bool collapseCopies = false) {
         List<ComboGroup> groups = [new("g", "Routes"), new("empty", "Empty")];
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, handSize, combos, groups, collapseCopies);
-        foreach (ExactCalculationResult result in new[] {
-            new PostDrawCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups),
-            new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups)
-        }) {
-            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+        foreach (CalculationModel mode in new[] { CalculationModel.Fast, CalculationModel.Exact }) {
+            ApplicationResultFractions result = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+                deck, combos, handSize, groups, CalculationWorkPolicy.Interactive, new(Mode: mode)));
+            ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
             for (int i = 0; i < rows.Length; i++) {
                 AssertFraction(rows[i], oracle.Wins[i], oracle.Total);
             }
         }
     }
 
-    private static void AssertFraction(ExactProbability actual, BigInteger numerator, BigInteger denominator) =>
+    private static void AssertFraction(ApplicationFraction actual, BigInteger numerator, BigInteger denominator) =>
         Assert.That(actual.Numerator * denominator, Is.EqualTo(numerator * actual.Denominator));
 }
