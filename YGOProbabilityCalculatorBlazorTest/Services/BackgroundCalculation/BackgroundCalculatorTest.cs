@@ -4,7 +4,6 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.BackgroundCalculation;
 
@@ -90,16 +89,14 @@ public class BackgroundCalculatorTest {
         CalculationSnapshot snapshot = BoundedSnapshot();
         string initial = CalculationWire.Execute(snapshot.Json);
         if (uncertified) {
-            List<Card> cards = ProbabilityCalculator.ThreeCalculationModesTest.Counterexample("banish");
-            WorkBudget budget = new(CalculationWorkPolicy.Default);
-            ExactCalculationResult rows = new DrawEffectCalculation(cards, 2, budget).Calculate(
-                ProbabilityCalculator.ThreeCalculationModesTest.Combos, ProbabilityCalculator.ThreeCalculationModesTest.Groups);
-            // The real result producer retains a completed primary when its
-            // secondary proof fails, just as in ThreeCalculationModesTest.
-            ProbabilityCalculationResult result = ProbabilityCalculatorService.CompleteResult(
-                ProbabilityCalculator.ThreeCalculationModesTest.Combos, ProbabilityCalculator.ThreeCalculationModesTest.Groups,
-                CalculationModel.Fast, rows, budget, new DrawEffectCalculation(cards, 2, new(CalculationWorkPolicy.Default)));
-            initial = System.Text.Json.JsonSerializer.Serialize(new CalculationResponse(result, null), CalculationJsonContext.Default.CalculationResponse);
+            // Exercise delivery of a complete modeled primary without a certified
+            // physical interval. Producer proof failure is covered at the engine layer.
+            System.Text.Json.Nodes.JsonNode modeled = System.Text.Json.Nodes.JsonNode.Parse(initial)!;
+            modeled["Result"]!["Contract"]!["Accuracy"] = (int)CalculationAccuracy.Uncertified;
+            modeled["Result"]!["Contract"]!["Proof"] = null;
+            modeled["Result"]!["SearchAvailability"] = System.Text.Json.JsonSerializer.SerializeToNode(
+                new SearchAvailabilityCertificate(SearchAvailabilityStatus.NotCertified, "No physical interval.", null, [], []));
+            initial = modeled.ToJsonString();
         }
         TaskCompletionSource<string> final = new();
         _job.Setup(j => j.InvokeAsync<BackgroundCalculator.PresentationStage>("runProgressive", It.IsAny<CancellationToken>(), It.IsAny<object?[]?>()))

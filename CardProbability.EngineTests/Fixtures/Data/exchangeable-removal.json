@@ -1,0 +1,428 @@
+{
+  "Entries": [
+    {
+      "Id": "e009",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0000000000000"
+    },
+    {
+      "Id": "e011",
+      "Copies": 3,
+      "Effect": null,
+      "PolicyOrderKey": "0100000000000"
+    },
+    {
+      "Id": "e017",
+      "Copies": 3,
+      "Effect": null,
+      "PolicyOrderKey": "1000100000010"
+    },
+    {
+      "Id": "e005",
+      "Copies": 2,
+      "Effect": null,
+      "PolicyOrderKey": "0100110100000"
+    },
+    {
+      "Id": "e014",
+      "Copies": 3,
+      "Effect": {
+        "DrawCount": 3,
+        "ActivationLimit": null,
+        "HandCost": 0,
+        "HandCostEligibility": {
+          "MembershipId": null
+        },
+        "HiddenDeckCost": 0,
+        "RemovalCount": 2,
+        "RemovalEligibility": {
+          "MembershipId": null
+        },
+        "HiddenPostDrawMill": 0,
+        "FirstActivationOnly": false,
+        "BlocksLaterDraws": false,
+        "MinimumHandSize": 0,
+        "Search": null,
+        "Excavation": null
+      },
+      "PolicyOrderKey": "0000000000000"
+    },
+    {
+      "Id": "e003",
+      "Copies": 2,
+      "Effect": null,
+      "PolicyOrderKey": "0110100000000"
+    },
+    {
+      "Id": "e008",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0011000001000"
+    },
+    {
+      "Id": "e007",
+      "Copies": 3,
+      "Effect": null,
+      "PolicyOrderKey": "0010000010000"
+    },
+    {
+      "Id": "e001",
+      "Copies": 2,
+      "Effect": null,
+      "PolicyOrderKey": "1011000000000"
+    },
+    {
+      "Id": "e016",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "1010000000000"
+    },
+    {
+      "Id": "e002",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0010000000000"
+    },
+    {
+      "Id": "e012",
+      "Copies": 3,
+      "Effect": null,
+      "PolicyOrderKey": "0010100000100"
+    },
+    {
+      "Id": "e024",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "1000000000000"
+    },
+    {
+      "Id": "e006",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "1000000000000"
+    },
+    {
+      "Id": "e015",
+      "Copies": 2,
+      "Effect": null,
+      "PolicyOrderKey": "1000100000000"
+    },
+    {
+      "Id": "e020",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0100000000000"
+    },
+    {
+      "Id": "e018",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0000100000000"
+    },
+    {
+      "Id": "e010",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0100110000000"
+    },
+    {
+      "Id": "e023",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0000000000000"
+    },
+    {
+      "Id": "e021",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0000010000001"
+    },
+    {
+      "Id": "e000",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "1011000000000"
+    },
+    {
+      "Id": "e004",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0000001000000"
+    },
+    {
+      "Id": "e022",
+      "Copies": 2,
+      "Effect": null,
+      "PolicyOrderKey": "1011000000000"
+    },
+    {
+      "Id": "e013",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0000000000000"
+    },
+    {
+      "Id": "e019",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0000000000000"
+    }
+  ],
+  "Memberships": [
+    {
+      "Id": "m0",
+      "EntryIds": [
+        "e005",
+        "e010",
+        "e021"
+      ]
+    },
+    {
+      "Id": "m1",
+      "EntryIds": [
+        "e011",
+        "e005",
+        "e003",
+        "e020",
+        "e010"
+      ]
+    },
+    {
+      "Id": "m2",
+      "EntryIds": [
+        "e017",
+        "e001",
+        "e016",
+        "e024",
+        "e006",
+        "e015",
+        "e000",
+        "e022"
+      ]
+    },
+    {
+      "Id": "m3",
+      "EntryIds": [
+        "e017",
+        "e005",
+        "e003",
+        "e012",
+        "e015",
+        "e018",
+        "e010"
+      ]
+    },
+    {
+      "Id": "m4",
+      "EntryIds": [
+        "e008",
+        "e001",
+        "e000",
+        "e022"
+      ]
+    },
+    {
+      "Id": "m5",
+      "EntryIds": [
+        "e003",
+        "e008",
+        "e007",
+        "e001",
+        "e016",
+        "e002",
+        "e012",
+        "e000",
+        "e022"
+      ]
+    }
+  ],
+  "Goals": [
+    {
+      "Id": "0",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m0",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [
+        {
+          "Choices": [
+            {
+              "Kind": 0,
+              "Id": "m1",
+              "Minimum": 1,
+              "Maximum": null
+            },
+            {
+              "Kind": 0,
+              "Id": "m2",
+              "Minimum": 1,
+              "Maximum": null
+            }
+          ]
+        }
+      ],
+      "GroupId": "g0"
+    },
+    {
+      "Id": "1",
+      "Requirements": [
+        {
+          "Kind": 1,
+          "Id": "e005",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e012",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g0"
+    },
+    {
+      "Id": "2",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m1",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e017",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g0"
+    },
+    {
+      "Id": "3",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m1",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 0,
+          "Id": "m2",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e012",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g0"
+    },
+    {
+      "Id": "4",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m3",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e012",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e004",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g0"
+    },
+    {
+      "Id": "5",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m4",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 0,
+          "Id": "m5",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g1"
+    },
+    {
+      "Id": "6",
+      "Requirements": [
+        {
+          "Kind": 1,
+          "Id": "e008",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e021",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g1"
+    },
+    {
+      "Id": "7",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m5",
+          "Minimum": 2,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e007",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e012",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g1"
+    }
+  ],
+  "Groups": [
+    "g0",
+    "g1"
+  ],
+  "HandSize": 5
+}

@@ -131,9 +131,8 @@ public sealed class StreamedOrderedSearchBenchmark {
         Assert.That(Fractions(progressiveExact), Is.EqualTo(expectedExact));
         Assert.That(progressiveExact.Contract!.RequestedMode, Is.EqualTo(CalculationModel.Fast));
         // The pre-change Progressive wire retains the Fast mode header; physical
-        // execution is established by Exact accuracy, route, proof and fractions.
+        // execution is established by Exact accuracy, proof and fractions.
         Assert.That(progressiveExact.Contract.ExecutedMode, Is.EqualTo(CalculationModel.Fast));
-        Assert.That(progressiveExact.Contract.SolverRoute, Is.EqualTo(exact.Contract.SolverRoute));
         Assert.That(progressiveExact.Contract.Proof, Is.EqualTo(exact.Contract.Proof));
         Assert.That(progressiveExact.SearchAvailability, Is.Null);
         Assert.That(progressiveExact.Contract.Completion, Is.EqualTo(CalculationCompletion.Success));

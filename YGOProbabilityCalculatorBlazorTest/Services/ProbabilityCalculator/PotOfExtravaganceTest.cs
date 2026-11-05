@@ -10,8 +10,8 @@ using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
+using CP = CardProbability;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -55,12 +55,12 @@ public class PotOfExtravaganceTest {
     [Test]
     public void ReversedPriorityHasDifferentExactResultsAndOrdinaryDrawTwoIsUnrestricted() {
         List<Card> deck = [Pot(), new([], id: "draw", drawCount: 1), new([A], 2, id: "target"), new([], id: "f")];
-        ExactCalculationResult potFirst = AssertParity(deck, 2, Custom("pot", "draw"));
-        ExactCalculationResult drawFirst = AssertParity(deck, 2, Custom("draw", "pot"));
+        ApplicationResultFractions potFirst = AssertParity(deck, 2, Custom("pot", "draw"));
+        ApplicationResultFractions drawFirst = AssertParity(deck, 2, Custom("draw", "pot"));
         Assert.That(potFirst.Combos[1], Is.Not.EqualTo(drawFirst.Combos[1]));
         List<Combo> retainedPot = [new([], cards: [new("pot", 1, 1)])];
-        Assert.That(new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive), Custom("pot", "draw")).Calculate(retainedPot, []).Total,
-            Is.Not.EqualTo(new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive), Custom("draw", "pot")).Calculate(retainedPot, []).Total));
+        Assert.That(Calculate(deck, retainedPot, 2, [], Custom("pot", "draw")).Total,
+            Is.Not.EqualTo(Calculate(deck, retainedPot, 2, [], Custom("draw", "pot")).Total));
         Card custom = deck[0].WithEffect(DrawEffectPlan.Draw(2, deck[0].DrawOncePerTurn), deck[0].EffectProfile.AsCustom());
         Assert.That(custom.EffectPlan.HasActivationRestrictions, Is.False);
         Assert.That(custom.EffectProfile.Source, Is.EqualTo(EffectSource.Custom));
@@ -97,17 +97,14 @@ public class PotOfExtravaganceTest {
     }
 
     [TestCase(true), TestCase(false)]
-    public void ModesWorkerAndRoutingUseTheSameSavedSemantics(bool configured) {
+    public void CalculationAndWorkerUseTheSameSavedSemantics(bool configured) {
         List<Card> deck = [Pot(2), new([], id: "draw", drawCount: 1), new([A], 2, id: "target"), new([], 2, id: "f")];
         AssertParity(deck, 2, Custom("draw", "pot"), configured);
-        Assert.That(DrawExecutionAssessment.Assess(deck, [], 2, true).Path,
-            Is.EqualTo(DrawExecutionPath.OrderedFrontier));
-        Assert.That(DrawEffectResolver.CanUseCountStateFastPath(deck.Where(card => card.DrawCount is not null).ToArray(), 7, 2), Is.False);
         Assert.That(DrawEffectPerformance.RequiresDetailedHandState(Pot().EffectPlan, EffectExecutionModel.DrawSequenceV1), Is.False);
         List<Combo> combos = [new([], cards: [new("pot", 1, 2)])];
         CalculationSnapshot opening = CalculationSnapshot.Capture(deck, combos, 2, [], drawEffectsEnabled: false);
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(opening.Json)).TotalProbability,
-            Is.EqualTo(new ProbabilityCalculation(deck, 2, new WorkBudget(CalculationWorkPolicy.Interactive)).CalculateExactResults(combos, []).Total.ToDouble(new(CalculationWorkPolicy.Interactive))).Within(1e-12));
+            Is.EqualTo(new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 2, [], CalculationWorkPolicy.Interactive, options: new(Mode: CalculationModel.OpeningHand)).TotalProbability).Within(1e-12));
     }
 
     [Test]
@@ -149,20 +146,11 @@ public class PotOfExtravaganceTest {
     }
 
     [Test]
-    public void SingleEntryProofRejectsIndependentAllowancesHandOperationsAndExhaustion() {
+    public void WorkerProjectionIgnoresInactiveAndZeroCopyEffects() {
         Card pot = Pot(3);
-        Assert.That(DrawEffectResolver.CanUseCountStateFastPath([pot], 40, 5), Is.True);
-        Assert.That(DrawEffectResolver.CanUseCountStateFastPath([pot], 6, 5), Is.False);
-        Assert.That(DrawEffectResolver.CanUseCountStateFastPath([pot, pot.Duplicate()], 40, 5), Is.False);
-        Assert.That(DrawEffectResolver.CanUseCountStateFastPath([pot, new([], drawCount: 1)], 40, 5), Is.False);
-        foreach (DrawEffectPlan plan in new[] { pot.EffectPlan with { OncePerTurn = false },
-            pot.EffectPlan with { HandCost = 1 }, pot.EffectPlan with { RemovalCount = 1 } }) {
-            Assert.That(DrawEffectResolver.CanUseCountStateFastPath([pot.WithEffect(plan, pot.EffectProfile)], 40, 5), Is.False);
-        }
         List<Card> zeroCopy = [pot, new([], 0, id: "zero", drawCount: 1), new([], 37, id: "f")];
         List<Card> inactive = [pot, new([], active: false, id: "inactive", drawCount: 1), new([], 37, id: "f")];
         foreach (List<Card> cards in new[] { zeroCopy, inactive }) {
-            Assert.That(DrawExecutionAssessment.Assess(cards, [], 5, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(cards, [new([], cards: [new(pot.Id, 1, 3)])], 5, [], options: new());
             Assert.DoesNotThrow(() => CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
         }
@@ -181,23 +169,18 @@ public class PotOfExtravaganceTest {
         DrawActivationPriority priority = customPriority ? Custom(pot.Id) : DrawActivationPriority.Default;
         Assert.That(pot.Copies, Is.EqualTo(3));
         Assert.That(deck.Sum(card => card.Copies), Is.EqualTo(40));
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
-        Stopwatch watch = Stopwatch.StartNew();
-        ExactCalculationResult actual = new DrawEffectCalculation(deck, 5, budget, priority).Calculate(combos, session.ComboGroups);
-        TestContext.Out.WriteLine($"example priority={priority.Mode}, ms={watch.Elapsed.TotalMilliseconds:F1}, work={budget.Spent}, total={actual.Total.ToDouble(budget):R}");
+        ApplicationResultFractions actual = Calculate(deck, combos, 5, session.ComboGroups, priority);
         List<Card> generic = deck.Select(card => card.Id == pot.Id ? card.WithEffect(DrawEffectPlan.Draw(2, card.DrawOncePerTurn), card.EffectProfile.AsCustom()) : card).ToList();
-        ExactCalculationResult expected = new DrawEffectCalculation(generic, 5, new(CalculationWorkPolicy.Interactive), priority).Calculate(combos, session.ComboGroups);
+        ApplicationResultFractions expected = Calculate(generic, combos, 5, session.ComboGroups, priority);
         Assert.That(actual.Total, Is.EqualTo(expected.Total));
         Assert.That(actual.Combos, Is.EqualTo(expected.Combos));
         Assert.That(actual.Groups, Is.EqualTo(expected.Groups));
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 5, true),
-            Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.DrawCountState, false)));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, combos, 5, session.ComboGroups,
             storagePolicy: CalculationStoragePolicy.Standard, options: new(priority), categoryDefinitions: session.Categories);
         ProbabilityCalculationResult worker = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
-        Assert.That(worker.TotalProbability, Is.EqualTo(actual.Total.ToDouble(budget)).Within(1e-12));
+        Assert.That(worker.TotalProbability, Is.EqualTo(actual.Total.ToDouble()).Within(1e-12));
         Assert.That(worker.ComboProbabilities.Select(row => row.Probability),
-            Is.EqualTo(actual.Combos.Select(row => row.ToDouble(budget))));
+            Is.EqualTo(actual.Combos.Select(row => row.ToDouble())));
         Assert.That(pot.EffectPlan.HasActivationRestrictions, Is.True, "Fast-path proof must not rewrite saved semantics");
     }
 
@@ -210,15 +193,28 @@ public class PotOfExtravaganceTest {
         foreach (bool restricted in new[] { false, true }) {
             List<Card> modeled = restricted ? deck : deck.Select(card => card.Id == "pot" ? card.WithEffect(card.EffectPlan with { FirstActivationOnly = false, BlocksLaterDraws = false }, card.EffectProfile.AsCustom()) : card).ToList();
             foreach (DrawActivationPriority priority in new[] { DrawActivationPriority.Default, Custom("pot", "desires", "cost") }) {
-                WorkBudget budget = new(CalculationWorkPolicy.Interactive);
+                CP.CalculationRequest request = new CalculationRequestAdapter(modeled, true).Create(combos, 5);
                 Stopwatch watch = Stopwatch.StartNew();
-                ExactCalculationResult result = new DrawEffectCalculation(modeled, 5, budget, priority).Calculate(combos, []);
-                TestContext.Out.WriteLine($"restricted={restricted}, priority={priority.Mode}, ms={watch.Elapsed.TotalMilliseconds:F1}, work={budget.Spent}, total={result.Total}");
+                CP.CalculationResult result = CP.CalculationEngine.Calculate(request,
+                    new(CP.CalculationMode.Exact, new(CalculationWorkPolicy.Interactive.WorkUnits),
+                        priority.Mode == DrawActivationMode.CustomPriority ? CP.ActivationOrder.Priority : CP.ActivationOrder.EncounterOrder,
+                        priority.CardIds));
+                Assert.That(result.Status, Is.EqualTo(CP.CalculationStatus.Completed));
+                TestContext.Out.WriteLine($"restricted={restricted}, priority={priority.Mode}, ms={watch.Elapsed.TotalMilliseconds:F1}, work={result.Metrics.WorkSpent}, total={result.Total!.Primary}");
             }
         }
     }
 
-    private static ExactCalculationResult AssertParity(List<Card> deck, int hand, DrawActivationPriority priority, bool configured = true) {
+    private static ApplicationResultFractions Calculate(
+        List<Card> deck,
+        List<Combo> combos,
+        int hand,
+        IReadOnlyList<ComboGroup> groups,
+        DrawActivationPriority priority
+    ) => ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            deck, combos, hand, groups, CalculationWorkPolicy.Interactive, options: new(priority)));
+
+    private static ApplicationResultFractions AssertParity(List<Card> deck, int hand, DrawActivationPriority priority, bool configured = true) {
         List<Combo> combos = [new([new(A, 1, 5)], groupId: "g"), new([], cards: [new("pot", 1, 3)], groupId: "g"),
             new([new(B, 1, 5)], cards: [new("target", 1, 1)]), new([new(A, 0, 0)], cards: [new("pot", 1, 3)])];
         List<ComboGroup> groups = [new("g", "Group"), new("empty", "Empty")];
@@ -226,20 +222,20 @@ public class PotOfExtravaganceTest {
             .WithPreDrawDeckRemovalCount(0).WithPostDrawDeckMillCount(0)).ToList();
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, hand, combos, groups, true,
             priority.Mode == DrawActivationMode.CustomPriority ? priority.CardIds : null);
-        ExactCalculationResult result = new DrawEffectCalculation(modeled, hand, new(CalculationWorkPolicy.Interactive), priority).Calculate(combos, groups);
-        ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+        ApplicationResultFractions result = Calculate(modeled, combos, hand, groups, priority);
+        ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
         for (int i = 0; i < rows.Length; i++) {
             Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row={i}, hand={hand}, priority={priority.Mode}");
         }
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, combos, hand, groups, options: new(priority));
         ProbabilityCalculationResult worker = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
-        Assert.That(worker.TotalProbability, Is.EqualTo(rows[0].ToDouble(new(CalculationWorkPolicy.Interactive))).Within(1e-12));
+        Assert.That(worker.TotalProbability, Is.EqualTo(rows[0].ToDouble()).Within(1e-12));
         for (int i = 0; i < result.Combos.Length; i++) {
-            Assert.That(worker.ComboProbabilities[i].Probability, Is.EqualTo(result.Combos[i].ToDouble(new(CalculationWorkPolicy.Interactive))).Within(1e-12));
+            Assert.That(worker.ComboProbabilities[i].Probability, Is.EqualTo(result.Combos[i].ToDouble()).Within(1e-12));
         }
         foreach (GroupProbabilityResult group in worker.GroupProbabilities!) {
             int index = groups.FindIndex(candidate => candidate.Id == group.GroupId);
-            Assert.That(group.Probability, Is.EqualTo(result.Groups[index].ToDouble(new(CalculationWorkPolicy.Interactive))).Within(1e-12));
+            Assert.That(group.Probability, Is.EqualTo(result.Groups[index].ToDouble()).Within(1e-12));
         }
         return result;
     }

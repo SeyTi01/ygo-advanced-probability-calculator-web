@@ -63,8 +63,8 @@ public class TreatedNameIdentityTest {
                         Assert.That(SmallDeckOracle.EnumerateProbability(modeled, requirements, 1), Is.EqualTo(expected));
                     } else {
                         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, 1, requirements, []);
-                        ExactCalculationResult exact = new DrawEffectCalculation(state.Cards, 1,
-                            new(CalculationWorkPolicy.Interactive)).Calculate(requirements, []);
+                        ApplicationResultFractions exact = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+                            modeled, requirements, 1, [], CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.Exact)));
                         Assert.That(exact.Combos[0].Numerator * oracle.Total,
                             Is.EqualTo(oracle.Wins[1] * exact.Combos[0].Denominator));
                     }

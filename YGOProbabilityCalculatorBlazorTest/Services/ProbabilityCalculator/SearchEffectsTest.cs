@@ -1,14 +1,11 @@
-using System.Diagnostics;
 using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
+using CP = CardProbability;
 using YGOProbabilityCalculatorBlazorTest.Fixtures;
 using static YGOProbabilityCalculatorBlazorTest.Fixtures.SearchCardFixtures;
 
@@ -30,9 +27,6 @@ public sealed partial class SearchEffectsTest {
         (BigInteger total, BigInteger[] wins) = SearchAccessOracle.Count(deck, combos, 2, Groups, null);
         Assert.That(total, Is.EqualTo(new BigInteger(120)));
         Assert.That(wins[0], Is.EqualTo(new BigInteger(100)));
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult result = new DrawEffectCalculation(deck, 2, budget).Calculate(combos, Groups);
-        TestContext.Out.WriteLine($"Pooling counterexample {sourceId}: actual {result.Total.Numerator}/{result.Total.Denominator}; oracle {wins[0]}/{total}");
         Compare(deck, combos, 2);
         deck.Reverse();
         Compare(deck, combos, 2);
@@ -162,12 +156,9 @@ public sealed partial class SearchEffectsTest {
     }
 
     [Test]
-    public void SearchWorkAndStorageAreBounded() {
+    public void SearchWorkIsBounded() {
         Assert.Throws<ProbabilityCalculationLimitException>(() => new ProbabilityCalculatorService().CalculateProbabilityResults(
             [Rota(2), Warrior(2), new([], 2)], [new([new(A, 2, 2)])], 2, null, new(1)));
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
-        Assert.Throws<ProbabilityCalculationLimitException>(() => new PostDrawCalculation(
-            [Rota(), Warrior(), new([], 3000)], 2, budget).Calculate([new([new(A, 1, 2)])], null));
     }
 
     [Test]
@@ -184,10 +175,8 @@ public sealed partial class SearchEffectsTest {
             Assert.That(session.Cards.Where(Rota().Search!.Matches).Select(card => card.Id),
                 Is.EqualTo(session.Cards.Where(rota.Search!.Matches).Select(card => card.Id)));
         });
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
-        Stopwatch watch = Stopwatch.StartNew();
-        ExactCalculationResult result = new DrawEffectCalculation(session.Cards, 5, budget).Calculate(session.Combos, session.ComboGroups);
-        TestContext.Out.WriteLine($"Search example {watch.Elapsed.TotalMilliseconds:F2}ms; {budget.Spent} work; {budget.PeakCells} cells; exact {result.Total}; result {result.Total.ToDouble(budget):R}");
+        ApplicationResultFractions result = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            session.Cards, session.Combos, 5, session.ComboGroups, CalculationWorkPolicy.Interactive));
         // Independent enumeration of all C(40,5) physical hands, followed by the
         // only optional transfer. This also verifies genuine direct-ID access.
         List<Combo> objectives = [.. session.Combos, new([], cards: [new(razen.Id, 1, 5)])];
@@ -251,24 +240,18 @@ public sealed partial class SearchEffectsTest {
         if (copies < original.Copies) {
             session.Cards.Add(original.Duplicate().WithCopies(original.Copies - copies));
         }
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
-        ExactCalculationResult result = new DrawEffectCalculation(session.Cards, 5, budget).Calculate(session.Combos, session.ComboGroups);
-        Assert.That(result.Total.ToDouble(budget), Is.EqualTo(expected));
-        Assert.That(budget.PeakCells, Is.LessThan(10_000));
+        CP.CalculationResult result = CP.CalculationEngine.Calculate(
+            new CalculationRequestAdapter(session.Cards, true).Create(session.Combos, 5, session.ComboGroups),
+            new(CP.CalculationMode.OptimisticSearchProjection, new(CalculationWorkPolicy.Interactive.WorkUnits)));
+        Assert.That(result.Status, Is.EqualTo(CP.CalculationStatus.Completed));
+        Assert.That(result.Total!.Probability, Is.EqualTo(expected));
+        Assert.That(result.Metrics.PeakCells, Is.LessThan(10_000));
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(CalculationSnapshot.Capture(session.Cards,
             session.Combos, 5, session.ComboGroups).Json)).TotalProbability, Is.EqualTo(expected));
     }
 
     [Test]
-    public void AccessCapacityIsScalarAndFetchedSearchersDoNotActivate() {
-        List<Card> deck = [Rota(), Warrior(), new([], id: "blank")];
-        List<Combo> combos = [new([], cards: [new("target", 1, 1)])];
-        foreach (int capacity in new[] { 0, 1 }) {
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-            ExactCalculationResult result = new SearchProbabilityCalculation([], 0, [deck[0]],
-                new(deck, budget), capacity, budget).Calculate(combos, [], false);
-            AssertRatio(result.Total, capacity, 1);
-        }
+    public void FetchedSearchersDoNotActivate() {
         Card first = new Card([], id: "first").WithSearch(new(CardSelector.For(A), false));
         Card second = new Card([A], id: "second").WithSearch(new(CardSelector.For(B), false));
         List<Card> chain = [first, second, new([B], id: "end"), new([], id: "blank")];
@@ -283,32 +266,7 @@ public sealed partial class SearchEffectsTest {
         List<Card> deck = [Rota(), Warrior(), new([], id: "draw", drawCount: 1,
             preDrawRemovalCount: 1, preDrawSelector: CardSelector.For(B)), Warrior(id: "second-target"), new([], 2, id: "blank")];
         List<Combo> combos = [new([new(A, 1, 2)], groupId: "g1"), new([new(Spell, 1, 2)], groupId: "g2")];
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        PostDrawCalculation calculation = new(deck, 2, budget);
-        calculation.CalculateSearch(combos, Groups, false, new(deck, budget));
-        // ROTA cannot affect the draw trace here. Its original source identity
-        // is restored for search assignments in the conditional final pool.
-        Assert.That(calculation.DeferredRows, Is.EqualTo(2));
         Compare(deck, combos, 2);
-    }
-
-    [Test]
-    public void AbstractFinalPoolUsesItsConditionalSubsetDistribution() {
-        Card source = Rota();
-        Card target = Warrior(2);
-        Card blank = new([], id: "blank");
-        List<Card> deck = [source, target, blank];
-        List<Combo> combos = [new([new(A, 2, 2)], groupId: "g1")];
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        // This counter-level input is valid only for a genuinely uniform pool,
-        // e.g. an opening sample with no identity-sensitive removal. The draw
-        // reducer must never manufacture this pool after discarding its source.
-        ExactCalculationResult result = new SearchProbabilityCalculation([source, blank], 1, [target.WithCopies(1)],
-            new(deck, budget), 1, budget, [new([source, blank], 1)]).Calculate(combos, Groups, false);
-        AssertRatio(result.Total, 1, 2);
-        AssertRatio(result.Combos[0], 1, 2);
-        AssertRatio(result.Groups[0], 1, 2);
-        AssertRatio(result.Groups[1], 0, 1);
     }
 
     [Test]
@@ -328,18 +286,23 @@ public sealed partial class SearchEffectsTest {
 
     private static void Compare(List<Card> cards, List<Combo> combos, int handSize, DrawActivationPriority? priority = null) {
         (BigInteger denominator, BigInteger[] wins) = SearchAccessOracle.Count(cards, combos, handSize, Groups, priority?.CardIds);
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult result = new DrawEffectCalculation(cards, handSize, budget, priority).Calculate(combos, Groups);
-        ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+        CP.CalculationResult projection = CP.CalculationEngine.Calculate(
+            new CalculationRequestAdapter(cards, true).Create(combos, handSize, Groups),
+            new(CP.CalculationMode.OptimisticSearchProjection, new(CalculationWorkPolicy.Interactive.WorkUnits),
+                priority?.Mode == DrawActivationMode.CustomPriority ? CP.ActivationOrder.Priority : CP.ActivationOrder.EncounterOrder,
+                priority?.CardIds));
+        Assert.That(projection.Status, Is.EqualTo(CP.CalculationStatus.Completed));
+        ApplicationResultFractions result = ApplicationResultFractions.From(projection);
+        ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
         for (int i = 0; i < rows.Length; i++) {
             AssertRatio(rows[i], wins[i], denominator);
         }
         ProbabilityCalculationResult service = new ProbabilityCalculatorService().CalculateProbabilityResults(cards, combos, handSize, Groups,
             CalculationWorkPolicy.Interactive, options: new(priority));
-        Assert.That(service.TotalProbability, Is.EqualTo(result.Total.ToDouble(budget)));
+        Assert.That(service.TotalProbability, Is.EqualTo(projection.Total!.Probability));
     }
 
-    private static void AssertRatio(ExactProbability actual, BigInteger numerator, BigInteger denominator) =>
+    private static void AssertRatio(ApplicationFraction actual, BigInteger numerator, BigInteger denominator) =>
         Assert.That(actual.Numerator * denominator, Is.EqualTo(numerator * actual.Denominator));
 }
 

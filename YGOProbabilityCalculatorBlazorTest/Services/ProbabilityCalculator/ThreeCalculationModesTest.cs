@@ -5,7 +5,6 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -223,25 +222,6 @@ public sealed class ThreeCalculationModesTest {
         CalculationResponse response = JsonSerializer.Deserialize(CalculationWire.Execute(json), CalculationJsonContext.Default.CalculationResponse)!;
         Assert.That(response.FailureKind, Is.EqualTo(CalculationFailureKind.Input));
         Assert.That(response.Result, Is.Null);
-    }
-
-    [Test]
-    public void SecondaryProofErrorPreservesEveryCompletedFastRow() {
-        List<Card> cards = Counterexample("consumed");
-        WorkBudget primaryBudget = new(CalculationWorkPolicy.Default);
-        ExactCalculationResult exact = new DrawEffectCalculation(cards, 1, primaryBudget).Calculate(Combos, Groups);
-        // Simulate a defective secondary proof owner. It must never erase a
-        // complete primary or turn an exception into an exactness claim.
-        DrawEffectCalculation incomplete = new(cards, 1, new(CalculationWorkPolicy.Default));
-        ProbabilityCalculationResult result = ProbabilityCalculatorService.CompleteResult(Combos, Groups,
-            CalculationModel.Fast, exact, primaryBudget, incomplete);
-        Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Uncertified));
-        Assert.That(result.SearchAvailability!.Status, Is.EqualTo(SearchAvailabilityStatus.Error));
-        Assert.That(result.SearchAvailability.Detail, Does.Contain("InvalidOperationException"));
-        Assert.That(result.ComboProbabilities, Has.Count.EqualTo(Combos.Count));
-        Assert.That(result.GroupProbabilities, Has.Count.EqualTo(Groups.Count));
-        Assert.That(result.ComboProbabilities[0].Probability, Is.EqualTo(.5));
-        Assert.That(result.SearchAvailability.Total, Is.Null);
     }
 
     [TestCase("zero-capacity"), TestCase("zero-target"), TestCase("inactive-zero"), TestCase("deferred-unobserved-targets")]

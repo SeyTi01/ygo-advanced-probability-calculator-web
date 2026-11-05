@@ -30,7 +30,6 @@ public sealed class AutomaticFastStageTest {
             Assert.That(actual.Contract!.RequestedMode, Is.EqualTo(CalculationModel.Fast));
             Assert.That(actual.Contract.ExecutedMode, Is.EqualTo(CalculationModel.Fast));
             Assert.That(actual.Contract.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
-            Assert.That(actual.Contract.SolverRoute, Is.EqualTo(exact.Contract!.SolverRoute));
             Assert.That(actual.Contract.Fractions!.Total, Is.EqualTo(exact.Contract.Fractions!.Total));
             Assert.That(actual.Contract.Fractions.Combos, Is.EqualTo(exact.Contract.Fractions.Combos));
             Assert.That(actual.Contract.Fractions.Groups, Is.EqualTo(exact.Contract.Fractions.Groups));

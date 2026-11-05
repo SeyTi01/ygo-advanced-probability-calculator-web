@@ -1,0 +1,441 @@
+{
+  "Entries": [
+    {
+      "Id": "e010",
+      "Copies": 3,
+      "Effect": null,
+      "PolicyOrderKey": "0100000000000"
+    },
+    {
+      "Id": "e015",
+      "Copies": 3,
+      "Effect": null,
+      "PolicyOrderKey": "1000100000010"
+    },
+    {
+      "Id": "e005",
+      "Copies": 2,
+      "Effect": null,
+      "PolicyOrderKey": "0100110100000"
+    },
+    {
+      "Id": "e003",
+      "Copies": 2,
+      "Effect": null,
+      "PolicyOrderKey": "0110100000000"
+    },
+    {
+      "Id": "e008",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0011000001000"
+    },
+    {
+      "Id": "e007",
+      "Copies": 3,
+      "Effect": null,
+      "PolicyOrderKey": "0010000010000"
+    },
+    {
+      "Id": "e001",
+      "Copies": 2,
+      "Effect": null,
+      "PolicyOrderKey": "1011000000000"
+    },
+    {
+      "Id": "e014",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "1010000000000"
+    },
+    {
+      "Id": "e002",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0010000000000"
+    },
+    {
+      "Id": "e011",
+      "Copies": 3,
+      "Effect": null,
+      "PolicyOrderKey": "0010100000100"
+    },
+    {
+      "Id": "e022",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "1000000000000"
+    },
+    {
+      "Id": "e006",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "1000000000000"
+    },
+    {
+      "Id": "e013",
+      "Copies": 2,
+      "Effect": null,
+      "PolicyOrderKey": "1000100000000"
+    },
+    {
+      "Id": "e019",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0100000000000"
+    },
+    {
+      "Id": "e016",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0000100000000"
+    },
+    {
+      "Id": "e009",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0100110000000"
+    },
+    {
+      "Id": "e020",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0000010000001"
+    },
+    {
+      "Id": "e000",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "1011000000000"
+    },
+    {
+      "Id": "e004",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0000001000000"
+    },
+    {
+      "Id": "e021",
+      "Copies": 2,
+      "Effect": null,
+      "PolicyOrderKey": "1011000000000"
+    },
+    {
+      "Id": "e012",
+      "Copies": 1,
+      "Effect": null,
+      "PolicyOrderKey": "0000000000000"
+    },
+    {
+      "Id": "e018",
+      "Copies": 3,
+      "Effect": {
+        "DrawCount": 2,
+        "ActivationLimit": null,
+        "HandCost": 1,
+        "HandCostEligibility": {
+          "MembershipId": "m0"
+        },
+        "HiddenDeckCost": 0,
+        "RemovalCount": 0,
+        "RemovalEligibility": {
+          "MembershipId": null
+        },
+        "HiddenPostDrawMill": 0,
+        "FirstActivationOnly": false,
+        "BlocksLaterDraws": false,
+        "MinimumHandSize": 0,
+        "Search": null,
+        "Excavation": null
+      },
+      "PolicyOrderKey": "0000000000000"
+    },
+    {
+      "Id": "e017",
+      "Copies": 3,
+      "Effect": {
+        "DrawCount": 2,
+        "ActivationLimit": null,
+        "HandCost": 0,
+        "HandCostEligibility": {
+          "MembershipId": null
+        },
+        "HiddenDeckCost": 0,
+        "RemovalCount": 1,
+        "RemovalEligibility": {
+          "MembershipId": "m1"
+        },
+        "HiddenPostDrawMill": 0,
+        "FirstActivationOnly": false,
+        "BlocksLaterDraws": false,
+        "MinimumHandSize": 0,
+        "Search": null,
+        "Excavation": null
+      },
+      "PolicyOrderKey": "0000000000000"
+    }
+  ],
+  "Memberships": [
+    {
+      "Id": "m0",
+      "EntryIds": [
+        "e019",
+        "e016"
+      ]
+    },
+    {
+      "Id": "m1",
+      "EntryIds": [
+        "e015",
+        "e001",
+        "e014",
+        "e022",
+        "e006",
+        "e013",
+        "e000",
+        "e021"
+      ]
+    },
+    {
+      "Id": "m2",
+      "EntryIds": [
+        "e005",
+        "e009",
+        "e020"
+      ]
+    },
+    {
+      "Id": "m3",
+      "EntryIds": [
+        "e010",
+        "e005",
+        "e003",
+        "e019",
+        "e009"
+      ]
+    },
+    {
+      "Id": "m4",
+      "EntryIds": [
+        "e015",
+        "e005",
+        "e003",
+        "e011",
+        "e013",
+        "e016",
+        "e009"
+      ]
+    },
+    {
+      "Id": "m5",
+      "EntryIds": [
+        "e008",
+        "e001",
+        "e000",
+        "e021"
+      ]
+    },
+    {
+      "Id": "m6",
+      "EntryIds": [
+        "e003",
+        "e008",
+        "e007",
+        "e001",
+        "e014",
+        "e002",
+        "e011",
+        "e000",
+        "e021"
+      ]
+    }
+  ],
+  "Goals": [
+    {
+      "Id": "0",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m2",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [
+        {
+          "Choices": [
+            {
+              "Kind": 0,
+              "Id": "m3",
+              "Minimum": 1,
+              "Maximum": null
+            },
+            {
+              "Kind": 0,
+              "Id": "m1",
+              "Minimum": 1,
+              "Maximum": null
+            }
+          ]
+        }
+      ],
+      "GroupId": "g0"
+    },
+    {
+      "Id": "1",
+      "Requirements": [
+        {
+          "Kind": 1,
+          "Id": "e005",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e011",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g0"
+    },
+    {
+      "Id": "2",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m3",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e015",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g0"
+    },
+    {
+      "Id": "3",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m3",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 0,
+          "Id": "m1",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e011",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g0"
+    },
+    {
+      "Id": "4",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m4",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e011",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e004",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g0"
+    },
+    {
+      "Id": "5",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m5",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 0,
+          "Id": "m6",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g1"
+    },
+    {
+      "Id": "6",
+      "Requirements": [
+        {
+          "Kind": 1,
+          "Id": "e008",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e020",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g1"
+    },
+    {
+      "Id": "7",
+      "Requirements": [
+        {
+          "Kind": 0,
+          "Id": "m6",
+          "Minimum": 2,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e007",
+          "Minimum": 1,
+          "Maximum": null
+        },
+        {
+          "Kind": 1,
+          "Id": "e011",
+          "Minimum": 1,
+          "Maximum": null
+        }
+      ],
+      "Alternatives": [],
+      "GroupId": "g1"
+    }
+  ],
+  "Groups": [
+    "g0",
+    "g1"
+  ],
+  "HandSize": 5
+}

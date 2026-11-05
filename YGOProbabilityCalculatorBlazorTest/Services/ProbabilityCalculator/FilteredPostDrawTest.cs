@@ -2,9 +2,6 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -109,20 +106,16 @@ public class FilteredPostDrawTest {
                 Assert.That(result.TotalProbability, Is.EqualTo(global && advanced && !qualifies ? 2.0 / 3 : 1));
             }
         }
-        WorkBudget filteredBasic = new(CalculationWorkPolicy.Interactive);
-        WorkBudget pureBasic = new(CalculationWorkPolicy.Interactive);
-        new DrawEffectCalculation(deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList(), 1, filteredBasic).Calculate(combos, []);
-        new DrawEffectCalculation(deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList(), 1, pureBasic).Calculate(combos, []);
-        Assert.That(filteredBasic.Spent, Is.EqualTo(pureBasic.Spent));
+
     }
 
     private static void AssertParity(List<Card> deck, int hand, List<Combo> combos, List<ComboGroup> groups) {
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, hand, combos, groups);
         foreach (CalculationStorageTier tier in Enum.GetValues<CalculationStorageTier>()) {
             foreach (List<Card> order in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
-                WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.ForTier(tier));
-                ExactCalculationResult result = new PostDrawCalculation(order, hand, budget).Calculate(combos, groups);
-                ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+                ApplicationResultFractions result = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+                    order, combos, hand, groups, CalculationWorkPolicy.Interactive, CalculationStoragePolicy.ForTier(tier), new(Mode: CalculationModel.Exact)));
+                ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
                 for (int i = 0; i < rows.Length; i++) {
                     Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"{tier}, row {i}");
                 }

@@ -9,7 +9,6 @@ using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.CardEffects;
@@ -303,13 +302,14 @@ public class CardEffectRegistryTest {
         // mandatory failure mass, in addition to individual and grouped rows.
         combos = [.. combos, new([])];
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, hand, combos, groups, true);
-        ExactCalculationResult result = new DrawEffectCalculation(deck, hand, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups);
-        ExactProbability[] fractions = [result.Total, .. result.Combos, .. result.Groups];
-        for (int i = 0; i < fractions.Length; i++) {
-            Assert.That(fractions[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * fractions[i].Denominator));
-        }
         ProbabilityCalculationResult native = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, hand,
             groups, CalculationWorkPolicy.Interactive, new());
+        CalculationFractions result = native.Contract!.Fractions!;
+        ProbabilityFraction[] fractions = [result.Total, .. result.Combos, .. result.Groups];
+        for (int i = 0; i < fractions.Length; i++) {
+            Assert.That(System.Numerics.BigInteger.Parse(fractions[i].Numerator) * oracle.Total,
+                Is.EqualTo(oracle.Wins[i] * System.Numerics.BigInteger.Parse(fractions[i].Denominator)));
+        }
         Assert.That(JsonSerializer.Serialize(Run(deck, combos, hand)), Is.EqualTo(JsonSerializer.Serialize(native)));
     }
 }

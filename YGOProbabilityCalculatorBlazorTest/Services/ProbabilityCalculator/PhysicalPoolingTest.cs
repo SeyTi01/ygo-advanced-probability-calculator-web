@@ -1,11 +1,7 @@
 using System.Numerics;
-using System.Reflection;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -92,18 +88,13 @@ public sealed class PhysicalPoolingTest {
                 Is.EqualTo(oracle.Outcomes),
                 $"seed 20261021/{variant}: failure mass remains in the denominator"
             );
-            foreach (PhysicalEnumerationMethod method in Methods) {
-                ExactCalculationResult unmerged = Calculate(cards, handSize, combos, groups, false, method, priority, out _);
-                ExactCalculationResult pooled = Calculate(cards, handSize, combos, groups, true, method, priority, out int rows);
-                Assert.That(rows, Is.LessThan(cards.Count), $"seed 20261021/{variant}: candidate actually pools");
-                AssertRows(unmerged, oracle.Wins[1], oracle.Outcomes, $"reference/{variant}/{method}");
-                AssertRows(pooled, oracle.Wins[1], oracle.Outcomes, $"pooled/{variant}/{method}");
-            }
+            ApplicationResultFractions result = Calculate(cards, handSize, combos, groups, priority);
+            AssertRows(result, oracle.Wins[1], oracle.Outcomes, $"seed 20261021/{variant}");
         }
     }
 
     [Test]
-    public void FiveCardOpenerPreservesPooledPhysicalMassAcrossAllRoutes() {
+    public void FiveCardOpenerPreservesPhysicalMassThroughPublicCalculation() {
         CategoryBase a = new("A");
         CategoryBase b = new("B");
         List<Card> cards = [
@@ -136,13 +127,8 @@ public sealed class PhysicalPoolingTest {
             groups
         );
         Assert.That(oracle.Wins[1][combos.Count] + oracle.Failed, Is.EqualTo(oracle.Outcomes));
-        foreach (PhysicalEnumerationMethod method in Methods) {
-            foreach (bool pool in new[] { false, true }) {
-                ExactCalculationResult result = Calculate(cards, 5, combos, groups, pool, method, null, out int rows);
-                Assert.That(rows, Is.EqualTo(pool ? 5 : 6), $"five-card opener/{method}/{pool}");
-                AssertRows(result, oracle.Wins[1], oracle.Outcomes, $"five-card opener/{method}/{pool}");
-            }
-        }
+        ApplicationResultFractions result = Calculate(cards, 5, combos, groups);
+        AssertRows(result, oracle.Wins[1], oracle.Outcomes, "five-card opener");
     }
 
     [Test]
@@ -172,11 +158,8 @@ public sealed class PhysicalPoolingTest {
             [new("source", 1, [new(1, _ => true)])]
         );
         List<Combo> combos = definitions.Select(definition => definition.Model).ToList();
-        foreach (bool pool in new[] { false, true }) {
-            ExactCalculationResult result = Calculate(cards, 2, combos, groups, pool, PhysicalEnumerationMethod.Streaming, null, out int rows);
-            Assert.That(rows, Is.EqualTo(pool ? 4 : 5));
-            AssertRows(result, oracle.Wins, oracle.Outcomes, "numeric selector/" + pool);
-        }
+        ApplicationResultFractions result = Calculate(cards, 2, combos, groups);
+        AssertRows(result, oracle.Wins, oracle.Outcomes, "numeric selector");
     }
 
     [Test]
@@ -205,11 +188,8 @@ public sealed class PhysicalPoolingTest {
             [new("source", 1, [new(1, card => card.Id == "objective")])]
         );
         List<Combo> combos = definitions.Select(definition => definition.Model).ToList();
-        foreach (bool pool in new[] { false, true }) {
-            ExactCalculationResult result = Calculate(cards, 2, combos, groups, pool, PhysicalEnumerationMethod.Streaming, null, out int rows);
-            Assert.That(rows, Is.EqualTo(pool ? 4 : 5));
-            AssertRows(result, oracle.Wins, oracle.Outcomes, "objective versus manual/" + pool);
-        }
+        ApplicationResultFractions result = Calculate(cards, 2, combos, groups);
+        AssertRows(result, oracle.Wins, oracle.Outcomes, "objective versus manual");
     }
 
     [Test]
@@ -248,11 +228,8 @@ public sealed class PhysicalPoolingTest {
             [new("source", 2, [new(1, card => card.Id is "a" or "aa"), new(1, card => card.Id == "b")])]
         );
         List<Combo> combos = definitions.Select(definition => definition.Model).ToList();
-        foreach (bool pool in new[] { false, true }) {
-            ExactCalculationResult result = Calculate(cards, 2, combos, groups, pool, PhysicalEnumerationMethod.Streaming, null, out int rows);
-            Assert.That(rows, Is.EqualTo(pool ? 3 : 4));
-            AssertRows(result, oracle.Wins, oracle.Outcomes, "mode incidence/" + pool);
-        }
+        ApplicationResultFractions result = Calculate(cards, 2, combos, groups);
+        AssertRows(result, oracle.Wins, oracle.Outcomes, "mode incidence");
     }
 
     [Test]
@@ -282,111 +259,32 @@ public sealed class PhysicalPoolingTest {
         Assert.That(final, Is.Not.Null);
         Assert.That(final!.Any(card => card.Id == "pay"), Is.False);
         SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(cards, 4, combos, groups, priority);
-        foreach (PhysicalEnumerationMethod method in Methods) {
-            ExactCalculationResult result = Calculate(cards, 4, combos, groups, true, method, priority, out int rows);
-            Assert.That(rows, Is.EqualTo(cards.Count), "The intervening payment class prevents an a/z merge.");
-            AssertRows(result, oracle.Wins[1], oracle.Outcomes, "non-adjacent tie/" + method);
-        }
+        ApplicationResultFractions result = Calculate(cards, 4, combos, groups, priority);
+        AssertRows(result, oracle.Wins[1], oracle.Outcomes, "non-adjacent tie");
     }
 
-    private static PhysicalEnumerationMethod[] Methods =>
-        [PhysicalEnumerationMethod.Streaming, PhysicalEnumerationMethod.BatchStreaming, PhysicalEnumerationMethod.Frontier];
-
-    [Test]
-    public void PooledMetadataCopiesHonorWorkAndRetainedStorageBoundaries() {
-        CategoryBase[] first = Enumerable.Range(0, 128)
-            .Select(index => new CategoryBase("First " + index, CategorySource.Metadata, "first:" + index)).ToArray();
-        CategoryBase[] second = Enumerable.Range(0, 96)
-            .Select(index => new CategoryBase("Second " + index, CategorySource.Metadata, "second:" + index)).ToArray();
-        List<Card> cards = [
-            new(first, 1, id: "a-rich", manualMetadataCategoryKeys: [first[^1].MetadataKey!, first[^2].MetadataKey!]),
-            new([], 1, id: "b-empty"),
-            new([], 1, id: "m-source", search: new(CardSelector.Any, false), activationLimit: 1),
-            new(second, 1, id: "y-rich", manualMetadataCategoryKeys: [second[^1].MetadataKey!]),
-            new([], 1, id: "z-empty")
-        ];
-        List<Combo> combos = [new([], "Empty hand succeeds")];
-        WorkBudget measured = new(CalculationWorkPolicy.Unlimited);
-        ExactCalculationResult expected = Run(measured, out PostDrawCalculation execution);
-        Assert.That(expected.Total.ToFraction(), Is.EqualTo(new ProbabilityFraction("1", "1")));
-        Assert.That(execution.ReducedRows, Is.EqualTo(3));
-        Assert.That(execution.LargestStructure, Is.EqualTo("physical row partition"));
-        Assert.That(
-            measured.PeakCells,
-            Is.GreaterThan(2L * (first.Length + second.Length)),
-            "Both pooled representatives own category arrays alongside the partition vectors."
-        );
-        CalculationStoragePolicy sufficient = Storage(measured.PeakCells);
-        ExactCalculationResult actual = Run(new(new(measured.Spent), sufficient), out _);
-        Assert.That(actual.Total, Is.EqualTo(expected.Total));
-        ProbabilityCalculationLimitException work = Assert.Throws<ProbabilityCalculationLimitException>(
-            () => Run(new(new(measured.Spent - 1), sufficient), out _)
-        )!;
-        Assert.That(work.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
-        PostDrawCalculation rejected = null!;
-        ProbabilityCalculationLimitException storage = Assert.Throws<ProbabilityCalculationLimitException>(
-            () => Run(new(CalculationWorkPolicy.Unlimited, Storage(measured.PeakCells - 1)), out rejected)
-        )!;
-        Assert.That(storage.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-        Assert.That(rejected.LargestStructure, Is.EqualTo("physical row partition"));
-
-        ExactCalculationResult Run(WorkBudget budget, out PostDrawCalculation calculation) {
-            calculation = new(cards, 0, budget, deferIdentities: false);
-            return calculation.CalculateSearch(
-                combos,
-                [],
-                false,
-                new(cards, budget),
-                physical: true,
-                method: PhysicalEnumerationMethod.Streaming
-            );
-        }
-
-        static CalculationStoragePolicy Storage(long cells) {
-            // Unsupported tiny limits remain local to this resource-boundary test.
-            ConstructorInfo constructor = typeof(CalculationStoragePolicy).GetConstructor(
-                BindingFlags.Instance | BindingFlags.NonPublic,
-                null,
-                [typeof(CalculationStorageTier), typeof(long), typeof(long)],
-                null
-            )!;
-            return (CalculationStoragePolicy)constructor.Invoke([CalculationStorageTier.Standard, CalculationStoragePolicy.Standard.EntryLimit, cells]);
-        }
-    }
-
-    private static ExactCalculationResult Calculate(
+    private static ApplicationResultFractions Calculate(
         List<Card> cards,
         int handSize,
         List<Combo> combos,
         List<ComboGroup> groups,
-        bool pool,
-        PhysicalEnumerationMethod method,
-        string[]? priority,
-        out int rows
+        string[]? priority = null
     ) {
-        WorkBudget budget = new(CalculationWorkPolicy.Unlimited);
-        PostDrawCalculation calculation = new(
+        ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
             cards,
-            handSize,
-            budget,
-            priority is null ? null : new(DrawActivationMode.CustomPriority, priority),
-            deferIdentities: false
-        );
-        ExactCalculationResult result = calculation.CalculateSearch(
             combos,
+            handSize,
             groups,
-            false,
-            new(cards, budget),
-            physical: true,
-            method: method,
-            coalesceOrdinary: pool
+            CalculationWorkPolicy.Unlimited,
+            new(priority is null ? null : new(DrawActivationMode.CustomPriority, priority), Mode: CalculationModel.Exact)
         );
-        rows = calculation.ReducedRows;
-        return result;
+        Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
+
+        return ApplicationResultFractions.From(result);
     }
 
-    private static void AssertRows(ExactCalculationResult result, BigInteger[] wins, BigInteger outcomes, string label) {
-        ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+    private static void AssertRows(ApplicationResultFractions result, BigInteger[] wins, BigInteger outcomes, string label) {
+        ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
         Assert.That(rows.Length, Is.EqualTo(wins.Length), label);
         for (int row = 0; row < rows.Length; row++) {
             Assert.That(rows[row].Numerator * outcomes, Is.EqualTo(wins[row] * rows[row].Denominator), label + "/" + row);

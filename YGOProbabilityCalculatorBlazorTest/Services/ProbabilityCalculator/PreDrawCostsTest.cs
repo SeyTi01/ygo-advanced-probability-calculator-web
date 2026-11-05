@@ -5,9 +5,6 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.DeckImport;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -70,9 +67,6 @@ public class PreDrawCostsTest {
         AssertParity(deck, 2, combos, []);
         AssertBackgroundWireMatchesOracle(deck, 2, combos);
 
-        ExactCalculationResult basic = new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive))
-            .Calculate(combos, []);
-        Assert.That(basic.Combos[0].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[0] * basic.Combos[0].Denominator));
     }
 
     [Test]
@@ -207,11 +201,6 @@ public class PreDrawCostsTest {
                 TestContext.Out.WriteLine($"global={global}, advanced={advanced}: {oracle.Wins[0]}/{oracle.Total}");
             }
         }
-        WorkBudget costBasic = new(CalculationWorkPolicy.Interactive);
-        WorkBudget plainBasic = new(CalculationWorkPolicy.Interactive);
-        new DrawEffectCalculation(deck.Select(card => card.WithPreDrawRemovalCount(0)).ToList(), 2, costBasic).Calculate(combos, []);
-        new DrawEffectCalculation(deck.Select(card => card.WithPreDrawRemovalCount(0)).ToList(), 2, plainBasic).Calculate(combos, []);
-        Assert.That(costBasic.Spent, Is.EqualTo(plainBasic.Spent));
     }
 
     [Test]
@@ -225,9 +214,9 @@ public class PreDrawCostsTest {
         List<Card> distinct = Enumerable.Range(0, 24).Select(i => new Card([Monster, Level], id: $"c{i}")).ToList();
         distinct.Add(Trade(copies: 3));
         Combo all = new([], cards: distinct.Select(card => new ComboCard(card.Id, 0, 1)).ToList());
-        WorkBudget budget = new(new(500_000_000));
-        error = Assert.Throws<ProbabilityCalculationLimitException>(() => new PostDrawCalculation(distinct, 5, budget).Calculate([all], []));
-        Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
+        ProbabilityCalculationLimitException? storage = Assert.Throws<ProbabilityCalculationLimitException>(() =>
+            new ProbabilityCalculatorService().CalculateProbabilityResults(distinct, [all], 5, [], new(500_000_000), new(Mode: CalculationModel.Exact)));
+        Assert.That(storage!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
     }
 
     private static void AssertHand(Card[] order, int hand, List<Combo> combos, params string[] expected) =>
@@ -237,11 +226,14 @@ public class PreDrawCostsTest {
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, hand, combos, groups);
         foreach (CalculationStorageTier tier in Enum.GetValues<CalculationStorageTier>()) {
             foreach (List<Card> order in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
-                WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.ForTier(tier));
-                ExactCalculationResult result = new PostDrawCalculation(order, hand, budget).Calculate(combos, groups);
-                ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+                ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+                    order, combos, hand, groups, CalculationWorkPolicy.Interactive,
+                    CalculationStoragePolicy.ForTier(tier), new(Mode: CalculationModel.Exact));
+                CalculationFractions fractions = result.Contract!.Fractions!;
+                ProbabilityFraction[] rows = [fractions.Total, .. fractions.Combos, .. fractions.Groups];
                 for (int i = 0; i < rows.Length; i++) {
-                    Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"{tier}, row {i}");
+                    Assert.That(BigInteger.Parse(rows[i].Numerator) * oracle.Total,
+                        Is.EqualTo(oracle.Wins[i] * BigInteger.Parse(rows[i].Denominator)), $"{tier}, row {i}");
                 }
             }
         }

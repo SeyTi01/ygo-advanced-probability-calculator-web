@@ -139,6 +139,31 @@ public class CalculationWireTest {
         Assert.Throws<JsonException>(() => CalculationWire.ReadResult("not JSON"));
     }
 
+    [TestCase(CalculationModel.Fast)]
+    [TestCase(CalculationModel.Exact)]
+    public void UnsupportedPhysicalExecutionRetainsTheRequestedMode(CalculationModel mode) {
+        CalculationResultContract contract = CalculationResultContract.Failure(mode, CalculationCompletion.Unsupported, "Unsupported physical operation.");
+        string response = JsonSerializer.Serialize(new CalculationResponse(null, "Unsupported physical operation.",
+            FailureKind: CalculationFailureKind.Unsupported, Contract: contract), CalculationJsonContext.Default.CalculationResponse);
+
+        UnsupportedExactCalculationException exception = Assert.Throws<UnsupportedExactCalculationException>(() => CalculationWire.ReadResult(response, mode))!;
+        Assert.That(exception.Contract.RequestedMode, Is.EqualTo(mode));
+        Assert.That(exception.Contract.ExecutedMode, Is.EqualTo(mode));
+        CalculationModel otherMode = mode == CalculationModel.Fast ? CalculationModel.Exact : CalculationModel.Fast;
+        Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(response, otherMode));
+    }
+
+    [Test]
+    public void UnsupportedPhysicalFailureCannotImpersonateOpeningHand() {
+        CalculationResultContract contract = CalculationResultContract.Failure(CalculationModel.OpeningHand,
+            CalculationCompletion.Unsupported, "Unsupported physical operation.");
+        string response = JsonSerializer.Serialize(new CalculationResponse(null, "Unsupported physical operation.",
+            FailureKind: CalculationFailureKind.Unsupported, Contract: contract), CalculationJsonContext.Default.CalculationResponse);
+
+        CalculationProtocolException exception = Assert.Throws<CalculationProtocolException>(() => CalculationWire.ReadResult(response))!;
+        Assert.That(exception.Reason, Is.EqualTo(CalculationProtocolFailureReason.InvalidUnsupportedResponse));
+    }
+
     [TestCase("null", CalculationProtocolFailureReason.MissingResponse)]
     [TestCase("{}", CalculationProtocolFailureReason.MissingResult)]
     [TestCase("{\"Error\":\"conflict\",\"LimitReason\":1,\"FailureKind\":1}", CalculationProtocolFailureReason.InvalidResponse)]
