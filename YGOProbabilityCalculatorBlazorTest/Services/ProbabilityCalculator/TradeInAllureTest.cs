@@ -1,12 +1,10 @@
 using System.Text.Json;
+using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -35,8 +33,9 @@ public class TradeInAllureTest {
             DrawSequenceOracle.Counts expected = DrawSequenceOracle.Enumerate(deck, hand, combos, groups,
                 collapseIdenticalCopies: true, priorityIds: priority.CardIds);
             foreach (CalculationWorkPolicy policy in new[] { CalculationWorkPolicy.Default, new(50_000_000), CalculationWorkPolicy.Interactive }) {
-                ExactCalculationResult result = new DrawEffectCalculation(deck, hand, new(policy), priority).Calculate(combos, groups);
-                ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+                ApplicationResultFractions result = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+                    deck, combos, hand, groups, policy, options: new(priority)));
+                ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
                 for (int i = 0; i < rows.Length; i++) {
                     Assert.That(rows[i].Numerator * expected.Total, Is.EqualTo(expected.Wins[i] * rows[i].Denominator));
                 }
@@ -61,15 +60,17 @@ public class TradeInAllureTest {
         JsonElement expected = frozen.Single(row => row.GetProperty("Custom").GetBoolean() == custom
             && row.GetProperty("HandSize").GetInt32() == hand);
         foreach (CalculationWorkPolicy policy in new[] { CalculationWorkPolicy.Interactive, new(250_000_000) }) {
-            WorkBudget budget = new(policy, CalculationStoragePolicy.ForTier(tier));
-            PostDrawCalculation calculation = new(session.Cards, hand, budget, priority);
-            ExactCalculationResult exact = calculation.Calculate(session.Combos, session.ComboGroups);
-            Assert.That(new[] { exact.Total }.Concat(exact.Combos).Concat(exact.Groups)
-                .Select(value => $"{value.Numerator}/{value.Denominator}"),
-                Is.EqualTo(expected.GetProperty("ExactResults").EnumerateArray().Select(value => value.GetString())));
-            ProbabilityCalculationResult result = exact.ToPublic(session.Combos, session.ComboGroups, budget);
-            Assert.That(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(result), expected.GetProperty("ReferenceResults")), Is.True);
-            Assert.That(budget.Spent, Is.LessThan(policy.WorkUnits));
+            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+                session.Cards, session.Combos, hand, session.ComboGroups, policy, CalculationStoragePolicy.ForTier(tier), new(priority));
+            ApplicationResultFractions exact = ApplicationResultFractions.From(result);
+            ApplicationFraction[] actualRows = [exact.Total, .. exact.Combos, .. exact.Groups];
+            string[] frozenRows = expected.GetProperty("ExactResults").EnumerateArray().Select(value => value.GetString()!).ToArray();
+            Assert.That(actualRows, Has.Length.EqualTo(frozenRows.Length));
+            for (int row = 0; row < actualRows.Length; row++) {
+                BigInteger[] fraction = frozenRows[row].Split('/').Select(BigInteger.Parse).ToArray();
+                Assert.That(actualRows[row].Numerator * fraction[1], Is.EqualTo(fraction[0] * actualRows[row].Denominator), $"row {row}");
+            }
+            Assert.That(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(result with { Contract = null }), expected.GetProperty("ReferenceResults")), Is.True);
         }
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, hand, session.ComboGroups,
             CalculationWorkPolicy.Interactive, storagePolicy: CalculationStoragePolicy.ForTier(tier), options: new(priority));
@@ -89,31 +90,4 @@ public class TradeInAllureTest {
         Assert.That(error.Reason, Is.EqualTo(reason));
     }
 
-    [TestCase(false)]
-    [TestCase(true)]
-    public async Task WideReferenceStillHitsStandardStorageAndPackingReducesRetainedPayload(bool custom) {
-        SessionState session = await TradeInAllureFixture.Load();
-        DrawActivationPriority priority = custom ? new(DrawActivationMode.CustomPriority, ["benchmark-allure", "benchmark-trade-in"])
-            : DrawActivationPriority.Default;
-        PostDrawCalculation limited = new(session.Cards, 5, new(CalculationWorkPolicy.Interactive), priority,
-            compactFrontierThreshold: int.MaxValue);
-        Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() => limited.Calculate(session.Combos, session.ComboGroups))!.Reason,
-            Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-        PostDrawCalculation reference = new(session.Cards, 5, new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.High), priority,
-            compactFrontierThreshold: int.MaxValue);
-        ExactCalculationResult expected = reference.Calculate(session.Combos, session.ComboGroups);
-        // Isolate byte packing: eager terminal aggregation has its own state-count tests.
-        PostDrawCalculation packed = new(session.Cards, 5, new(CalculationWorkPolicy.Interactive), priority, eagerTerminalAggregation: false);
-        ExactCalculationResult actual = packed.Calculate(session.Combos, session.ComboGroups);
-        Assert.Multiple(() => {
-            Assert.That(actual.Total, Is.EqualTo(expected.Total));
-            Assert.That(actual.Combos, Is.EqualTo(expected.Combos));
-            Assert.That(actual.Groups, Is.EqualTo(expected.Groups));
-            Assert.That(packed.PackedLayers, Is.GreaterThan(0));
-            Assert.That(packed.TerminalStates, Is.EqualTo(reference.TerminalStates));
-            Assert.That(packed.PeakStates, Is.EqualTo(reference.PeakStates));
-            Assert.That(packed.PeakCells, Is.LessThan(reference.PeakCells / 2));
-            Assert.That(packed.PeakConcurrentCells, Is.LessThan(reference.PeakConcurrentCells / 2));
-        });
-    }
 }

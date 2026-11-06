@@ -1,7 +1,8 @@
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using CardProbability;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -17,27 +18,27 @@ public sealed class UnlimitedExactCompletionTest {
         cards.Add(new([], 1, id: "d", drawCount: 2, drawOncePerTurn: false, postDrawDiscardCount: 1, postDrawDeckMillCount: 1));
         cards.Add(new([], 19, id: "f"));
         List<Combo> combos = [new([new(target, 1, 2)], "One or two targets"), new([], "Direct", cards: [new("t0", 1, 5)])];
-        CalculationOptions options = new(Mode: CalculationModel.Exact);
-        ProbabilityCalculatorService service = new();
-        WorkBudget capped = new(new(100));
-        Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            service.CalculateWithBudget(cards, combos, 4, [], capped, options))!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
-        WorkBudget unlimited = new(CalculationWorkPolicy.Unlimited);
-        ProbabilityCalculationResult result = service.CalculateWithBudget(cards, combos, 4, [], unlimited, options);
+        CalculationRequest request = new CalculationRequestAdapter(cards, true).Create(combos, 4, []);
+        CalculationResult capped = CalculationEngine.Calculate(request, new CardProbability.CalculationOptions(
+            CalculationMode.Exact, new ExecutionPolicy(100)));
+        Assert.That(capped.Status, Is.EqualTo(CalculationStatus.WorkLimit));
+        CalculationResult result = CalculationEngine.Calculate(request);
+        Assert.That(result.Status, Is.EqualTo(CalculationStatus.Completed));
         // Frozen dev reference completed with an explicitly diagnostic 10B budget.
-        Assert.That(result.Contract!.Fractions!.Total, Is.EqualTo(new ProbabilityFraction("793381", "959595")));
-        Assert.That(result.Contract.Fractions.Combos, Is.EqualTo(new[] {
-            new ProbabilityFraction("51103", "73815"), new ProbabilityFraction("851177", "1919190")
+        Assert.That(result.Total!.Primary, Is.EqualTo(new RationalProbability("793381", "959595")));
+        Assert.That(result.Goals.Select(row => row.Value.Primary), Is.EqualTo(new[] {
+            new RationalProbability("51103", "73815"), new RationalProbability("851177", "1919190")
         }));
-        Assert.That(result.Contract.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
-        Assert.That(unlimited.Remaining, Is.Null);
-        WorkBudget interactive = new(CalculationWorkPolicy.Interactive);
-        ProbabilityCalculationResult finiteResult = service.CalculateWithBudget(cards, combos, 4, [], interactive, options);
-        Assert.That(finiteResult.Contract!.Fractions!.Total, Is.EqualTo(result.Contract.Fractions.Total));
-        Assert.That(finiteResult.Contract.Fractions.Combos, Is.EqualTo(result.Contract.Fractions.Combos));
-        Assert.That(interactive.Spent, Is.EqualTo(unlimited.Spent));
-        Assert.That(interactive.Remaining, Is.GreaterThan(0));
-        Assert.That(unlimited.PeakCells, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.CellLimit));
-        Assert.That(unlimited.PeakEntries, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.EntryLimit));
+        Assert.That(result.Accuracy, Is.EqualTo(ProbabilityAccuracy.Exact));
+        Assert.That(result.Metrics.RemainingWork, Is.Null);
+        CalculationResult finite = CalculationEngine.Calculate(request, new CardProbability.CalculationOptions(
+            CalculationMode.Exact, new ExecutionPolicy(150_000_000)));
+        Assert.That(finite.Status, Is.EqualTo(CalculationStatus.Completed));
+        Assert.That(finite.Total!.Primary, Is.EqualTo(result.Total.Primary));
+        Assert.That(finite.Goals.Select(row => row.Value.Primary), Is.EqualTo(result.Goals.Select(row => row.Value.Primary)));
+        Assert.That(finite.Metrics.WorkSpent, Is.EqualTo(result.Metrics.WorkSpent));
+        Assert.That(finite.Metrics.RemainingWork, Is.GreaterThan(0));
+        Assert.That(result.Metrics.PeakCells, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.CellLimit));
+        Assert.That(result.Metrics.PeakEntries, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.EntryLimit));
     }
 }

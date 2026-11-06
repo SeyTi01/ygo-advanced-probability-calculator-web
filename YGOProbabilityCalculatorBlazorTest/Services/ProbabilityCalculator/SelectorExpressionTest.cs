@@ -1,9 +1,7 @@
 using System.Text.Json;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
-using YGOProbabilityCalculatorBlazor.Services.Interface;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -63,7 +61,10 @@ public sealed class SelectorExpressionTest {
         invalid.Add(fakeSpell);
         foreach (Card card in invalid) {
             Assert.That(new SearchEffectPlan(Compact, false).Matches(card), Is.False, card.Name);
-            Assert.That(CardSelectorCompiler.Compile(Compact, [card], new(CalculationWorkPolicy.Interactive)), Is.EqualTo(new[] { false }));
+            Card source = new([], id: "selector-source", search: new(Compact, false));
+            CardProbability.CalculationRequest request = new CalculationRequestAdapter([source, card], true).Create([], 1);
+            string membership = request.Entries.Single(entry => entry.Id == source.Id).Effect!.Search!.Targets.MembershipId!;
+            Assert.That(request.Memberships.Single(candidate => candidate.Id == membership).EntryIds, Is.Empty);
         }
         Assert.That(CardSelector.LevelAtLeast(0).Matches(Target(0)), Is.True);
         Assert.That(CardSelector.LevelAtLeast(int.MaxValue).Matches(Target(int.MaxValue)), Is.True);

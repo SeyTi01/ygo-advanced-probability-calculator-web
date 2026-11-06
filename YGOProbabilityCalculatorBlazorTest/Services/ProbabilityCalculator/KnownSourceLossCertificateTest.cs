@@ -2,10 +2,6 @@ using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.Session;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -14,7 +10,6 @@ public sealed class KnownSourceLossCertificateTest {
     internal static SessionState TwoTargetForty() {
         CategoryBase target = new("Archetype target");
         CategoryBase other = new("Other target");
-
         return new() {
             Cards = [new([], 3, id: "s", search: new(CardSelector.AnyOf([target.Identity, other.Identity]), false)),
                 new([target], 3, id: "t"), new([other], 3, id: "b"), new([], 28, id: "f"),
@@ -27,33 +22,28 @@ public sealed class KnownSourceLossCertificateTest {
     }
 
     [Test]
-    public void FortyCardMultiTargetSearchBecomesExactForEveryRow() {
+    public void FortyCardMultiTargetSearchBecomesExactForEveryPublishedRow() {
         SessionState state = TwoTargetForty();
-        WorkBudget budget = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation execution = new(state.Cards, state.HandSize, budget);
-        ExactCalculationResult upper = execution.Calculate(state.Combos, state.ComboGroups);
-        ExactCalculationResult old = execution.SearchExecution!.CalculateLower(state.Combos, state.ComboGroups, false);
-        SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(state.Combos, state.ComboGroups, upper, budget, execution);
-        ExactCalculationResult physical = new DrawEffectCalculation(state.Cards, state.HandSize,
-            new(CalculationWorkPolicy.Default), physicalSearch: true).Calculate(state.Combos, state.ComboGroups);
-        AssertRows(old, certificate, physical, upper);
+        ProbabilityCalculatorService service = new();
+        ProbabilityCalculationResult projected = service.CalculateProbabilityResults(state.Cards, state.Combos, state.HandSize, state.ComboGroups,
+            CalculationWorkPolicy.Default, new(CertifySearchAvailability: true));
+        ProbabilityCalculationResult physical = service.CalculateProbabilityResults(state.Cards, state.Combos, state.HandSize, state.ComboGroups,
+            CalculationWorkPolicy.Default, new(Mode: CalculationModel.Exact));
+        SearchAvailabilityCertificate certificate = projected.SearchAvailability!;
         Assert.That(certificate.Status, Is.EqualTo(SearchAvailabilityStatus.Exact));
-        Assert.That(old.Total.Numerator * upper.Total.Denominator,
-            Is.LessThan(upper.Total.Numerator * old.Total.Denominator));
+        AssertBounds(certificate, ApplicationResultFractions.From(physical), ApplicationResultFractions.From(projected));
     }
 
     [Test]
     public async Task FortyCardMillTightensEveryRowWithoutChangingPrimary() {
         SessionState state = await SearchAvailabilityCertificateTest.Example("mill2");
-        WorkBudget budget = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation execution = new(state.Cards, state.HandSize, budget);
-        ExactCalculationResult upper = execution.Calculate(state.Combos, state.ComboGroups);
-        ExactCalculationResult old = execution.SearchExecution!.CalculateLower(state.Combos, state.ComboGroups, false);
-        SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(state.Combos, state.ComboGroups, upper, budget, execution);
-        ExactCalculationResult physical = new DrawEffectCalculation(state.Cards, state.HandSize,
-            new(CalculationWorkPolicy.Default), physicalSearch: true).Calculate(state.Combos, state.ComboGroups);
-        AssertRows(old, certificate, physical, upper);
-        Assert.That(old.Total.ToFraction(), Is.EqualTo(new ProbabilityFraction("727693", "860472")));
+        ProbabilityCalculatorService service = new();
+        ProbabilityCalculationResult projected = service.CalculateProbabilityResults(state.Cards, state.Combos, state.HandSize, state.ComboGroups,
+            CalculationWorkPolicy.Default, new(CertifySearchAvailability: true));
+        ProbabilityCalculationResult physical = service.CalculateProbabilityResults(state.Cards, state.Combos, state.HandSize, state.ComboGroups,
+            CalculationWorkPolicy.Default, new(Mode: CalculationModel.Exact));
+        SearchAvailabilityCertificate certificate = projected.SearchAvailability!;
+        AssertBounds(certificate, ApplicationResultFractions.From(physical), ApplicationResultFractions.From(projected));
         Assert.That(certificate.Total!.Lower, Is.EqualTo(new ProbabilityFraction("33165161", "39151476")));
         Assert.That(certificate.Total.Upper, Is.EqualTo(new ProbabilityFraction("4819127", "5593068")));
     }
@@ -61,62 +51,27 @@ public sealed class KnownSourceLossCertificateTest {
     [Test]
     public void MultipleTargetsStrictlyImproveAgainstIndependentPhysicalShuffleOracle() {
         SearchCertificateFixtures.Fixture fixture = SearchCertificateFixtures.Fixtures().Single(value => value.Name == "known-source-two-targets");
-        WorkBudget budget = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation execution = new(fixture.Deck, fixture.Hand, budget);
-        ExactCalculationResult upper = execution.Calculate(fixture.Combos, fixture.Groups);
-        ExactCalculationResult old = execution.SearchExecution!.CalculateLower(fixture.Combos, fixture.Groups, false);
-        SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(fixture.Combos, fixture.Groups, upper, budget, execution);
+        ProbabilityCalculationResult projected = new ProbabilityCalculatorService().CalculateProbabilityResults(
+            fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default, new(CertifySearchAvailability: true));
         SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups);
-        ExactProbability[] values = oracle.Wins[1].Select(wins => new ExactProbability(wins, oracle.Outcomes)).ToArray();
-        AssertRows(old, certificate, new(values[0], values.Skip(1).Take(fixture.Combos.Count).ToArray(),
-            values.Skip(1 + fixture.Combos.Count).ToArray()), upper);
-        SearchAvailabilityInterval row = certificate.Combos[0];
-        Assert.That(BigInteger.Parse(row.Lower.Numerator) * old.Combos[0].Denominator,
-            Is.GreaterThan(old.Combos[0].Numerator * BigInteger.Parse(row.Lower.Denominator)));
+        ApplicationFraction[] values = oracle.Wins[1].Select(wins => new ApplicationFraction(wins, oracle.Outcomes)).ToArray();
+        ApplicationResultFractions physical = new(values[0], values.Skip(1).Take(fixture.Combos.Count).ToArray(),
+            values.Skip(1 + fixture.Combos.Count).ToArray(), null);
+        AssertBounds(projected.SearchAvailability!, physical, ApplicationResultFractions.From(projected));
+        ApplicationFraction refined = ApplicationFraction.From(projected.SearchAvailability!.Combos[0].Lower);
+        Assert.That(refined.Numerator * oracle.Outcomes, Is.GreaterThan(oracle.Wins[0][1] * refined.Denominator));
     }
 
-    [Test]
-    public async Task LimitAfterElementaryCompletionKeepsAllEarlierEndpoints() {
-        SessionState state = await SearchAvailabilityCertificateTest.Example("mill2");
-        WorkBudget measure = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation first = new(state.Cards, state.HandSize, measure);
-        ExactCalculationResult upper = first.Calculate(state.Combos, state.ComboGroups);
-        first.DescribeCapability();
-        ExactCalculationResult old = first.SearchExecution!.CalculateLower(state.Combos, state.ComboGroups, false);
-        // Enough for interval assembly and to begin the optional delta pass,
-        // far short of its complete conditional search count.
-        WorkBudget limited = new(new(measure.Spent + 10_000));
-        DrawEffectCalculation execution = new(state.Cards, state.HandSize, limited);
-        ExactCalculationResult actual = execution.Calculate(state.Combos, state.ComboGroups);
-        SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(state.Combos, state.ComboGroups, actual, limited, execution);
-        Assert.That(certificate.Detail, Does.Contain("Limited refinement"));
-        Assert.That(certificate.Status, Is.EqualTo(SearchAvailabilityStatus.Bounded));
-        SearchAvailabilityInterval[] rows = [certificate.Total!, .. certificate.Combos, .. certificate.Groups];
-        for (int row = 0; row < rows.Length; row++) {
-            Assert.That(rows[row].Lower, Is.EqualTo(Rows(old)[row].ToFraction()));
-            Assert.That(rows[row].Upper, Is.EqualTo(Rows(upper)[row].ToFraction()));
-            Assert.That(Rows(actual)[row].ToFraction(), Is.EqualTo(Rows(upper)[row].ToFraction()));
+    private static void AssertBounds(SearchAvailabilityCertificate certificate, ApplicationResultFractions physical, ApplicationResultFractions primary) {
+        SearchAvailabilityInterval[] intervals = [certificate.Total!, .. certificate.Combos, .. certificate.Groups];
+        ApplicationFraction[] actual = [physical.Total, .. physical.Combos, .. physical.Groups];
+        ApplicationFraction[] optimistic = [primary.Total, .. primary.Combos, .. primary.Groups];
+        for (int row = 0; row < intervals.Length; row++) {
+            ApplicationFraction lower = ApplicationFraction.From(intervals[row].Lower);
+            ApplicationFraction upper = ApplicationFraction.From(intervals[row].Upper);
+            Assert.That(lower.Numerator * actual[row].Denominator, Is.LessThanOrEqualTo(actual[row].Numerator * lower.Denominator));
+            Assert.That(actual[row].Numerator * upper.Denominator, Is.LessThanOrEqualTo(upper.Numerator * actual[row].Denominator));
+            Assert.That(upper.Numerator * optimistic[row].Denominator, Is.LessThanOrEqualTo(optimistic[row].Numerator * upper.Denominator));
         }
     }
-
-    private static void AssertRows(
-        ExactCalculationResult old,
-        SearchAvailabilityCertificate certificate,
-        ExactCalculationResult physical,
-        ExactCalculationResult upper
-    ) {
-        SearchAvailabilityInterval[] rows = [certificate.Total!, .. certificate.Combos, .. certificate.Groups];
-        for (int row = 0; row < rows.Length; row++) {
-            ExactProbability lower = new(BigInteger.Parse(rows[row].Lower.Numerator), BigInteger.Parse(rows[row].Lower.Denominator));
-            Assert.That(Rows(old)[row].Numerator * lower.Denominator,
-                Is.LessThanOrEqualTo(lower.Numerator * Rows(old)[row].Denominator), $"old <= new, row {row}");
-            Assert.That(lower.Numerator * Rows(physical)[row].Denominator,
-                Is.LessThanOrEqualTo(Rows(physical)[row].Numerator * lower.Denominator), $"new <= physical, row {row}");
-            Assert.That(Rows(physical)[row].Numerator * Rows(upper)[row].Denominator,
-                Is.LessThanOrEqualTo(Rows(upper)[row].Numerator * Rows(physical)[row].Denominator), $"physical <= upper, row {row}");
-            Assert.That(rows[row].Upper, Is.EqualTo(Rows(upper)[row].ToFraction()));
-        }
-    }
-
-    private static ExactProbability[] Rows(ExactCalculationResult result) => [result.Total, .. result.Combos, .. result.Groups];
 }

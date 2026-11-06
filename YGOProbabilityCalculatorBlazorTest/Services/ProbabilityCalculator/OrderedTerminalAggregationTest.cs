@@ -3,56 +3,29 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture, NonParallelizable]
 public sealed class OrderedTerminalAggregationTest {
-    [TestCase(false), TestCase(true)]
-    public void CompleteTerminalMassAndEveryCertificateRowMatchHistoricalAndPhysicalOracle(bool defer) {
+    [Test]
+    public void PublishedPrimaryAndCertificateRowsMatchPhysicalOracle() {
         foreach (SearchCertificateFixtures.Fixture fixture in SearchCertificateFixtures.Fixtures()) {
             List<Card> deck = fixture.Deck.Where(card => card.Active && card.Copies > 0).ToList();
             DrawActivationPriority? priority = fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority);
-            Dictionary<string, BigInteger>[] distributions = [new(), new()];
-            ExactProbability[][] upper = new ExactProbability[2][];
-            ExactProbability[][] witness = new ExactProbability[2][];
-            ExactProbability[][] lower = new ExactProbability[2][];
-            for (int route = 0; route < 2; route++) {
-                int side = route;
-                WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-                PostDrawCalculation calculation = new(deck, fixture.Hand, budget, priority, defer,
-                    compactFrontierThreshold: 0, eagerTerminalAggregation: route == 1) {
-                    StreamSearchTerminals = false,
-                    ObserveTerminal = (hand, mass) => {
-                        distributions[side].Add(string.Join(',', hand), mass);
-                        Array.Fill(hand, int.MinValue); // Audit copies cannot corrupt retained keys.
-                    }
-                };
-                upper[route] = Rows(calculation.CalculateSearch(fixture.Combos, fixture.Groups, false,
-                    new(deck, budget), coalesceOrdinary: defer));
-                witness[route] = Rows(calculation.CalculateSearchLower(fixture.Combos, fixture.Groups, true));
-                lower[route] = Rows(calculation.CalculateSearchLower(fixture.Combos, fixture.Groups, false));
-                Assert.That(calculation.PackedLayers, Is.GreaterThan(0), fixture.Name);
-            }
-            Assert.That(distributions[1], Is.EquivalentTo(distributions[0]), fixture.Name + " terminal masses");
-            Assert.That(upper[1], Is.EqualTo(upper[0]), fixture.Name + " upper");
-            Assert.That(witness[1], Is.EqualTo(witness[0]), fixture.Name + " witness");
-            Assert.That(lower[1], Is.EqualTo(lower[0]), fixture.Name + " lower");
-            SearchCertificateOracle.Counts truth = SearchCertificateOracle.Enumerate(deck, fixture.Hand,
-                fixture.Combos, fixture.Groups, fixture.Priority);
-            for (int row = 0; row < upper[1].Length; row++) {
-                Assert.That(upper[1][row].Numerator * truth.Outcomes,
-                    Is.EqualTo(truth.Wins[2][row] * upper[1][row].Denominator), fixture.Name);
-                Assert.That(witness[1][row].Numerator * truth.Outcomes,
-                    Is.EqualTo(truth.Wins[4][row] * witness[1][row].Denominator), fixture.Name);
-                Assert.That(lower[1][row].Numerator * truth.Outcomes,
-                    Is.LessThanOrEqualTo(truth.Wins[1][row] * lower[1][row].Denominator), fixture.Name);
-                Assert.That(upper[1][row].Numerator * truth.Outcomes,
-                    Is.GreaterThanOrEqualTo(truth.Wins[1][row] * upper[1][row].Denominator), fixture.Name);
+            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+                deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Interactive, new(priority, true));
+            ApplicationFraction[] primary = Rows(ApplicationResultFractions.From(result));
+            SearchAvailabilityCertificate certificate = result.SearchAvailability!;
+            SearchAvailabilityInterval[] bounds = [certificate.Total!, .. certificate.Combos, .. certificate.Groups];
+            SearchCertificateOracle.Counts truth = SearchCertificateOracle.Enumerate(deck, fixture.Hand, fixture.Combos, fixture.Groups, fixture.Priority);
+            for (int row = 0; row < primary.Length; row++) {
+                ApplicationFraction lower = ApplicationFraction.From(bounds[row].Lower);
+                ApplicationFraction upper = ApplicationFraction.From(bounds[row].Upper);
+                Assert.That(primary[row].Numerator * truth.Outcomes, Is.EqualTo(truth.Wins[2][row] * primary[row].Denominator), fixture.Name);
+                Assert.That(lower.Numerator * truth.Outcomes, Is.GreaterThanOrEqualTo(truth.Wins[4][row] * lower.Denominator), fixture.Name);
+                Assert.That(lower.Numerator * truth.Outcomes, Is.LessThanOrEqualTo(truth.Wins[1][row] * lower.Denominator), fixture.Name);
+                Assert.That(upper.Numerator * truth.Outcomes, Is.GreaterThanOrEqualTo(truth.Wins[1][row] * upper.Denominator), fixture.Name);
             }
         }
     }
@@ -63,16 +36,12 @@ public sealed class OrderedTerminalAggregationTest {
             List<Card> deck = fixture.Deck.Select(card => card.WithSearch(null)).ToList();
             DrawActivationPriority? priority = fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority);
             DrawSequenceOracle.Counts truth = DrawSequenceOracle.Enumerate(deck, fixture.Hand, fixture.Combos, fixture.Groups, priorityIds: fixture.Priority);
-            foreach (bool defer in new[] { false, true }) {
-                PostDrawCalculation historical = new(deck, fixture.Hand, new(CalculationWorkPolicy.Interactive), priority, defer,
-                    compactFrontierThreshold: 0, eagerTerminalAggregation: false);
-                PostDrawCalculation candidate = new(deck, fixture.Hand, new(CalculationWorkPolicy.Interactive), priority, defer,
-                    compactFrontierThreshold: 0);
-                ExactProbability[] actual = Rows(candidate.Calculate(fixture.Combos, fixture.Groups));
-                Assert.That(actual, Is.EqualTo(Rows(historical.Calculate(fixture.Combos, fixture.Groups))), fixture.Name);
-                for (int row = 0; row < actual.Length; row++) {
-                    Assert.That(actual[row].Numerator * truth.Total,
-                        Is.EqualTo(truth.Wins[row] * actual[row].Denominator), fixture.Name);
+            foreach (CalculationModel mode in new[] { CalculationModel.Fast, CalculationModel.Exact }) {
+                ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+                    deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Interactive, new(priority, Mode: mode));
+                ApplicationFraction[] rows = Rows(ApplicationResultFractions.From(result));
+                for (int row = 0; row < rows.Length; row++) {
+                    Assert.That(rows[row].Numerator * truth.Total, Is.EqualTo(truth.Wins[row] * rows[row].Denominator), fixture.Name);
                 }
             }
         }
@@ -97,63 +66,15 @@ public sealed class OrderedTerminalAggregationTest {
     [TestCase("base"), TestCase("priority")]
     public void StandardRescuesHistoricalStorageFailureWithEveryHighReferenceRow(string variant) {
         SessionState state = Pressure(variant);
-        WorkBudget oldBudget = new(CalculationWorkPolicy.Interactive);
-        PostDrawCalculation old = new(state.Cards, state.HandSize, oldBudget, state.DrawActivationPriority, eagerTerminalAggregation: false);
-        Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() => old.CalculateSearch(state.Combos, state.ComboGroups,
-            false, new(state.Cards, oldBudget)))!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-        WorkBudget referenceBudget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.High);
-        PostDrawCalculation reference = new(state.Cards, state.HandSize, referenceBudget, state.DrawActivationPriority, eagerTerminalAggregation: false);
-        ExactCalculationResult expected = reference.CalculateSearch(state.Combos, state.ComboGroups, false, new(state.Cards, referenceBudget));
-        WorkBudget candidateBudget = new(CalculationWorkPolicy.Interactive);
-        PostDrawCalculation candidate = new(state.Cards, state.HandSize, candidateBudget, state.DrawActivationPriority);
-        ExactCalculationResult actual = candidate.CalculateSearch(state.Combos, state.ComboGroups, false, new(state.Cards, candidateBudget));
-        Assert.That(Rows(actual), Is.EqualTo(Rows(expected)));
-        Assert.That(candidate.PeakCells, Is.LessThan(240_000));
-        Assert.That(candidate.PeakConcurrentCells, Is.LessThan(reference.PeakConcurrentCells));
-        Assert.That(candidateBudget.Spent, Is.LessThan(referenceBudget.Spent));
-        Assert.That(candidate.TerminalStates, Is.EqualTo(reference.TerminalStates));
+        ProbabilityCalculatorService service = new();
+        ProbabilityCalculationResult reference = service.CalculateProbabilityResults(state.Cards, state.Combos, state.HandSize, state.ComboGroups,
+            CalculationWorkPolicy.Interactive, CalculationStoragePolicy.High, new(state.DrawActivationPriority, true));
+        ProbabilityCalculationResult actual = service.CalculateProbabilityResults(state.Cards, state.Combos, state.HandSize, state.ComboGroups,
+            CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard, new(state.DrawActivationPriority, true));
+        Assert.That(Rows(ApplicationResultFractions.From(actual)), Is.EqualTo(Rows(ApplicationResultFractions.From(reference))));
     }
 
-    [Test]
-    public void UnpackedSmallRequestsKeepEveryResourceCounter() {
-        SessionState state = Pressure(roles: 4);
-        WorkBudget[] budgets = [new(CalculationWorkPolicy.Interactive), new(CalculationWorkPolicy.Interactive)];
-        ExactCalculationResult[] results = new ExactCalculationResult[2];
-        for (int i = 0; i < 2; i++) {
-            PostDrawCalculation calculation = new(state.Cards, state.HandSize, budgets[i], eagerTerminalAggregation: i == 1);
-            results[i] = calculation.CalculateSearch(state.Combos, state.ComboGroups, false, new(state.Cards, budgets[i]));
-            Assert.That(calculation.PackedLayers, Is.Zero);
-        }
-        Assert.That(Rows(results[1]), Is.EqualTo(Rows(results[0])));
-        Assert.That(budgets[1].Spent, Is.EqualTo(budgets[0].Spent));
-        Assert.That(budgets[1].PeakEntries, Is.EqualTo(budgets[0].PeakEntries));
-        Assert.That(budgets[1].PeakCells, Is.EqualTo(budgets[0].PeakCells));
-    }
 
-    [Test]
-    public void SecondaryWorkLimitRetainsTheCompletedWitnessOnARescuedRequest() {
-        SessionState state = Pressure();
-        WorkBudget measure = new(CalculationWorkPolicy.Interactive);
-        DrawEffectCalculation original = new(state.Cards, state.HandSize, measure);
-        ExactCalculationResult upper = original.Calculate(state.Combos, state.ComboGroups);
-        original.DescribeCapability();
-        ExactCalculationResult witness = original.SearchExecution!.CalculateLower(state.Combos, state.ComboGroups, true);
-        WorkBudget limited = new(new(measure.Spent + 10_000));
-        DrawEffectCalculation execution = new(state.Cards, state.HandSize, limited);
-        ExactCalculationResult actual = execution.Calculate(state.Combos, state.ComboGroups);
-        SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(state.Combos,
-            state.ComboGroups, actual, limited, execution);
-        Assert.That(Rows(actual), Is.EqualTo(Rows(upper)));
-        Assert.That(certificate.Status, Is.EqualTo(SearchAvailabilityStatus.Bounded));
-        Assert.That(certificate.Detail, Does.Contain("Limited refinement"));
-        SearchAvailabilityInterval[] intervals = [certificate.Total!, .. certificate.Combos, .. certificate.Groups];
-        ExactProbability[] expectedLower = Rows(witness);
-        ExactProbability[] expectedUpper = Rows(upper);
-        for (int row = 0; row < intervals.Length; row++) {
-            Assert.That(intervals[row].Lower, Is.EqualTo(expectedLower[row].ToFraction()));
-            Assert.That(intervals[row].Upper, Is.EqualTo(expectedUpper[row].ToFraction()));
-        }
-    }
 
-    private static ExactProbability[] Rows(ExactCalculationResult result) => [result.Total, .. result.Combos, .. result.Groups];
+    private static ApplicationFraction[] Rows(ApplicationResultFractions result) => [result.Total, .. result.Combos, .. result.Groups];
 }

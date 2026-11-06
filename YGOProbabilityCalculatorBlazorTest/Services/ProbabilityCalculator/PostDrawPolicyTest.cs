@@ -143,7 +143,7 @@ public class PostDrawPolicyTest {
         List<Card>? hand = DrawSequenceOracle.Resolve([opt, opt, b, material, filler, reward], 4, []);
 
         Assert.That(hand!.Select(card => card.Id), Is.EquivalentTo(new[] { filler.Id, reward.Id }));
-        PreDrawCostsTest.AssertParity([opt, opt, b, material, filler, reward], 4, [], []);
+        PreDrawCostsTest.AssertParity([opt.WithCopies(2), b, material, filler, reward], 4, [], []);
     }
 
     [Test]

@@ -2,128 +2,11 @@ using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
+using CP = CardProbability;
 using YGOProbabilityCalculatorBlazorTest.Fixtures;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
-
-[TestFixture]
-public sealed class SearchDecisionCounterTest {
-    [Test]
-    public void EvictedApplyEntriesAndSharedRootsPreserveWideMaskPhysicalCounts() {
-        Random random = new(71813);
-        List<Card> deck = Enumerable.Range(0, 70).Select(row => new Card([], row % 10 == 0 || row == 69 ? 1 : 0)).ToList();
-        int[] physical = Enumerable.Range(0, deck.Count).Where(row => deck[row].Copies > 0).ToArray();
-        for (int hand = 0; hand <= physical.Length; hand++) {
-            SearchCountingDiagnostics diagnostics = new();
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive) { SearchDiagnostics = diagnostics };
-            SearchDecisionCounter evicting = new(deck, hand, budget, applyCapacity: 1);
-            SearchDecisionCounter reference = new(deck, hand, new(CalculationWorkPolicy.Interactive));
-            List<CompiledEvent?> events = [null, new([new(BigInteger.One << 69, 2, 2)])];
-            for (int index = 0; index < 18; index++) {
-                CountBound[] bounds = Enumerable.Range(0, 3).Select(_ => {
-                    BigInteger mask = physical.Where(_ => random.Next(2) == 0)
-                        .Aggregate(BigInteger.Zero, (value, row) => value | (BigInteger.One << row));
-                    int minimum = random.Next(3);
-                    return new CountBound(mask, minimum, random.Next(minimum, 5));
-                }).ToArray();
-                events.Add(new(bounds));
-            }
-            events.Add(events[2]);
-            foreach (List<CompiledEvent?> subset in new[] { events.Take(8).ToList(), events, events.Skip(8).ToList(), events }) {
-                int root = evicting.Union(subset);
-                BigInteger expected = 0;
-                for (int selection = 0; selection < 1 << physical.Length; selection++) {
-                    if (BitOperations.PopCount((uint)selection) != hand) {
-                        continue;
-                    }
-                    if (subset.OfType<CompiledEvent>().Any(predicate => predicate.Constraints.All(bound => {
-                        int count = physical.Where((row, copy) => (selection & (1 << copy)) != 0
-                            && (bound.EligibleRows & (BigInteger.One << row)) != 0).Count();
-                        return count >= bound.MinCount && count <= bound.MaxCount;
-                    }))) {
-                        expected++;
-                    }
-                }
-                Assert.That(evicting.Count(root), Is.EqualTo(expected));
-                Assert.That(evicting.Count(root), Is.EqualTo(reference.Count(reference.Union(subset))));
-            }
-            Assert.That(evicting.Count(evicting.Union([new([])])), Is.EqualTo(reference.Count(1)));
-            if (hand > 0) {
-                Assert.That(diagnostics.Counts.GetValueOrDefault("primary/apply clears"), Is.GreaterThan(0));
-            }
-        }
-    }
-
-    [Test]
-    public void SeededPredicateUnionsMatchLabeledHandsAtEverySize() {
-        Random random = new(2042026);
-        for (int trial = 0; trial < 80; trial++) {
-            List<Card> deck = Enumerable.Range(0, 5).Select(row => new Card([], random.Next(3), id: $"r{row}")).ToList();
-            int[] physical = deck.SelectMany((card, row) => Enumerable.Repeat(row, card.Copies)).ToArray();
-            for (int size = 0; size <= physical.Length; size++) {
-                List<CompiledEvent?> predicates = Enumerable.Range(0, random.Next(1, 9)).Select(_ => (CompiledEvent?)new CompiledEvent(
-                    Enumerable.Range(0, random.Next(5)).Select(_ => {
-                        int min = random.Next(size + 2);
-                        return new CountBound(random.Next(32), min, random.Next(min, size + 3));
-                    }).ToArray())).ToList();
-                predicates.Add(null);
-                WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-                SearchDecisionCounter counter = new(deck, size, budget);
-                BigInteger actual = counter.Count(counter.Union(predicates));
-                long expected = 0;
-                for (int hand = 0; hand < (1 << physical.Length); hand++) {
-                    if (BitOperations.PopCount((uint)hand) != size) {
-                        continue;
-                    }
-                    bool success = predicates.OfType<CompiledEvent>().Any(predicate => predicate.Constraints.All(bound => {
-                        int matches = physical.Where((row, copy) => (hand & (1 << copy)) != 0
-                            && (bound.EligibleRows & (BigInteger.One << row)) != 0).Count();
-                        return matches >= bound.MinCount && matches <= bound.MaxCount;
-                    }));
-                    if (success) {
-                        expected++;
-                    }
-                }
-                Assert.That(actual, Is.EqualTo(new BigInteger(expected)), $"trial {trial}, size {size}");
-            }
-        }
-    }
-
-    [Test]
-    public void LargeMultiplicitiesUseExactIntegerWeightsAndChargeTheirPayload() {
-        List<Card> deck = [new([], 100), new([], 100)];
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        SearchDecisionCounter counter = new(deck, 100, budget);
-        int root = counter.Union([new([new(1, 50, 50)])]);
-        BigInteger choose = 1;
-        for (int i = 1; i <= 50; i++) {
-            choose = choose * (101 - i) / i;
-        }
-        Assert.That(counter.Count(root), Is.EqualTo(choose * choose));
-        Assert.That(budget.PeakCells, Is.GreaterThan(WorkBudget.IntegerCells(choose * choose)));
-        long spent = budget.Spent;
-        WorkBudget insufficient = new(new(spent - 1));
-        SearchDecisionCounter limited = new(deck, 100, insufficient);
-        Assert.Throws<ProbabilityCalculationLimitException>(() => limited.Count(limited.Union([new([new(1, 50, 50)])])));
-    }
-
-    [Test]
-    public void DecisionConstructionHonorsStandardStorageBoundary() {
-        List<Card> deck = Enumerable.Range(0, 20).Select(_ => new Card([], 3)).ToList();
-        Random random = new(713);
-        List<CompiledEvent?> events = Enumerable.Range(0, 200).Select(_ => (CompiledEvent?)new CompiledEvent(
-            Enumerable.Range(0, 6).Select(_ => new CountBound(random.Next(1 << 20), 2, 5)).ToArray())).ToList();
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        SearchDecisionCounter counter = new(deck, 10, budget);
-        ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() => counter.Union(events));
-        Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-        Assert.That(budget.PeakEntries, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.EntryLimit + 1));
-    }
-}
 
 public sealed partial class SearchEffectsTest {
     [Test]
@@ -180,18 +63,22 @@ public sealed partial class SearchEffectsTest {
                 session.Cards.Add(original.Duplicate().WithCopies(original.Copies - copies));
             }
         }
-        WorkBudget budget = new(CalculationWorkPolicy.Default);
-        ExactCalculationResult result = new DrawEffectCalculation(session.Cards, 5, budget).Calculate(session.Combos, session.ComboGroups);
-        ExactProbability[] actual = [result.Total, .. result.Combos, .. result.Groups];
+        CP.CalculationRequest request = new CalculationRequestAdapter(session.Cards, true).Create(session.Combos, 5, session.ComboGroups);
+        CP.CalculationOptions options = new(CP.CalculationMode.OptimisticSearchProjection,
+            new CP.ExecutionPolicy(CalculationWorkPolicy.Default.WorkUnits));
+        CP.CalculationResult result = CP.CalculationEngine.Calculate(request, options);
+        Assert.That(result.Status, Is.EqualTo(CP.CalculationStatus.Completed));
+        CP.RationalProbability[] actual = [result.Total!.Primary, .. result.Goals.Select(goal => goal.Value.Primary), .. result.Groups.Select(group => group.Value.Primary)];
         string[] reference = expected[copies == 3 ? 2 : copies];
         for (int index = 0; index < reference.Length; index++) {
             BigInteger[] fraction = reference[index].Split('/').Select(BigInteger.Parse).ToArray();
-            AssertRatio(actual[index], fraction[0], fraction[1]);
+            Assert.That(BigInteger.Parse(actual[index].Numerator) * fraction[1],
+                Is.EqualTo(fraction[0] * BigInteger.Parse(actual[index].Denominator)));
         }
-        Assert.That(budget.PeakCells, Is.LessThan(CalculationStoragePolicy.Standard.CellLimit));
-        ExactCalculationResult only = new DrawEffectCalculation(session.Cards, 5, new(CalculationWorkPolicy.Default))
-            .Calculate(session.Combos, session.ComboGroups, true);
-        AssertRatio(only.Total, actual[0].Numerator, actual[0].Denominator);
-        Assert.That(only.Combos, Is.Empty);
+        Assert.That(result.Metrics.PeakCells, Is.LessThan(CalculationStoragePolicy.Standard.CellLimit));
+        CP.CalculationResult only = CP.CalculationEngine.CalculateUnion(request, options);
+        Assert.That(only.Status, Is.EqualTo(CP.CalculationStatus.Completed));
+        Assert.That(only.Total!.Primary, Is.EqualTo(actual[0]));
+        Assert.That(only.Goals, Is.Empty);
     }
 }

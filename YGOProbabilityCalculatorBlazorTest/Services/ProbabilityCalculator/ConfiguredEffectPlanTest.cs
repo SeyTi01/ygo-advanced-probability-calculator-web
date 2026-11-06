@@ -5,8 +5,6 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -35,24 +33,24 @@ public class ConfiguredEffectPlanTest {
             new([new(Level, 0, 0)], "No Level 8", groupId: "exclusion"),
             new([], "Retained source", cards: [new(original[0].Id, 1, 1)])];
         List<ComboGroup> groups = [new("g", "Routes"), new("exclusion", "Exclusion"), new("empty", "Empty")];
-        ExactCalculationResult baseline = Verify(original, combos, groups);
+        ApplicationResultFractions baseline = Verify(original, combos, groups);
         List<Card> custom = original.ToList();
         custom[0] = shape == "allure" ? custom[0].WithPostDrawDiscardCount(0) : custom[0].WithPreDrawRemovalCount(0);
-        ExactCalculationResult modified = Verify(custom, combos, groups);
+        ApplicationResultFractions modified = Verify(custom, combos, groups);
         Assert.That(custom[0].DrawCount, Is.EqualTo(2));
         Assert.That(custom[0].EffectProfile.Source, Is.EqualTo(EffectSource.Custom));
         if (shape == "mixed") {
             Assert.That(custom[^1].EffectPlan, Is.EqualTo(allure.EffectPlan));
         }
         if (shape == "trade" && material) {
-            Assert.That(baseline.Combos[2].ToDouble(new(CalculationWorkPolicy.Default)),
-                Is.GreaterThan(modified.Combos[2].ToDouble(new(CalculationWorkPolicy.Default))),
+            Assert.That(baseline.Combos[2].ToDouble(),
+                Is.GreaterThan(modified.Combos[2].ToDouble()),
                 "Removing a cost is not an upper bound for exclusion requirements.");
         }
         custom[0] = CardEffectRegistry.Default.RestoreBuiltIn(custom[0]);
         Assert.That(custom[0].EffectPlan, Is.EqualTo(original[0].EffectPlan));
         Assert.That(custom[0].EffectProfile, Is.EqualTo(original[0].EffectProfile));
-        ExactCalculationResult restored = Verify(custom, combos, groups);
+        ApplicationResultFractions restored = Verify(custom, combos, groups);
         Assert.That(restored.Total, Is.EqualTo(baseline.Total));
         Assert.That(restored.Combos, Is.EqualTo(baseline.Combos));
         Assert.That(restored.Groups, Is.EqualTo(baseline.Groups));
@@ -77,15 +75,15 @@ public class ConfiguredEffectPlanTest {
         Assert.That(trade.PreDrawRemovalCount, Is.EqualTo(1));
     }
 
-    private static ExactCalculationResult Verify(List<Card> deck, List<Combo> combos, List<ComboGroup> groups) {
-        ExactCalculationResult result = null!;
+    private static ApplicationResultFractions Verify(List<Card> deck, List<Combo> combos, List<ComboGroup> groups) {
+        ApplicationResultFractions result = null!;
         foreach (DrawActivationPriority priority in new[] { DrawActivationPriority.Default,
             new(DrawActivationMode.CustomPriority, deck.Where(card => card.DrawCount is not null).Reverse().Select(card => card.Id).ToArray()) }) {
             DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 2, combos, groups,
                 collapseIdenticalCopies: true, priorityIds: priority.Mode == DrawActivationMode.CustomPriority ? priority.CardIds : null);
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-            result = new DrawEffectCalculation(deck, 2, budget, priority).Calculate(combos, groups);
-            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+            result = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+                deck, combos, 2, groups, CalculationWorkPolicy.Interactive, new(priority)));
+            ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
             for (int i = 0; i < rows.Length; i++) {
                 Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}");
             }
@@ -94,7 +92,7 @@ public class ConfiguredEffectPlanTest {
             CalculationInput input = JsonSerializer.Deserialize(snapshot.Json, CalculationJsonContext.Default.CalculationInput)!;
             Assert.That(input.Cards.Select(card => (card.Id, card.PreDrawRemovalCount, card.PostDrawDiscardCount, card.PreDrawDeckRemovalCount)),
                 Is.EqualTo(deck.Select(card => (card.Id, card.PreDrawRemovalCount, card.PostDrawDiscardCount, card.PreDrawDeckRemovalCount))));
-            ProbabilityCalculationResult expected = result.ToPublic(combos, groups, budget);
+            ProbabilityCalculationResult expected = result.Public;
             SearchAvailabilityCertificateTest.AssertPrimary(expected, CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)));
             SearchAvailabilityCertificateTest.AssertPrimary(expected, new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 2, groups,
                 CalculationWorkPolicy.Interactive, options: new(priority)));

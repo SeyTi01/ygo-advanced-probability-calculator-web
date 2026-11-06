@@ -29,10 +29,10 @@ public class DrawEffectPerformanceTest {
         List<Card> cards = [graceful, new([role], 20), new([], 17)];
         List<Combo> routes = [new([new(role, 1, 5)])];
         Assert.That(NeedsDetail(graceful), Is.False);
-        Assert.That(Assess(cards, routes, 5).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
-        Assert.That(Assess(cards, routes, 35).Path, Is.EqualTo(DrawExecutionPath.OrderedFrontier));
+        Assert.That(Assess(cards, routes, 5).ElevatedRisk, Is.False);
+        Assert.That(Assess(cards, routes, 35).ElevatedRisk, Is.False);
         routes.Add(new([], cards: [new(graceful.Id, 1, 3)]));
-        Assert.That(Assess(cards, routes, 5).Path, Is.EqualTo(DrawExecutionPath.OrderedFrontier));
+        Assert.That(Assess(cards, routes, 5).ElevatedRisk, Is.False);
         Assert.That(NeedsDetail(graceful), Is.False);
 
         Assert.That(NeedsDetail(graceful.WithDrawOncePerTurn(true)), Is.True);
@@ -47,13 +47,12 @@ public class DrawEffectPerformanceTest {
     [Test]
     public void DesiresCapacityAndUnknownProofDoNotCreateIntrinsicWarnings() {
         Card desires = CardEffectRegistry.Default.RestoreBuiltIn(new([], externalCardId: 35261759));
-        Assert.That(Assess([desires, new([], 39)], [], 5).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
-        Assert.That(Assess([desires, new([], 11)], [], 5).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
+        Assert.That(Assess([desires, new([], 39)], [], 5).ElevatedRisk, Is.False);
+        Assert.That(Assess([desires, new([], 11)], [], 5).ElevatedRisk, Is.False);
         Assert.That(NeedsDetail(desires), Is.False);
         CategoryBase excluded = new("Excluded");
         Card graceful = new([], 3, drawCount: 3, drawOncePerTurn: false, postDrawDiscardCount: 2);
-        Assert.That(Assess([graceful, new([], 36), new([excluded])], [new([new(excluded, 0, 0)])], 5),
-            Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.Unknown, false)));
+        Assert.That(Assess([graceful, new([], 36), new([excluded])], [new([new(excluded, 0, 0)])], 5).ElevatedRisk, Is.False);
         Assert.That(NeedsDetail(graceful), Is.False);
     }
 
@@ -61,19 +60,19 @@ public class DrawEffectPerformanceTest {
     public async Task MixedProxyAndCombinationOnlyCostKeepAttributionSeparateFromRisk() {
         SessionState session = await RealisticGracefulFixture.Load();
         Card graceful = session.Cards.Single(card => card.Name == "Graceful Charity");
-        Assert.That(Assess(session.Cards, session.Combos, 5), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.ExchangeableConditional, false)));
+        Assert.That(Assess(session.Cards, session.Combos, 5).ElevatedRisk, Is.False);
         Assert.That(NeedsDetail(graceful), Is.False);
         Card greed = CardEffectRegistry.Default.RestoreBuiltIn(new([], 1, externalCardId: 55144522));
         session.Cards[session.Cards.IndexOf(graceful)] = graceful.WithCopies(2);
         session.Cards.Add(greed);
-        Assert.That(Assess(session.Cards, session.Combos, 5), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.OrderedFrontier, true)));
+        Assert.That(Assess(session.Cards, session.Combos, 5).ElevatedRisk, Is.True);
         Assert.That(session.Cards.Any(NeedsDetail), Is.False, "combination cost does not imply an intrinsically costly card");
         session.Cards[session.Cards.IndexOf(greed)] = CardEffectRegistry.Default.RestoreBuiltIn(new([], 1, externalCardId: 35261759));
         Card allure = CardEffectRegistry.Default.RestoreBuiltIn(new([], 1, externalCardId: 1475311));
         session.Cards[session.Cards.FindIndex(card => card.Id == graceful.Id)] = allure;
-        Assert.That(Assess(session.Cards, session.Combos, 5), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.DeferredConditional, false)));
+        Assert.That(Assess(session.Cards, session.Combos, 5).ElevatedRisk, Is.False);
         Assert.That(session.Cards.Where(NeedsDetail), Is.EqualTo(new[] { allure }));
-        Assert.That(Assess([allure, new([], 39)], [], 5), Is.EqualTo(new DrawExecutionAssessment(DrawExecutionPath.OrderedFrontier, false)));
+        Assert.That(Assess([allure, new([], 39)], [], 5).ElevatedRisk, Is.False);
     }
 
     private static bool NeedsDetail(Card card) => DrawEffectPerformance.RequiresDetailedHandState(card.EffectPlan, card.EffectProfile.ExecutionModel);

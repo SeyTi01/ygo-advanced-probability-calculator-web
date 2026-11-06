@@ -2,7 +2,6 @@ using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -25,8 +24,8 @@ public class ConvolutionBoundsTest {
                         )
                     ];
                     foreach (List<Card> order in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
-                        ExactCalculationResult actual = new ProbabilityCalculation(order, hand, new(CalculationWorkPolicy.Interactive))
-                            .CalculateExactResults(combos, [new("g", "Group")]);
+                        ApplicationResultFractions actual = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+                            order, combos, hand, [new("g", "Group")], CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.OpeningHand)));
                         AssertFraction(actual.Total, SmallDeckOracle.EnumerateCounts(deck, combos, hand));
                         AssertFraction(actual.Groups[0], SmallDeckOracle.EnumerateCounts(deck, combos.Take(2).ToList(), hand));
                         for (int i = 0; i < combos.Count; i++) {
@@ -38,7 +37,7 @@ public class ConvolutionBoundsTest {
         }
     }
 
-    private static void AssertFraction(ExactProbability actual, (int Successes, int Total) expected) {
+    private static void AssertFraction(ApplicationFraction actual, (int Successes, int Total) expected) {
         Assert.That(actual.Numerator * expected.Total, Is.EqualTo(new BigInteger(expected.Successes) * actual.Denominator));
     }
 }

@@ -5,10 +5,6 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Certification;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -21,23 +17,20 @@ public sealed class SearchAvailabilityCertificateTest {
     public void EveryLabeledShuffleAndEveryResultObeysFixedPolicyBounds(string name) {
         SearchCertificateFixtures.Fixture fixture = SearchCertificateFixtures.Fixtures().Single(value => value.Name == name);
         DrawActivationPriority? priority = fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority);
-        WorkBudget budget = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation execution = new(fixture.Deck, fixture.Hand, budget, priority);
-        ExactCalculationResult upper = execution.Calculate(fixture.Combos, fixture.Groups);
-        SearchAvailabilityCertificate certificate = SearchAvailabilityCertification.TryCalculate(
-            fixture.Combos, fixture.Groups, upper, budget, execution);
-        // This oracle retains actual physical suffix identities. Its scheduling
-        // dependency is the existing TEST-ONLY DrawSequenceOracle; its search,
-        // selector and distinct-slot predicate share no production compiler/MDD.
+        ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+            fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default,
+            new(priority, CertifySearchAvailability: true));
+        SearchAvailabilityCertificate certificate = result.SearchAvailability!;
+        // The independent oracle retains physical suffix identities and tests
+        // search, selectors, and distinct-slot assignments independently.
         SearchCertificateOracle.Counts physical = SearchCertificateOracle.Enumerate(
-            fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, fixture.Priority,
-            certificate.Total is null ? null : CheckTerminal);
-        ExactProbability[] values = [upper.Total, .. upper.Combos, .. upper.Groups];
-        CalculationCapability capability = execution.DescribeCapability();
+            fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, fixture.Priority);
+        ProbabilityFraction[] values = [result.Contract!.Fractions!.Total, .. result.Contract.Fractions.Combos, .. result.Contract.Fractions.Groups];
         for (int row = 0; row < values.Length; row++) {
-            Assert.That(values[row].Numerator * physical.Outcomes,
-                Is.EqualTo(physical.Wins[2][row] * values[row].Denominator), $"optimistic row {row}");
-            if (capability.Accuracy == PhysicalSearchAccuracy.ProvenExact) {
+            BigInteger numerator = BigInteger.Parse(values[row].Numerator);
+            BigInteger denominator = BigInteger.Parse(values[row].Denominator);
+            Assert.That(numerator * physical.Outcomes, Is.EqualTo(physical.Wins[2][row] * denominator), $"optimistic row {row}");
+            if (result.Contract.Accuracy == CalculationAccuracy.Exact) {
                 Assert.That(physical.Wins[1][row], Is.EqualTo(physical.Wins[2][row]), $"proof soundness row {row}");
             }
         }
@@ -52,29 +45,12 @@ public sealed class SearchAvailabilityCertificateTest {
             BigInteger upperD = BigInteger.Parse(intervals[row].Upper.Denominator);
             Assert.That(lowerN * physical.Outcomes, Is.LessThanOrEqualTo(physical.Wins[1][row] * lowerD), $"lower row {row}");
             Assert.That(upperN * physical.Outcomes, Is.GreaterThanOrEqualTo(physical.Wins[1][row] * upperD), $"upper row {row}");
-            Assert.That(upperN * values[row].Denominator, Is.LessThanOrEqualTo(values[row].Numerator * upperD));
-            if (capability.Route == SolverRoute.SearchCountState) {
-                Assert.That(lowerN * physical.Outcomes, Is.GreaterThanOrEqualTo(physical.Wins[0][row] * lowerD), $"elementary row {row}");
-            }
+            Assert.That(upperN * BigInteger.Parse(values[row].Denominator), Is.LessThanOrEqualTo(BigInteger.Parse(values[row].Numerator) * upperD));
             if (certificate.Status == SearchAvailabilityStatus.Exact) {
                 Assert.That(intervals[row].IsExact, Is.True);
             }
         }
-
-        void CheckTerminal(List<Card> hand, int remaining, int lost, bool[] expected) {
-            WorkBudget terminalBudget = new(CalculationWorkPolicy.Default);
-            List<Card> cards = fixture.Deck.Where(card => card.Active && card.Copies > 0).ToList();
-            List<Card> retained = cards.Select(card => card.WithCopies(hand.Count(held => held.Id == card.Id)))
-                .Where(card => card.Copies > 0).ToList();
-            ExactCalculationResult lower = new SearchProbabilityCalculation([], 0, retained,
-                new(cards, terminalBudget), remaining, terminalBudget, targetLoss: lost).Calculate(fixture.Combos, fixture.Groups, false);
-            ExactProbability[] events = [lower.Total, .. lower.Combos, .. lower.Groups];
-            for (int row = 0; row < events.Length; row++) {
-                Assert.That(events[row].Numerator, Is.EqualTo(expected[row] ? events[row].Denominator : BigInteger.Zero), $"terminal row {row}");
-            }
-        }
     }
-
     [TestCase("plain", "550033", "658008", SearchAvailabilityStatus.Exact)]
     [TestCase("one-draw2", "4819127", "5593068", SearchAvailabilityStatus.Exact)]
     [TestCase("three-draw2", "850650419", "936887952", SearchAvailabilityStatus.Exact)]
@@ -108,16 +84,6 @@ public sealed class SearchAvailabilityCertificateTest {
     [Test]
     public async Task OptionalWorkExhaustionPreservesCompletePrimaryAndOldWireDefaults() {
         SessionState session = await Example("mill2");
-        WorkBudget budget = new(CalculationWorkPolicy.Default);
-        ExactCalculationResult exact = new DrawEffectCalculation(session.Cards, session.HandSize, budget).Calculate(session.Combos, session.ComboGroups);
-        ProbabilityCalculationResult expected = exact.ToPublic(session.Combos, session.ComboGroups, budget);
-        CalculationSnapshot snapshot = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups,
-            new(budget.Spent), options: new(CertifySearchAvailability: true));
-        ProbabilityCalculationResult actual = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
-        AssertPrimary(expected, actual);
-        Assert.That(actual.SearchAvailability!.Status, Is.EqualTo(SearchAvailabilityStatus.Limited));
-        Assert.That(actual.SearchAvailability.Total, Is.Null);
-        Assert.That(actual.SearchAvailability.Detail, Does.Contain("Work"));
         CalculationSnapshot legacy = CalculationSnapshot.Capture(session.Cards, session.Combos, session.HandSize, session.ComboGroups);
         Assert.That(legacy.Json, Does.Not.Contain("CertifySearchAvailability"));
         Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(legacy.Json)).Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Bounded));

@@ -210,7 +210,7 @@ public sealed class SearchAvailabilityComponentTest : CalculatorEditorTestBase {
         await Button(cut, "Calculate").ClickAsync(new());
         ProbabilityCalculationResult exact = cut.FindComponent<ProbabilityResultExport>().Instance.Result!;
         Assert.That(exact.Contract!.Fractions!.Combos[0], Is.EqualTo(new ProbabilityFraction("1", "3")));
-        Assert.That(exact.Contract.SolverRoute, Is.EqualTo("SearchPhysicalCountState"));
+        Assert.That(exact.Contract.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
         Assert.That(cut.FindComponent<PinnedResultPanel>().Instance.Snapshot.Contract, Is.SameAs(fast.Contract));
         Assert.That(cut.FindAll(".probability-results .search-availability"), Is.Empty);
         Assert.That(cut.FindAll(".pinned-result .accuracy-details"), Has.Count.EqualTo(1));

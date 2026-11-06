@@ -8,8 +8,10 @@ The [project overview](../README.md) introduces the calculator and the bundled e
 | [Calculation model](calculation-model.md) | Understand which saved rules execute and what gameplay is excluded. |
 | [Probability engine](probability-engine.md) | Follow physical-copy counting, overlaps, draws and searches, with a small enumerable example. |
 | [Accuracy and performance](accuracy-and-performance.md) | Interpret Exact/Bounded/Uncertified results and distinguish Work, Storage and worker lifecycle limits. |
+| [Generic calculation API](generic-calculation-api.md) | Call the public neutral engine API, inspect terminal outcomes, and understand its operation model. |
+| [Engine extraction checklist](engine-extraction.md) | Transfer the owned engine source, tests and dependencies into a standalone package. |
 | [Localization contributions](localization.md) | Add presentation resources while preserving canonical identities, saved sessions and effect compatibility. |
 
-For a first visit, use Help, then read the model before treating a simulated effect as the printed card's complete behavior. For engine work, read the model, engine explanation and accuracy reference in that order.
+For a first visit, use Help, then read the model before treating a simulated effect as the printed card's complete behavior. For engine work, read the model, engine explanation, accuracy reference and [generic API guide](generic-calculation-api.md) in that order. The extraction checklist describes the later package move.
 
 Developer references: [AGENTS.md](../AGENTS.md), [worker/runtime implementation and measurements](../scripts/background-calculation/README.md), [session recovery and share-link transport](../YGOProbabilityCalculatorBlazor/Services/Session/RECOVERY.md), and [restricted Linux verification](../scripts/codex/RESTRICTED-LINUX.md). Historical measurements in runtime notes describe their stated fixtures and policies; they are not completion guarantees for current decks.

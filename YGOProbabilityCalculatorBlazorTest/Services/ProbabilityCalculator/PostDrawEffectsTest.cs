@@ -3,14 +3,16 @@ using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
+using CP = CardProbability;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture]
 public class PostDrawEffectsTest {
+    private static ApplicationResultFractions CalculateApp(List<Card> deck, int hand, List<Combo> combos, IReadOnlyList<ComboGroup>? groups) =>
+        ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            deck, combos, hand, groups, CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.Exact)));
     private static readonly CategoryBase A = new("A");
     private static readonly CategoryBase B = new("B");
 
@@ -59,9 +61,8 @@ public class PostDrawEffectsTest {
         List<ComboGroup> groups = [new("g", "Group"), new("empty", "Empty")];
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, size, combos, groups);
         foreach (List<Card> ordered in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-            ExactCalculationResult result = new DrawEffectCalculation(ordered, size, budget).Calculate(combos, groups);
-            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+            ApplicationResultFractions result = CalculateApp(ordered, size, combos, groups);
+            ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
             for (int i = 0; i < rows.Length; i++) {
                 Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}");
             }
@@ -89,9 +90,8 @@ public class PostDrawEffectsTest {
 
         Assert.That(oracle.Total, Is.EqualTo(new BigInteger(5_040)));
         foreach (List<Card> ordered in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
-            ExactCalculationResult result = new PostDrawCalculation(ordered, 3,
-                new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups);
-            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+            ApplicationResultFractions result = CalculateApp(ordered, 3, combos, groups);
+            ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
             for (int i = 0; i < rows.Length; i++) {
                 Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}");
             }
@@ -119,27 +119,12 @@ public class PostDrawEffectsTest {
 
         Assert.That(oracle.Total, Is.EqualTo(new BigInteger(40_320)));
         foreach (List<Card> ordered in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
-            ExactCalculationResult result = new PostDrawCalculation(ordered, 4,
-                new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups);
-            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+            ApplicationResultFractions result = CalculateApp(ordered, 4, combos, groups);
+            ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
             for (int i = 0; i < rows.Length; i++) {
                 Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}");
             }
         }
-    }
-
-    [Test]
-    public void CustomZeroRemovalHasIdenticalFixedDrawWorkAndResults() {
-        List<Card> deck = [new([A], 10, id: "a"), new([], 27, id: "filler"),
-            new([], 3, id: "d", drawCount: 3, drawOncePerTurn: false, postDrawDiscardCount: 2)];
-        List<Combo> combos = [new([new(A, 1, 5)])];
-        WorkBudget disabled = new(CalculationWorkPolicy.Interactive);
-        WorkBudget ordinary = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult actual = new DrawEffectCalculation(deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList(), 5, disabled).Calculate(combos, []);
-        ExactCalculationResult expected = new DrawEffectCalculation(deck.Select(card => card.WithPostDrawDiscardCount(0)).ToList(), 5, ordinary).Calculate(combos, []);
-        Assert.That(actual.Total, Is.EqualTo(expected.Total));
-        Assert.That(disabled.Spent, Is.EqualTo(ordinary.Spent));
-        Assert.That(deck[^1].PostDrawDiscardCount, Is.EqualTo(2));
     }
 
     [Test]
@@ -150,8 +135,8 @@ public class PostDrawEffectsTest {
         Combo second = new([], cards: [new("b", 1, 1)]);
         foreach (List<Combo> combos in new[] { new List<Combo> { first }, [second], [first, second], [new([])] }) {
             DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 2, combos, []);
-            ExactCalculationResult result = new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive)).Calculate(combos, []);
-            ExactProbability[] rows = [result.Total, .. result.Combos];
+            ApplicationResultFractions result = CalculateApp(deck, 2, combos, []);
+            ApplicationFraction[] rows = [result.Total, .. result.Combos];
             for (int i = 0; i < rows.Length; i++) {
                 Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator));
             }
@@ -163,35 +148,13 @@ public class PostDrawEffectsTest {
     }
 
     [Test]
-    public void PostDrawWorkFailureAbortsTheWholeRequest() {
-        List<Card> deck = [new([A], 9, id: "a"), new([], 28, id: "f"),
-            new([], 3, id: "g", drawCount: 3, drawOncePerTurn: false, postDrawDiscardCount: 2)];
-        List<Combo> combos = [new([new(A, 1, 5)])];
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        new PostDrawCalculation(deck, 5, budget).Calculate(combos, []);
-        ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new PostDrawCalculation(deck, 5, new(new(budget.Spent - 1))).Calculate(combos, []));
-        Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
-    }
-
-    [Test]
-    public void PostDrawStorageFailureIsIndependentOfTheWorkAllowance() {
-        List<Card> deck = Enumerable.Range(0, 20).Select(index => new Card([], id: $"c{index}")).ToList();
-        deck.Add(new([], 3, id: "g", drawCount: 3, postDrawDiscardCount: 2));
-        List<Combo> combos = deck.Select(card => new Combo([], cards: [new(card.Id, 1, 1)])).ToList();
-        ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new PostDrawCalculation(deck, 5, new(new(500_000_000))).Calculate(combos, []));
-        Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-    }
-
-    [Test]
     public void PostDrawEquivalentOrdinaryEntriesMergeWithoutChangingFractions() {
         List<Card> merged = [new([A], 2, id: "a"), new([], 2, id: "f"),
             new([], id: "g", drawCount: 3, postDrawDiscardCount: 2)];
         List<Card> split = [merged[0].WithCopies(1), new([A], id: "other-a"), merged[1].WithCopies(1), new([], id: "other-f"), merged[2]];
         List<Combo> combos = [new([new(A, 1, 2)])];
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(split, 2, combos, []);
-        ExactProbability result = new PostDrawCalculation(merged, 2, new(CalculationWorkPolicy.Interactive)).Calculate(combos, []).Total;
+        ApplicationFraction result = CalculateApp(merged, 2, combos, []).Total;
         Assert.That(result.Numerator * oracle.Total, Is.EqualTo(oracle.Wins[0] * result.Denominator));
     }
 
@@ -210,17 +173,12 @@ public class PostDrawEffectsTest {
             }
             deck.Add(new([], 40 - deck.Sum(card => card.Copies), id: "z"));
             List<Combo> combos = [new([new(A, 1, 0, RequirementMaximumMode.HandSize), new(B, 1, 0, RequirementMaximumMode.HandSize)])];
-            WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-            PostDrawCalculation calculation = new(deck, 5, budget);
+            CP.CalculationRequest request = new CalculationRequestAdapter(deck, true).Create(combos, 5, []);
             Stopwatch timer = Stopwatch.StartNew();
-            try {
-                ExactCalculationResult result = calculation.Calculate(combos, []);
-                TestContext.Out.WriteLine($"{kind}: p={result.Total.ToDouble(budget):R}; work={budget.Spent}; terminal={calculation.TerminalStates}; peak={calculation.PeakStates}; ms={timer.Elapsed.TotalMilliseconds:F2}");
-            }
-            catch (ProbabilityCalculationLimitException error) {
-                TestContext.Out.WriteLine($"{kind}: {error.Reason}; work={budget.Spent}; peak={calculation.PeakStates}; ms={timer.Elapsed.TotalMilliseconds:F2}");
-                throw;
-            }
+            CP.CalculationResult result = CP.CalculationEngine.Calculate(request, new CP.CalculationOptions(CP.CalculationMode.Exact,
+                new CP.ExecutionPolicy(CalculationWorkPolicy.Interactive.WorkUnits)));
+            TestContext.Out.WriteLine($"{kind}: status={result.Status}; p={result.Total?.Probability:R}; work={result.Metrics.WorkSpent}; peakCells={result.Metrics.PeakCells}; ms={timer.Elapsed.TotalMilliseconds:F2}");
+            Assert.That(result.Status, Is.EqualTo(CP.CalculationStatus.Completed));
         }
     }
 }

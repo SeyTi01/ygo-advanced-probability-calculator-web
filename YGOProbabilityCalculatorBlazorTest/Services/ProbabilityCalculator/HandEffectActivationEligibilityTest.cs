@@ -8,8 +8,6 @@ using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
-using DrawResolutionResult = YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution.DrawResolution;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -112,12 +110,6 @@ public sealed class HandEffectActivationEligibilityTest {
     public void SharedTwoActivationLimitIsAppliedToDrawsAsWellAsSearches() {
         Card effect = new Card([], 3, id: "effect", drawCount: 1, drawOncePerTurn: false)
             .WithEffect(DrawEffectPlan.Draw(1, false) with { ActivationLimit = 2 }, EffectProfile.Legacy);
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        DrawResolutionResult resolution = DrawEffectResolver.Resolve(3, [effect], 3, budget);
-        // Three seen sources consume only two copies, leaving one in every
-        // terminal whose original source count is three.
-        Assert.That(resolution.Scenarios.Keys.Any(state => state.EffectCounts[0] == 1), Is.True);
-        Assert.That(DrawEffectResolver.CanUseCountStateFastPath([effect], 6, 3), Is.True);
         List<Combo> combos = [new([], cards: [new(effect.Id, 1, 3)])];
         ProbabilityCalculationResult limited = new ProbabilityCalculatorService().CalculateProbabilityResults([effect, new([], 3, id: "filler")], combos, 3);
         ProbabilityCalculationResult unlimited = new ProbabilityCalculatorService().CalculateProbabilityResults([effect.WithOncePerTurn(false), new([], 3, id: "filler")], combos, 3);

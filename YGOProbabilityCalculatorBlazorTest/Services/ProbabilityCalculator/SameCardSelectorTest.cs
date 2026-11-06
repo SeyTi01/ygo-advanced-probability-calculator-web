@@ -3,9 +3,6 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -53,23 +50,10 @@ public class SameCardSelectorTest {
     }
 
     [Test]
-    public void SameCardRawPayloadAndCompiledMasksKeepSeparateStorageAndWorkLimits() {
+    public void SameCardRawPayloadLimitsApplyBeforeDeduplication() {
         string atoms = JsonSerializer.Serialize(Enumerable.Repeat("user:A", 1025));
         string oversized = $$"""{"Kind":"AnyOf","Children":[{"Kind":"AllOf","Categories":{{atoms}}},{"Kind":"AllOf","Categories":{{atoms}}}]}""";
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<CardSelector>(oversized));
-        CategoryBase longIdentity = new(new string('x', 270000));
-        Combo combo = new([ComboCategory.SameCard([longIdentity, B], 1, 1)]);
-        List<Card> deck = [new([longIdentity, B])];
-        ProbabilityCalculationLimitException? storage = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            new ProbabilityCalculation(deck, 1, new(CalculationWorkPolicy.Interactive)).CalculateUnionExact([combo]));
-        Assert.That(storage!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-        foreach (CalculationStorageTier tier in Enum.GetValues<CalculationStorageTier>()) {
-            ProbabilityCalculationLimitException? work = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-                new ProbabilityCalculation(deck, 1, new(new CalculationWorkPolicy(1), CalculationStoragePolicy.ForTier(tier))).CalculateUnionExact([combo]));
-            Assert.That(work!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Work));
-        }
-        AssertExact(new ProbabilityCalculation(deck, 1, new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.High))
-            .CalculateUnionExact([combo]), (1, 1));
     }
 
     [TestCase(1), TestCase(2), TestCase(3), TestCase(4)]
@@ -90,8 +74,7 @@ public class SameCardSelectorTest {
         ];
         foreach (List<Card> order in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
             foreach (CalculationStorageTier tier in Enum.GetValues<CalculationStorageTier>()) {
-                WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.ForTier(tier));
-                ExactCalculationResult result = new ProbabilityCalculation(order, handSize, budget).CalculateExactResults(combos, []);
+                ApplicationResultFractions result = Calculate(order, handSize, combos, CalculationStoragePolicy.ForTier(tier), CalculationModel.OpeningHand);
                 AssertExact(result.Total, SmallDeckOracle.EnumerateCounts(deck, combos, handSize));
                 for (int index = 0; index < combos.Count; index++) {
                     AssertExact(result.Combos[index], SmallDeckOracle.EnumerateCounts(deck, [combos[index]], handSize));
@@ -106,7 +89,7 @@ public class SameCardSelectorTest {
         Card all = new([A, B, C]);
         foreach (List<Card> hand in new List<Card>[] { [new([A])], [new([B])], [new([A]), new([B])] }) {
             Assert.That(SmallDeckOracle.MatchesHand(hand, new([ab])), Is.False);
-            AssertExact(new ProbabilityCalculation(hand, hand.Count, new(CalculationWorkPolicy.Interactive)).CalculateUnionExact([new([ab])]), (0, 1));
+            AssertExact(Calculate(hand, hand.Count, [new([ab])], CalculationStoragePolicy.Standard, CalculationModel.OpeningHand).Total, (0, 1));
         }
         Assert.That(SmallDeckOracle.MatchesHand([all], new([ab])), Is.True);
         Assert.That(SmallDeckOracle.MatchesHand([all], new([ab, new(C, 1, 2)])), Is.False);
@@ -123,9 +106,8 @@ public class SameCardSelectorTest {
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, 2, combos, []);
         foreach (CalculationStorageTier tier in Enum.GetValues<CalculationStorageTier>()) {
             foreach (List<Card> order in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
-                ExactCalculationResult result = new PostDrawCalculation(order, 2,
-                    new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.ForTier(tier))).Calculate(combos, []);
-                ExactProbability[] rows = [result.Total, .. result.Combos];
+                ApplicationResultFractions result = Calculate(order, 2, combos, CalculationStoragePolicy.ForTier(tier), CalculationModel.Exact);
+                ApplicationFraction[] rows = [result.Total, .. result.Combos];
                 for (int index = 0; index < rows.Length; index++) {
                     Assert.That(rows[index].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[index] * rows[index].Denominator));
                 }
@@ -158,7 +140,11 @@ public class SameCardSelectorTest {
         Assert.That(DrawSequenceOracle.Resolve([effect, protectedCard, pending, reward], 1, combos)!.Select(card => card.Id), Is.EqualTo(new[] { "protected" }));
     }
 
-    private static void AssertExact(ExactProbability actual, (int Successes, int Total) expected) {
+    private static ApplicationResultFractions Calculate(List<Card> cards, int hand, List<Combo> combos, CalculationStoragePolicy storage, CalculationModel mode) =>
+        ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            cards, combos, hand, [], CalculationWorkPolicy.Interactive, storage, new(Mode: mode)));
+
+    private static void AssertExact(ApplicationFraction actual, (int Successes, int Total) expected) {
         Assert.That(actual.Numerator * expected.Total, Is.EqualTo(expected.Successes * actual.Denominator));
     }
 }

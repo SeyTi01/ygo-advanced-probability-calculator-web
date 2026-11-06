@@ -2,9 +2,6 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -48,19 +45,8 @@ public class PostDrawExchangeableTest {
         AssertParity(deck, 2, combos, []);
     }
 
-    private static void AssertParity(List<Card> deck, int hand, List<Combo> combos, List<ComboGroup> groups) {
-        DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, hand, combos, groups);
-        foreach (List<Card> ordered in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
-            PostDrawCalculation calculation = new(ordered, hand, new(CalculationWorkPolicy.Interactive));
-            ExactCalculationResult result = calculation.Calculate(combos, groups);
-            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
-            for (int i = 0; i < rows.Length; i++) {
-                Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}");
-            }
-            Assert.That(calculation.PeakStates, Is.LessThan(200));
-        }
-    }
-
+    private static void AssertParity(List<Card> deck, int hand, List<Combo> combos, List<ComboGroup> groups) =>
+        PreDrawCostsTest.AssertParity(deck, hand, combos, groups);
     [Test]
     public async Task RealisticThreeGracefulCompletesUnderStandardAndBothTogglesPreserveSettings() {
         SessionState session = await RealisticGracefulFixture.Load();
@@ -73,16 +59,10 @@ public class PostDrawExchangeableTest {
             Assert.That(session.Combos, Has.Count.EqualTo(8));
             Assert.That(session.ComboGroups, Has.Count.EqualTo(2));
         });
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        PostDrawCalculation calculation = new(session.Cards, session.HandSize, budget);
-        ExactCalculationResult exact = calculation.Calculate(session.Combos, session.ComboGroups);
-        Assert.Multiple(() => {
-            Assert.That(calculation.PeakStates, Is.LessThan(100));
-            Assert.That(calculation.PeakCells, Is.LessThan(4096));
-            Assert.That(calculation.TerminalStates, Is.GreaterThan(10000));
-            Assert.That(budget.Spent, Is.LessThan(CalculationWorkPolicy.Interactive.WorkUnits));
-        });
         ProbabilityCalculatorService service = new();
+        ProbabilityCalculationResult exact = service.CalculateProbabilityResults(session.Cards, session.Combos, session.HandSize,
+            session.ComboGroups, CalculationWorkPolicy.Interactive, new(Mode: CalculationModel.Exact));
+        Assert.That(exact.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
         foreach ((bool global, bool conditional) in new[] { (true, true), (true, false), (false, true), (false, false) }) {
             List<Card> modeled = conditional ? session.Cards : session.Cards.Select(card => card.WithPostDrawDiscardCount(0)).ToList();
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, session.Combos, session.HandSize,
@@ -91,7 +71,7 @@ public class PostDrawExchangeableTest {
             List<Card> expectedDeck = global ? session.Cards.Select(card => card.WithPostDrawDiscardCount(0)).ToList()
                 : session.Cards.Select(card => card.WithDrawCount(null)).ToList();
             ProbabilityCalculationResult expected = global && conditional
-                ? exact.ToPublic(session.Combos, session.ComboGroups, new(CalculationWorkPolicy.Interactive))
+                ? exact
                 : service.CalculateProbabilityResults(expectedDeck, session.Combos, session.HandSize, session.ComboGroups, CalculationWorkPolicy.Interactive);
             Assert.Multiple(() => {
                 Assert.That(result.TotalProbability, Is.EqualTo(expected.TotalProbability));

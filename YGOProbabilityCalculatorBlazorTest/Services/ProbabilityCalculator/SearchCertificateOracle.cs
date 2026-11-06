@@ -14,7 +14,7 @@ internal static class SearchCertificateHandOracle {
         return Alternatives(0);
 
         (Func<Card, bool>, int, int) Category(ComboCategory c) =>
-            (card => c.CategoryBases.All(b => card.Categories.Any(x => x.Identity == b.Identity)), c.MinCount,
+            (card => DrawSequenceOracle.MatchesSelector(c.Selector, card), c.MinCount,
                 c.MaximumMode == RequirementMaximumMode.HandSize ? hand.Count : c.MaxCount);
         (Func<Card, bool>, int, int) Direct(ComboCard c) =>
             (card => card.Id == c.CardId, c.MinCount, c.MaximumMode == RequirementMaximumMode.HandSize ? hand.Count : c.MaxCount);
