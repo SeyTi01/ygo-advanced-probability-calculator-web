@@ -9,7 +9,7 @@ internal sealed class CardSelector : IEquatable<CardSelector> {
     public IReadOnlyList<string> CategoryIdentities { get; }
     public IReadOnlyList<CardSelector> Children { get; }
     public bool IsGrouped => Kind == CardSelectorKind.AnyOf;
-    public int EvaluationSize => 1 + Children.Sum(child => child.EvaluationSize);
+    public int EvaluationSize { get; }
     public int NodeCount => EvaluationSize;
     public int CategoryReferenceCount => CategoryIdentities.Count;
     public string Signature { get; }
@@ -18,6 +18,7 @@ internal sealed class CardSelector : IEquatable<CardSelector> {
         Kind = kind;
         CategoryIdentities = identities;
         Children = children;
+        EvaluationSize = 1 + children.Sum(child => child.EvaluationSize);
         Signature = kind switch {
             CardSelectorKind.Any => "*",
             CardSelectorKind.Category => $"c:{identities[0].Length}:{identities[0]}",
@@ -41,11 +42,28 @@ internal sealed class CardSelector : IEquatable<CardSelector> {
         return new(CardSelectorKind.AnyOf, identities, children);
     }
 
-    public bool Matches(Card card) => Kind switch {
-        CardSelectorKind.Any => true,
-        CardSelectorKind.Category => card.Categories.Any(category => category.Identity == CategoryIdentities[0]),
-        _ => Children.Any(child => child.Matches(card))
-    };
+    public bool Matches(Card card) {
+        if (Kind == CardSelectorKind.Any) {
+            return true;
+        }
+        if (Kind == CardSelectorKind.Category) {
+            string identity = CategoryIdentities[0];
+            foreach (CategoryBase category in card.Categories) {
+                if (category.Identity == identity) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        for (int index = 0; index < Children.Count; index++) {
+            if (Children[index].Matches(card)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public bool Equals(CardSelector? other) => other is not null && Signature == other.Signature;
     public override bool Equals(object? other) => other is CardSelector selector && Equals(selector);

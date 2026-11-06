@@ -8,6 +8,35 @@ namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 [TestFixture]
 public class CalculatorActiveInputAdapterTest {
     [Test]
+    public void RepeatedCallsResolveCurrentMutableCategoriesAndRequirementsWhileSavedSnapshotStaysIndependent() {
+        CategoryBase a = new("a");
+        CategoryBase b = new("b");
+        Card first = new([a], id: "first");
+        Card second = new([b], id: "second");
+        List<Card> deck = [new([], id: "source", search: new(CardSelector.For(a), false)), first, second];
+        Combo goal = new([new(a, 1, 1)]);
+        List<Combo> goals = [goal];
+        ProbabilityCalculatorService service = new();
+        CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, goals, 1, []);
+
+        // Each of the three physical opening copies is equally likely. Initially
+        // first and source succeed. Removing a leaves no eligible search target.
+        Assert.That(service.CalculateProbabilityResults(deck, goals, 1).TotalProbability, Is.EqualTo(2.0 / 3).Within(1e-12));
+        first.Categories.Clear();
+        Assert.That(service.CalculateProbabilityResults(deck, goals, 1).TotalProbability, Is.Zero);
+
+        // Retargeting the same mutable combo to b initially succeeds only on
+        // second; giving second the a role also makes it reachable from source.
+        goal.Categories.Clear();
+        goal.Categories.Add(new(b, 1, 1));
+        Assert.That(service.CalculateProbabilityResults(deck, goals, 1).TotalProbability, Is.EqualTo(1.0 / 3).Within(1e-12));
+        second.Categories.Add(a);
+        Assert.That(service.CalculateProbabilityResults(deck, goals, 1).TotalProbability, Is.EqualTo(2.0 / 3).Within(1e-12));
+        Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability,
+            Is.EqualTo(2.0 / 3).Within(1e-12));
+    }
+
+    [Test]
     public void NativeOrdinaryAndDrawInputsRetainInactiveCopies() {
         CategoryBase target = new("target");
         ProbabilityCalculatorService service = new();

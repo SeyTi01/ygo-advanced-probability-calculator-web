@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using CardProbability;
 using YGOProbabilityCalculatorBlazor.Models;
@@ -32,7 +33,7 @@ internal sealed class CalculationRequestAdapter {
         // Preserve the native service's checked population overflow exception.
         // Direct generic callers receive the engine's typed Unsupported result.
         _ = _cards.Sum(card => card.Copies);
-        _entryIds = _cards.Select(card => card.Id).ToHashSet(StringComparer.Ordinal);
+        _entryIds = searchPhase ? _cards.Select(card => card.Id).ToHashSet(StringComparer.Ordinal) : suppliedIds;
     }
 
     internal CalculationRequest Create(IReadOnlyList<Combo> combos, int handSize, IReadOnlyList<ComboGroup>? groups = null) {
@@ -40,28 +41,53 @@ internal sealed class CalculationRequestAdapter {
         // The fixed keep/removal policy orders the original atomic goal roles.
         // Resolved predicate tokens can have a different order or collapse several
         // atoms; preserve this application policy independently of solver membership.
-        CategoryBase[] policyCategories = combos.SelectMany(combo => combo.AllCategories)
-            .SelectMany(requirement => requirement.CategoryBases).Distinct()
-            .OrderBy(category => category.Identity, StringComparer.Ordinal).ToArray();
+        string[] policyCategories = combos.SelectMany(combo => combo.AllCategories)
+            .SelectMany(requirement => requirement.CategoryBases).Select(category => category.Identity)
+            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         string[] policyCards = combos.SelectMany(combo => combo.AllCards).Select(requirement => requirement.CardId)
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
-        DeckEntry[] entries = _cards.Select(card => new DeckEntry(
-            card.Id,
-            card.Copies,
-            TranslateEffect(card),
-            string.Concat(policyCategories.Select(category => card.Categories.Contains(category) ? '1' : '0'))
-                + string.Concat(policyCards.Select(id => card.Id == id ? '1' : '0'))
-        )).ToArray();
-        Goal[] goals = combos.Select((combo, index) => new Goal(
-            index.ToString(CultureInfo.InvariantCulture),
-            combo.Categories.Select(Translate)
-                .Concat(combo.Cards.Select(Translate)),
-            combo.AlternativeGroups.Select(group => new Alternative(group.Alternatives.Select(alternative =>
-                alternative.Category is { } category ? Translate(category) : Translate(alternative.Card!)))),
-            combo.GroupId is { } groupId && groupIds.Contains(groupId) ? groupId : null
-        )).ToArray();
+        Dictionary<string, int> policyCategoryIndices = new(StringComparer.Ordinal);
+        for (int index = 0; index < policyCategories.Length; index++) {
+            policyCategoryIndices.Add(policyCategories[index], index);
+        }
+        Dictionary<string, int> policyCardIndices = new(StringComparer.Ordinal);
+        for (int index = 0; index < policyCards.Length; index++) {
+            policyCardIndices.Add(policyCards[index], policyCategories.Length + index);
+        }
+        ImmutableArray<DeckEntry>.Builder entries = ImmutableArray.CreateBuilder<DeckEntry>(_cards.Length);
+        foreach (Card card in _cards) {
+            string policyOrderKey = string.Create(
+                policyCategories.Length + policyCards.Length,
+                (card, policyCategoryIndices, policyCardIndices),
+                static (bits, state) => {
+                    bits.Fill('0');
+                    if (state.policyCategoryIndices.Count > 0) {
+                        foreach (CategoryBase category in state.card.Categories) {
+                            if (state.policyCategoryIndices.TryGetValue(category.Identity, out int index)) {
+                                bits[index] = '1';
+                            }
+                        }
+                    }
+                    if (state.policyCardIndices.TryGetValue(state.card.Id, out int cardIndex)) {
+                        bits[cardIndex] = '1';
+                    }
+                }
+            );
+            entries.Add(new(card.Id, card.Copies, TranslateEffect(card), policyOrderKey));
+        }
+        ImmutableArray<Goal>.Builder goals = ImmutableArray.CreateBuilder<Goal>(combos.Count);
+        for (int index = 0; index < combos.Count; index++) {
+            Combo combo = combos[index];
+            goals.Add(new(
+                index.ToString(CultureInfo.InvariantCulture),
+                combo.Categories.Select(Translate).Concat(combo.Cards.Select(Translate)),
+                combo.AlternativeGroups.Select(group => new Alternative(group.Alternatives.Select(alternative =>
+                    alternative.Category is { } category ? Translate(category) : Translate(alternative.Card!)))),
+                combo.GroupId is { } groupId && groupIds.Contains(groupId) ? groupId : null
+            ));
+        }
 
-        return new(entries, handSize, goals, _memberships, (groups ?? []).Select(group => group.Id));
+        return new(entries.MoveToImmutable(), handSize, goals.MoveToImmutable(), _memberships, (groups ?? []).Select(group => group.Id));
     }
 
     private Requirement Translate(ComboCategory requirement) => Requirement.InMembership(

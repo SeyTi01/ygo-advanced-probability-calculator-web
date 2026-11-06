@@ -44,6 +44,38 @@ public class CalculationBoundaryTest {
     }
 
     [Test]
+    public async Task RequestOwnsNestedSearchModesAndAlternativesAcrossConcurrentReuse() {
+        List<string> aMembers = ["a"];
+        List<string> bMembers = ["b"];
+        List<string> searchMembers = ["a", "b"];
+        List<SearchMode> modes = [new(new("a-role")), new(new("b-role"))];
+        List<Requirement> choices = [Requirement.InMembership("a-role"), Requirement.InMembership("b-role")];
+        List<Alternative> alternatives = [new(choices)];
+        CalculationRequest request = new(
+            [new("source", 1, new EffectPlan(Search: new(new("search-role"), modes))), new("a", 1), new("b", 1), new("filler", 1)],
+            1,
+            [new("goal", [], alternatives)],
+            [new("a-role", aMembers), new("b-role", bMembers), new("search-role", searchMembers)]
+        );
+
+        aMembers.Clear();
+        bMembers.Clear();
+        searchMembers.Clear();
+        modes.Clear();
+        choices.Clear();
+        alternatives.Clear();
+
+        Task<CalculationResult>[] calls = Enumerable.Range(0, 4)
+            .Select(_ => Task.Run(() => CalculationEngine.Calculate(request))).ToArray();
+        CalculationResult[] results = await Task.WhenAll(calls);
+
+        // Opening a or b succeeds directly; source can search either, and only
+        // filler fails. Each physical opening copy has probability one quarter.
+        Assert.That(results.All(result => result.Status == CalculationStatus.Completed
+            && result.Total!.Primary == new RationalProbability("3", "4")), Is.True);
+    }
+
+    [Test]
     public void PreCancelledCallReturnsTerminalCancellationWithoutRows() {
         using CancellationTokenSource cancellation = new();
         cancellation.Cancel();

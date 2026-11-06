@@ -14,6 +14,9 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
     private long? _remaining = policy.IsUnlimited ? null : policy.WorkUnits;
     private long _spent;
     private readonly CalculationStoragePolicy _storagePolicy = storagePolicy ?? CalculationStoragePolicy.Standard;
+    private readonly long _entryLimit = Math.Min(storagePolicy?.EntryLimit ?? CalculationStoragePolicy.Standard.EntryLimit, Array.MaxLength);
+    private readonly long _cellLimit = storagePolicy?.CellLimit ?? CalculationStoragePolicy.Standard.CellLimit;
+    private readonly bool _canBeCanceled = cancellationToken.CanBeCanceled;
 
     internal SearchCountingDiagnostics? SearchDiagnostics { get; init; }
 
@@ -29,21 +32,34 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
     internal CalculationStoragePolicy StoragePolicy => _storagePolicy;
 
     public void Spend(long units) {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentOutOfRangeException.ThrowIfNegative(units);
-
-        if (_remaining is long remaining && units > remaining) {
-            throw new ProbabilityCalculationLimitException();
+        if (_canBeCanceled) {
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        // AOT leaves the generic throw helper as an indirect call; reserve it
+        // for invalid input while retaining its exception details.
+        if (units < 0) {
+            ArgumentOutOfRangeException.ThrowIfNegative(units);
         }
 
-        _remaining -= units;
+        if (_remaining is long remaining) {
+            if (units > remaining) {
+                throw new ProbabilityCalculationLimitException();
+            }
+
+            _remaining = remaining - units;
+        }
+
         // Telemetry saturates; exhaustion is decided only by the finite remainder.
         _spent = units > long.MaxValue - _spent ? long.MaxValue : _spent + units;
     }
 
     internal void EnsureAvailable(long units) {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentOutOfRangeException.ThrowIfNegative(units);
+        if (_canBeCanceled) {
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        if (units < 0) {
+            ArgumentOutOfRangeException.ThrowIfNegative(units);
+        }
 
         if (_remaining is long remaining && units > remaining) {
             throw new ProbabilityCalculationLimitException();
@@ -51,11 +67,17 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
     }
 
     public void CheckStorage(long entries, long cells) {
-        cancellationToken.ThrowIfCancellationRequested();
-        PeakEntries = Math.Max(PeakEntries, entries);
-        PeakCells = Math.Max(PeakCells, cells);
+        if (_canBeCanceled) {
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        if (entries > PeakEntries) {
+            PeakEntries = entries;
+        }
+        if (cells > PeakCells) {
+            PeakCells = cells;
+        }
 
-        if (entries > _storagePolicy.EntryLimit || entries > Array.MaxLength || cells > _storagePolicy.CellLimit) {
+        if (entries > _entryLimit || cells > _cellLimit) {
             throw new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage);
         }
     }

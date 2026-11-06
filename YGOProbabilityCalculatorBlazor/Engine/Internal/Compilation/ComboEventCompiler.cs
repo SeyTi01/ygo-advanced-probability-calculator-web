@@ -146,7 +146,7 @@ internal sealed class ComboEventCompiler(List<Card> deck, int handSize, WorkBudg
 
                 bool isEligibleCopy = deck[i].Copies > 0 && (constraint.Key.IsCard
                     ? deck[i].Id == constraint.Key.Value
-                    : deck[i].Categories.Any(category => category.Identity == constraint.Selector!.CategoryIdentities[0]));
+                    : constraint.Selector!.Matches(deck[i]));
 
                 if (isEligibleCopy) {
                     eligible |= BigInteger.One << i;
