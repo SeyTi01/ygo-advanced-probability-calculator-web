@@ -38,4 +38,41 @@ internal sealed class UnlimitedWorkPolicyTest {
         Assert.Throws<ProbabilityCalculationLimitException>(() => budget.Spend(1));
         Assert.That(budget.Remaining, Is.Zero);
     }
+
+    [Test]
+    public void CustomStoragePolicyRemainsBoundedByArrayCapacity() {
+        CalculationStoragePolicy storage = new(long.MaxValue, long.MaxValue);
+        WorkBudget budget = new(CalculationWorkPolicy.Unlimited, storage);
+        budget.CheckStorage(Array.MaxLength, 1);
+
+        ProbabilityCalculationLimitException error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
+            budget.CheckStorage(Array.MaxLength + 1L, 2))!;
+
+        Assert.Multiple(() => {
+            Assert.That(error.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
+            Assert.That(budget.StoragePolicy, Is.SameAs(storage));
+            Assert.That(budget.PeakEntries, Is.EqualTo(Array.MaxLength + 1L));
+            Assert.That(budget.PeakCells, Is.EqualTo(2));
+            Assert.That(budget.Spent, Is.Zero);
+        });
+    }
+
+    [TestCase(false), TestCase(true)]
+    public void CancellationPreservesAccountingAndStoragePeaks(bool unlimited) {
+        using CancellationTokenSource cancellation = new();
+        WorkBudget budget = new(unlimited ? CalculationWorkPolicy.Unlimited : new(100), cancellationToken: cancellation.Token);
+        budget.Spend(10);
+        budget.CheckStorage(2, 3);
+        cancellation.Cancel();
+
+        Assert.Multiple(() => {
+            Assert.Throws<OperationCanceledException>(() => budget.Spend(1));
+            Assert.Throws<OperationCanceledException>(() => budget.EnsureAvailable(1));
+            Assert.Throws<OperationCanceledException>(() => budget.CheckStorage(4, 5));
+            Assert.That(budget.Spent, Is.EqualTo(10));
+            Assert.That(budget.Remaining, Is.EqualTo(unlimited ? (long?)null : 90));
+            Assert.That(budget.PeakEntries, Is.EqualTo(2));
+            Assert.That(budget.PeakCells, Is.EqualTo(3));
+        });
+    }
 }

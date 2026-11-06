@@ -15,6 +15,7 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
         bool explicitPolicyOrder = request.Entries.Any(entry => entry.PolicyOrderKey is not null);
         Dictionary<string, List<M.CategoryBase>> categories = entries.ToDictionary(id => id, _ => new List<M.CategoryBase>(), StringComparer.Ordinal);
         Dictionary<string, HashSet<string>> eligible = new(StringComparer.Ordinal);
+        Dictionary<string, M.CardSelector> selectors = new(StringComparer.Ordinal);
         long cells = request.Entries.Length + (long)request.Goals.Length + request.Memberships.Length + request.Groups.Length;
         budget.CheckStorage(cells, cells);
 
@@ -43,11 +44,13 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
                 throw new ArgumentException("A membership references an unknown entry.");
             }
             eligible.Add(membership.Id, members);
+            M.CategoryBase category = new(membership.Id);
+            selectors.Add(membership.Id, M.CardSelector.Category(membership.Id));
             cells += members.Count;
             budget.CheckStorage(eligible.Count + entries.Count, cells);
             foreach (string id in members) {
                 budget.Spend(1);
-                categories[id].Add(new(membership.Id));
+                categories[id].Add(category);
             }
         }
 
@@ -56,7 +59,7 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
             throw new ArgumentException("Activation priority references an unknown entry.");
         }
 
-        List<M.Card> cards = [];
+        List<M.Card> cards = new(request.Entries.Length);
         foreach (DeckEntry entry in request.Entries) {
             budget.Spend(1);
             ValidateEffect(entry.Effect);
@@ -66,7 +69,7 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
             cards.Add(new(entry.Id, entry.Copies, categories[entry.Id], plan, entry.PolicyOrderKey));
         }
 
-        List<M.Combo> combos = [];
+        List<M.Combo> combos = new(request.Goals.Length);
         foreach (Goal goal in request.Goals) {
             budget.Spend(1);
             if (goal.GroupId is not null && !groups.Contains(goal.GroupId)) {
@@ -83,7 +86,7 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
                     requiredEntries.Add(converted.Card!);
                 }
             }
-            List<M.ComboAlternativeGroup> alternatives = [];
+            List<M.ComboAlternativeGroup> alternatives = new(goal.Alternatives.Length);
             foreach (Alternative alternative in goal.Alternatives) {
                 if (alternative is null || alternative.Choices.IsEmpty) {
                     throw new ArgumentException("An alternative group needs at least one requirement.");
@@ -114,7 +117,7 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
             if (!memberships.Contains(filter.MembershipId)) {
                 throw new ArgumentException("An effect references an unknown membership.");
             }
-            return M.CardSelector.Category(filter.MembershipId);
+            return selectors[filter.MembershipId];
         }
 
         HashSet<string> Members(Eligibility filter) => filter.MembershipId is null ? entries : eligible[filter.MembershipId];
@@ -208,7 +211,7 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
             M.RequirementMaximumMode maximumMode = requirement.Maximum is null ? M.RequirementMaximumMode.HandSize : M.RequirementMaximumMode.Fixed;
             return requirement.Kind == RequirementTargetKind.Entry
                 ? M.ComboAlternative.For(new M.ComboCard(requirement.Id, requirement.Minimum, requirement.Maximum ?? 0, maximumMode))
-                : M.ComboAlternative.For(new M.ComboCategory(M.CardSelector.Category(requirement.Id), requirement.Minimum, requirement.Maximum ?? 0, maximumMode));
+                : M.ComboAlternative.For(new M.ComboCategory(selectors[requirement.Id], requirement.Minimum, requirement.Maximum ?? 0, maximumMode));
         }
     }
 }
