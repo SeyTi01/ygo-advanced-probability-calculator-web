@@ -23,8 +23,14 @@ internal sealed class UnlimitedWorkPolicyTest {
             Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
         Assert.That(Assert.Throws<ProbabilityCalculationLimitException>(() => budget.CheckStorage(1, storage.CellLimit + 1))!.Reason,
             Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-        Assert.Throws<ArgumentOutOfRangeException>(() => budget.Spend(-1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => budget.EnsureAvailable(-1));
+        ArgumentOutOfRangeException spendError = Assert.Throws<ArgumentOutOfRangeException>(() => budget.Spend(-1))!;
+        ArgumentOutOfRangeException availabilityError = Assert.Throws<ArgumentOutOfRangeException>(() => budget.EnsureAvailable(-1))!;
+        Assert.Multiple(() => {
+            Assert.That(spendError.ParamName, Is.EqualTo("units"));
+            Assert.That(spendError.ActualValue, Is.EqualTo(-1L));
+            Assert.That(availabilityError.ParamName, Is.EqualTo("units"));
+            Assert.That(availabilityError.ActualValue, Is.EqualTo(-1L));
+        });
     }
 
     [Test]

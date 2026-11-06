@@ -35,10 +35,8 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
         if (_canBeCanceled) {
             cancellationToken.ThrowIfCancellationRequested();
         }
-        // AOT leaves the generic throw helper as an indirect call; reserve it
-        // for invalid input while retaining its exception details.
         if (units < 0) {
-            ArgumentOutOfRangeException.ThrowIfNegative(units);
+            throw new ArgumentOutOfRangeException(nameof(units), units, "Work units must be nonnegative.");
         }
 
         if (_remaining is long remaining) {
@@ -58,7 +56,7 @@ internal sealed class WorkBudget(CalculationWorkPolicy policy, CalculationStorag
             cancellationToken.ThrowIfCancellationRequested();
         }
         if (units < 0) {
-            ArgumentOutOfRangeException.ThrowIfNegative(units);
+            throw new ArgumentOutOfRangeException(nameof(units), units, "Work units must be nonnegative.");
         }
 
         if (_remaining is long remaining && units > remaining) {
