@@ -5,7 +5,7 @@ description: "Plan a YGO calculator change, assess implementation readiness, or 
 
 # Plan the change
 
-Read [context](../ygo-implement/references/context.md). For technical planning, inspect the task and relevant source, then use [scope](../ygo-implement/references/authorization.md) and the applicable domain references from [the source map](../ygo-implement/references/source-map.md). Formatting a complete supplied plan does not require rediscovering its technical decisions.
+Read [context](../ygo-implement/references/context.md). For technical planning, inspect the task, relevant source and [scope](../ygo-implement/references/authorization.md); use [the source map](../ygo-implement/references/source-map.md) when owners or contracts are unclear. Formatting a supplied plan does not require rediscovering settled decisions.
 
 Establish intended behavior, settled constraints and acceptance criteria. Resolve uncertainty about contracts, affected owners and test integration from available source. Ask only for missing decisions/evidence that block dependent work; keep optional context and unavailable execution separate.
 

@@ -5,7 +5,7 @@ description: "Investigate wrong probabilities, runtime or worker failures, and p
 
 # Diagnose the behavior
 
-Read [context](../ygo-implement/references/context.md). Establish expected versus observed behavior or the benchmark question, relevant revisions, fixture/input, mode and execution host. Inspect the smallest relevant call path and load its contracts through [the source map](../ygo-implement/references/source-map.md).
+Read [context](../ygo-implement/references/context.md). Establish expected versus observed behavior or the benchmark question, revisions, input, mode and execution host. Inspect the smallest relevant call path; use [the source map](../ygo-implement/references/source-map.md) when owners or contracts are unclear.
 
 Reproduce at the simplest reliable layer, using [verification](../ygo-verify/SKILL.md) for runtime preparation and checks. Distinguish a product failure from a fixture, environment or measurement failure. Trace ownership, cancellation, state and boundary transitions when relevant; do not extrapolate a Node/WASM observation to browser AOT or another runtime without evidence.
 

@@ -5,7 +5,7 @@ description: "Review YGO calculator code or a PR, assess review comments, and ad
 
 # Review the change
 
-Read [context](../ygo-implement/references/context.md). Inspect the actual base/head diff, surrounding callers, relevant tests and issue intent. Load only applicable domain references from [the source map](../ygo-implement/references/source-map.md); read [C# style](../ygo-implement/references/csharp.md) when reviewing C#/Razor C#.
+Read [context](../ygo-implement/references/context.md). Inspect the base/head diff, surrounding callers, relevant tests and issue intent. Use [the source map](../ygo-implement/references/source-map.md) when owners or contracts are unclear; read [C# style](../ygo-implement/references/csharp.md) for C#/Razor C# review.
 
 Prioritize actionable defects, contract regressions, state loss and consequential verification gaps. Support findings with exact locations, a concrete trigger and impact. Separate confirmed failures from unresolved hypotheses. Do not manufacture findings or turn preference differences into defects.
 
