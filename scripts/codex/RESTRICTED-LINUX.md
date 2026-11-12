@@ -1,6 +1,6 @@
 # Restricted Linux / ChatGPT Work verification
 
-Use these procedures when directed by [AGENTS.md](../../AGENTS.md).
+Use these procedures for the Linux conditions selected by [environment preparation](../../plugins/ygo-work/skills/ygo-verify/references/environment.md). They are not Windows Codex initialization steps. Check the working revision's required framework first; the commands below bootstrap the current .NET 10 target.
 
 ### Restricted Linux and ChatGPT Work: .NET 10 SDK bootstrap
 
@@ -18,11 +18,11 @@ dotnet --info
 dotnet --list-sdks
 ```
 
-The `TAR_OPTIONS` setting prevents GNU tar from restoring archive owners, which can fail in restricted filesystems. You may also invoke `/tmp/dotnet10-sdk/dotnet` directly. After confirming a 10.x SDK, run the normal restore, build, and test commands in [AGENTS.md](../../AGENTS.md#local-development-and-verification). If the bootstrap fails, report the exact failed command and error.
+The `TAR_OPTIONS` setting prevents GNU tar from restoring archive owners, which can fail in restricted filesystems. You may also invoke `/tmp/dotnet10-sdk/dotnet` directly. After confirming a 10.x SDK, run the normal [restore, build, and test commands](../../plugins/ygo-work/skills/ygo-verify/references/commands.md#application-checks). If the bootstrap fails, report the exact failed command and error.
 
 ### Restricted Linux / ChatGPT Work: WebAssembly task-host failures
 
-This is a separate build-time issue, unrelated to a missing SDK. After obtaining a usable .NET 10 SDK, run the normal restore, build, and test commands in [AGENTS.md](../../AGENTS.md#local-development-and-verification) first; a successful restore alone does not prove the app or tests build. If a build or test fails with `MSB4216`/`MSB4027` or `SocketException (13): Permission denied` while MSBuild starts an out-of-process task host, and a socket probe confirms Unix sockets are blocked while loopback TCP works, use the following verification-only workaround rather than declaring the suite un-runnable:
+This is a separate build-time issue, unrelated to a missing SDK. After obtaining a usable .NET 10 SDK, run the normal [restore, build, and test commands](../../plugins/ygo-work/skills/ygo-verify/references/commands.md#application-checks) first; a successful restore alone does not prove the app or tests build. If a build or test fails with `MSB4216`/`MSB4027` or `SocketException (13): Permission denied` while MSBuild starts an out-of-process task host, and a socket probe confirms Unix sockets are blocked while loopback TCP works, use the following verification-only workaround rather than declaring the suite un-runnable:
 
 - Use writable temporary `DOTNET_CLI_HOME` and `NUGET_PACKAGES` locations.
 - Disable MSBuild/node reuse and compiler/Razor build servers.
