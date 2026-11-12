@@ -2,7 +2,9 @@
 
 For source-only issue, planning or review work, use the checkout or authenticated GitHub reads directly; skip runtime setup. For code/test work, inspect tools once, reuse valid initialization/results, and prepare only missing prerequisites. Determine runtime requirements from the working revision's project/build files. For .NET work, run `dotnet --info` and `dotnet --list-sdks` before substantial implementation or tests.
 
-For publication tasks, establish the available authenticated route early without printing credentials. Public clone/fetch success does not establish CLI push access; connected GitHub authentication is separate. Missing CLI credentials do not block implementation or connector-based delivery. [API publication](../../ygo-pr/references/api-publication.md) owns that fallback.
+For publication, establish authentication early without printing credentials. Public fetches and GitHub connector access do not prove CLI push access. Missing CLI credentials do not block local work; use [API publication](../../ygo-pr/references/api-publication.md) rather than repeatedly attempting login.
+
+Set variables in the active shell: `$env:NAME = 'value'` in PowerShell; `export NAME='value'` in POSIX shells.
 
 Read only the applicable host branch:
 

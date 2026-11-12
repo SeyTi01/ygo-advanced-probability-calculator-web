@@ -1,15 +1,8 @@
-# Reproduce the engine boundary proof
+# Engine boundary proof
 
-Run from the repository root after verifying calculator integration:
-
-```sh
-node --test scripts/engine-boundary/guards.test.mjs
-node scripts/engine-boundary/check.mjs
-```
-
-Requires Node.js and the .NET 10 SDK. On restricted Windows Codex, run the
-second command with approved execution because it restores, builds and runs
-temporary .NET projects. No project, package or deployment is published.
+[YGO Work's boundary verification](../../plugins/ygo-work/skills/ygo-verify/references/engine-boundary.md)
+owns setup and execution. The tool requires Node.js and the .NET 10 SDK;
+no project, package or deployment is published.
 
 The check first rejects application/host dependencies in the owned engine
 sources and production/application-test references to `CardProbability.Internal`.

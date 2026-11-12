@@ -22,31 +22,14 @@ These are conservative project limits, not a provider promise of a safe image ra
 
 ## Updating the allowlist
 
-Run manually when new cards are needed, reusing an existing official catalog response where possible:
-
-```sh
-python infrastructure/artwork/prepare-manifest.py --catalog catalog.json --output manifest.json
-# Omitting --catalog makes one official JSON catalog request, never image requests.
-```
-
-Upload the output to `_control/manifest.json` through the authenticated R2 dashboard. Review the count and budget first. Allowlist changes take up to five minutes to reach existing Worker instances. New IDs outside the allowlist remain unavailable until this update. Do not clear existing images during refreshes, builds, deploys or metadata TTL expiry. A confirmed repaired provider 404 requires an operator to remove only its corresponding `_control/missing/{id}.json` marker; do not bulk-clear negative records or the global cooldown.
-
-The authenticated dashboard was used for initial deployment. For subsequent operator deployments, `wrangler.jsonc` supplies the same dedicated bucket binding and enabled runtime cache. Use official Wrangler with authenticated operator access; keep credentials in its appropriate credential/secret store. Save the previous deployed version/source/configuration and rollback reference privately before a rollout; preserve live bindings and unrelated settings. Keep persistent invocation logs disabled as in the initial deployment. Do not enable paid Workers plans, image transformations or other add-ons.
+YGO Work's [artwork operations](../../plugins/ygo-work/skills/ygo-implement/references/artwork.md) owns allowlist refresh, repaired-image recovery, deployment and verification procedures. `prepare-manifest.py` validates official metadata without fetching images. The authenticated dashboard was used for initial deployment; `wrangler.jsonc` records the dedicated bucket binding, enabled runtime cache and disabled persistent invocation logs.
 
 ## Budget and verification
 
-Standard R2 includes 10 GB-month storage, one million Class A operations and ten million Class B operations monthly. Workers Free includes 100,000 requests daily. Check current [R2 pricing](https://developers.cloudflare.com/r2/pricing/) and [Workers limits](https://developers.cloudflare.com/workers/platform/limits/) before changing operation volume; account allowances are shared. R2 is usage-billed, so these allowances are not a spending cap. Edge hits avoid R2 reads; retained misses use one R2 read, while cold acquisitions need additional reads and conditional writes.
+The documented Standard R2 allowances are 10 GB-month storage, one million Class A operations and ten million Class B operations monthly; Workers Free includes 100,000 requests daily. Current terms are published in [R2 pricing](https://developers.cloudflare.com/r2/pricing/) and [Workers limits](https://developers.cloudflare.com/workers/platform/limits/). Edge hits avoid R2 reads; retained misses use one R2 read, while cold acquisitions need additional reads and conditional writes.
 
 The enabled [Workers Cache](https://developers.cloudflare.com/workers/cache/) runs before Worker execution, separately from the in-Worker `caches.default` API. Its hits can avoid Worker CPU and R2 reads but still count toward Workers request usage. Its default cache key includes the Worker version, so a new version does not require a blanket purge to change delivery headers. Browser-local reuse avoids a request to Cloudflare altogether. Dashboard totals include other traffic and cannot identify an individual test's R2 reads or provider fetches.
 
-The initial allowlist contains 14,767 image IDs. The 256 KiB per-image limit gives a 3,871,080,448-byte upper bound for that catalog, not a measured catalog size. No bulk binary synchronization runs during CI, builds or ordinary imports. Check actual bucket objects/storage and Class A/B usage in the R2 dashboard, and request counts in Workers metrics. Storage totals can lag object listings. Account email usage alerts are configured at 8,000,000,000 stored bytes, 800,000 Class A operations and 8,000,000 Class B operations, with a separate $1 billing budget alert. These provide notice, not enforcement or a spending cap. Stop and review before bulk operations or changes expected to exceed included allowances.
+The initial allowlist contains 14,767 image IDs. The 256 KiB per-image limit gives a 3,871,080,448-byte upper bound for that catalog, not a measured catalog size. No bulk binary synchronization runs during CI, builds or ordinary imports. Storage totals can lag object listings. Account email usage alerts were configured at 8,000,000,000 stored bytes, 800,000 Class A operations and 8,000,000 Class B operations, with a separate $1 billing budget alert.
 
-Offline tests never contact the provider:
-
-```sh
-node --test scripts/artwork/scheduler.test.mjs
-node --test infrastructure/artwork/worker.test.mjs
-python infrastructure/artwork/test_manifest.py
-```
-
-Live verification should acquire only a few representative images, then reuse them. Inspect browser network requests to confirm that image traffic uses the project endpoint. Do not treat deterministic fixtures as proof of deployed delivery.
+The offline scheduler, Worker and manifest tests use fixtures without contacting the provider; live-delivery verification is a separate operation.

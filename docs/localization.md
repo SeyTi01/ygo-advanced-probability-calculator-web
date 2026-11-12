@@ -1,4 +1,4 @@
-# Localization contributors
+# Localization contracts
 
 English, Deutsch (`de`), 日本語 (`ja`), Français (`fr`), Italiano (`it`) and Português (`pt`) are production locales. Presentation uses the platform's
 `ResourceManager` and keyed `.resx` satellites in `Localization/Strings.resx`.
@@ -36,15 +36,11 @@ during startup is supported while retaining the browser's numeric culture.
 
 ## Adding a locale
 
-1. Add `Localization/Strings.<locale>.resx` with the same keys. Missing entries
-   intentionally fall back to English. Verify every translated placeholder.
-2. Add its deployable language ID and readable native name to
-   `wwwroot/localization/locales.json`. This single file is served to startup
-   JavaScript and embedded in .NET. Register only locales whose satellite ships.
-   At two production locales the global header selector appears automatically
-   on both routes. English alone keeps the existing header.
-3. Run the localization/editor tests, optimized publish, prerendered SEO checks,
-   and the published browser workflow described below.
+Use YGO Work's [localization workflow](../plugins/ygo-work/skills/ygo-implement/references/localization.md)
+for contributor steps and verification. `wwwroot/localization/locales.json` is
+served to startup JavaScript and embedded in .NET. At two production locales,
+the header selector appears automatically on both routes; English alone keeps
+the existing header.
 
 ## Website preference and startup
 
@@ -122,22 +118,12 @@ from normal explicit recovery and never changes session schema or worker bytes.
 
 ## Published integration check
 
-Run the JavaScript localization tests and the browser smoke against an optimized
-production publish:
-
-```sh
-node --test scripts/localization/locale.test.mjs
-dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release -o YGOProbabilityCalculatorBlazor/bin/language-publish
-node scripts/localization/browser-smoke.cjs YGOProbabilityCalculatorBlazor/bin/language-publish/wwwroot
-```
-
-Playwright and Chromium are external test dependencies; set
-`YGO_BROWSER_EXECUTABLE` or `YGO_BROWSER_CHANNEL` as for the other browser checks.
-The smoke checks production satellites, first visible language, on-demand localized
+The [browser workflow](../plugins/ygo-work/skills/ygo-verify/references/browser-checks.md)
+owns runtime setup and execution. The localization smoke checks production
+satellites, first visible language, on-demand localized
 card names, numeric culture, and real reload/restoration of accepted workspace and
 results. It also checks representative blocked edits and pending operations,
-protected recovery/share state, and storage failure. Run the regular .NET/JS
-suites and `PublishedOutputSeoTest` against the production publish as well.
+protected recovery/share state, and storage failure.
 
 The test project's `Localization/Strings.fr.resx` is an intentionally artificial
 pseudo locale with selected substitutions, omissions, and one invalid format.
@@ -174,8 +160,9 @@ names and aliases must not compile alternate membership rules. See the
 
 Optional name assets are loaded once per service and selected locale, only for
 search or verified saved-card display. Synchronous label reads never fetch.
-Failure falls back to English and is cached for the service lifetime. Register
-reviewed assets in `CardInfoService.LocalizedNameAssets`; tests inject a pseudo
+Failure falls back to English and is cached for the service lifetime.
+`CardInfoService.LocalizedNameAssets` derives reviewed assets from the shared
+locale registry; tests inject a pseudo
 asset map through the internal constructor without enabling a production locale.
 
 All nine Help FAQ sections use `Help.*` resources. Numbered placeholders insert

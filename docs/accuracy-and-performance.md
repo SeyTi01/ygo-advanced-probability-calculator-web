@@ -59,7 +59,7 @@ Mixed draws, ordered costs/removals, overlapping selectors, competing searches a
 
 Current UI Progressive uses `runProgressive` and `finish` on one staged worker lease. The first response is validated before acceptance and the terminal response is validated before the lease is released. A slow initial Fast stage does not consume an automatic Exact deadline because this path has none. Worker startup has a separate **30-second guard**. After actual interruption of automatic work, the shared **2.5-second restart delay** still applies. These lifecycle guards are not calculation time budgets.
 
-The older standalone `CalculateAsync` / `run(json, true)` compatibility path retains a **seven-second opportunity**, **five-second upgrade maximum**, and remaining finite Work. This historical API contract is not the current Progressive UI contract. Native synchronous calls do not acquire browser deadlines. [Runtime notes](../scripts/background-calculation/README.md#automatic-exact-opportunity-in-fast) contain compatibility and measurement details.
+The older standalone `CalculateAsync` / `run(json, true)` compatibility path retains a **seven-second opportunity**, **five-second upgrade maximum**, and remaining finite Work. This historical API contract is not the current Progressive UI contract. Native synchronous calls do not acquire browser deadlines. [Runtime notes](../scripts/background-calculation/README.md#runtime-contracts) contain compatibility and measurement details.
 
 ## Evidence and implementation
 

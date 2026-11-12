@@ -1,7 +1,7 @@
 # Web/cloud, usually Ubuntu or restricted Linux
 
-Assume no automatic initialization and no CLI credentials. Reuse an available checkout or obtain the current source in writable storage; use the connected GitHub API for authenticated publication. Do not repeatedly attempt login or run the Windows setup script.
+Assume no automatic initialization or CLI credentials. Reuse a checkout or obtain current source in writable storage; do not run the Windows setup script. Common [environment guidance](environment.md) owns authentication and transport selection.
 
-Before local commits in a fresh checkout, initialize the portable guard following `repo:scripts/codex/PRIVACY.md`, which owns public-identity selection. No Git identity setup is needed for a read-only task or a connector-only issue write.
+Before local commits, initialize a missing portable guard using [Git identity setup](../../ygo-pr/references/git-identity-setup.md).
 
-If the required SDK is missing, attempt the nonprivileged bootstrap in `repo:scripts/codex/RESTRICTED-LINUX.md` before declaring verification blocked. Then use [verification commands](commands.md). Apply that guide's WASM task-host workaround only after its documented error and socket-probe conditions; a missing SDK is a different problem. Keep sandbox overrides temporary and outside tracked source.
+If the required SDK is missing, attempt [Linux SDK bootstrap](sdk-linux.md). If MSBuild fails starting an out-of-process task host with `MSB4216`, `MSB4027` or socket permission errors, investigate [the conditional WASM workaround](wasm-task-host.md). Do not load either procedure on a working host.

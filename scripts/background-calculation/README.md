@@ -1,8 +1,8 @@
 # Background calculation verification
 
 The ordinary CI suite runs .NET tests and `node --test`; browser smokes are
-explicit local checks. Run the normal solution restore/build/test commands in
-the repository instructions first. `owner.test.mjs`, `transport.test.mjs`,
+explicit checks selected by [YGO Work verification](../../plugins/ygo-work/skills/ygo-verify/SKILL.md).
+`owner.test.mjs`, `transport.test.mjs`,
 `worker-policy.test.mjs`, and `fast-deadline.test.mjs` use fake workers, explicit
 messages and mocked timers for ownership, late responses, deadlines and recovery.
 The .NET component/service tests cover captured inputs, cancellation, drafts,
@@ -11,15 +11,8 @@ physical-card probability oracles.
 
 ## Small published-app smoke set
 
-Publish a clean optimized Release build with SDK-scoped `wasm-tools`, using
-the production AOT settings and no external measurement sources. Use the existing external Playwright
-installation through `NODE_PATH`. Set `YGO_BROWSER_EXECUTABLE` to an installed
-Chromium executable, or optionally set `YGO_BROWSER_CHANNEL`.
-
-```sh
-dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release
-node scripts/smoke.cjs YGOProbabilityCalculatorBlazor/bin/Release/net10.0/publish/wwwroot
-```
+Use [published browser checks](../../plugins/ygo-work/skills/ygo-verify/references/browser-checks.md)
+for runtime preparation and execution commands.
 
 The serial entrypoint fails on the first failed child and runs:
 
@@ -49,42 +42,25 @@ The serial entrypoint fails on the first failed child and runs:
   loading, numeric culture and real language reload/restoration. It uses the same
   production publish; pseudo-resource validation stays in the regular tests.
 
-For the distinct physical idle-owner lifecycle, run this optional check once;
-it intentionally waits for the unchanged production 60-second idle timer:
-
-```sh
-node scripts/background-calculation/lifecycle-smoke.cjs <published-wwwroot>
-```
-
-It observes worker-context reuse, expiry, recreation, Help deactivation and a
+The optional `lifecycle-smoke.cjs` observes worker-context reuse, expiry,
+recreation, Help deactivation and a
 successful calculation after returning to the retained workspace.
 Normal smoke cancellation also observes real closure, but held transport is not
 evidence of stopping a CPU-bound engine. Do not infer CPU shutdown from a button
 returning to idle or a call to `terminate()` alone.
 
-Run `scripts/verify-published-seo.sh` against the published directory as required
-by the existing publish verification workflow. Keep this responsibility separate
-from browser correctness and do not add expensive smoke matrices to every push.
-
 ## Frozen worker regression
 
-`cold-worker-regression.cjs` is a separate correctness gate for issue #295. Run it
-against clean non-AOT, retained-IL AOT and stripped AOT publishes; verify the
-publish flags/logs separately. It does not build, change production AOT settings,
-or run as part of the routine smoke/CI suite.
-
-```sh
-node scripts/background-calculation/cold-worker-regression.cjs <published-wwwroot> <frozen-worker-inputs.json> bin/cold-worker-results.json 4
-```
+`cold-worker-regression.cjs` is the separate correctness gate for issue #295.
+Its [execution procedure](../../plugins/ygo-work/skills/ygo-verify/references/frozen-worker.md)
+owns publish variants, invocation and browser selection; the input contract follows.
 
 The input must be the saved `mixed-vision-custom-fast-40` entry from the original
 capture, a raw captured input object, or the `mixed-reproduction.json` wrapper.
 The gate requires canonical SHA-256
 `73449cb0ea76fca01d2a61959caab7df770001c61f4c3364171b8348b7f91177`;
 regenerating `MixedDeferredBenchmark.ExportExamples` is not the same capture.
-Keep the input and generated evidence local. An optional fifth argument supplies
-a complete reference response JSON; the reproduction wrapper's `reference` is
-also accepted automatically. The eleven stored reference fractions are checked
+The eleven stored reference fractions are checked
 with integer arithmetic, alongside route/proof/completion metadata and row
 identities. These stored references are regression expectations, not an
 independent probability oracle.
@@ -95,17 +71,13 @@ The real page boots as in the original reproduction; its UI runtime is separate
 from the worker. The gate rejects any preliminary or additional page worker, and
 does not issue a dummy calculation. A failure exits nonzero and retains
 raw replies, request hashes and the worker/framework artifact manifest at the
-specified Git-ignored output path. Use external Playwright through `NODE_PATH`;
-Chromium defaults to Edge. Set `YGO_BROWSER_EXECUTABLE` or
-`YGO_BROWSER_CHANNEL` to override it, or `YGO_BROWSER_ENGINE=firefox` to use an
-installed Playwright Firefox. Worker-cold state is distinct from a fresh browser
-process or cold network cache; this gate makes no performance claims.
+specified output path. Its Chromium default is Edge; browser selection is
+configurable. This gate establishes correctness, not performance.
 
 ## Benchmark and measurement tools
 
-Use YGO Work's [performance evidence guidance](../../plugins/ygo-work/skills/ygo-diagnose/references/measurements.md)
-and its conditional [benchmark audit procedure](../../plugins/ygo-work/skills/ygo-diagnose/references/benchmark-audit.md)
-for tool selection, frozen baseline/candidate replay and native/browser measurement.
+Use YGO Work's [measurement procedures](../../plugins/ygo-work/skills/ygo-diagnose/references/measurements.md)
+for tool selection, frozen replay and native/browser/UI measurements.
 
 ### Historical excavation observations
 
