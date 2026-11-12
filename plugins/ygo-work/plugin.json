@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ygo-work",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Focused development workflows for the Yu-Gi-Oh! Advanced Probability Calculator.",
   "author": { "name": "SeyTi01" },
   "repository": "https://github.com/SeyTi01/ygo-advanced-probability-calculator-web",

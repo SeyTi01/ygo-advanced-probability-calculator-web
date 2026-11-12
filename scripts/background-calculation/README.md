@@ -103,87 +103,11 @@ process or cold network cache; this gate makes no performance claims.
 
 ## Benchmark and measurement tools
 
-Keep a frozen request and its reference response when comparing revisions. The
-native and browser replays use the current public wire, so newer card fields and
-execution policies cannot disappear through hand-built model projections.
-The historical paired feature matrices, external probes and duplicate timing
-wrappers have been retired; Git history preserves those investigations.
-Explicit internal phase profiles, the full physical-hand oracle and frozen
-public-contract regressions remain separate from the timing tools.
+Use YGO Work's [performance evidence guidance](../../plugins/ygo-work/skills/ygo-diagnose/references/measurements.md)
+and its conditional [benchmark audit procedure](../../plugins/ygo-work/skills/ygo-diagnose/references/benchmark-audit.md)
+for tool selection, frozen baseline/candidate replay and native/browser measurement.
 
-| Purpose | Maintained entrypoint |
-| --- | --- |
-| Freeze representative current requests / replay natively | `PerformanceAuditBenchmark.Export` / `.Replay` |
-| Replay the same requests in optimized WASM | `measure-worker.cjs` |
-| Native excavation workloads and frozen requests | `ExcavationBenchmark.Measure` |
-| UI click to terminal result, bootstrap and request round trips | `measure-worker-lifecycle.cjs` |
-| First catalog query and warm search feedback | `../card-search/measure-search.cjs` |
-| File/example action to accepted session snapshot | `../workspace/measure-session-loading.cjs` |
-
-Build the solution in Release before invoking the explicit native benchmarks;
-use `--no-build --no-restore` so compilation is outside the measured process.
-Set `DOTNET_TieredCompilation=0` consistently for native comparisons. Run timing
-jobs alone, without builds, tests or other measurements. First request, warm
-requests and worker bootstrap are separate observations; they do not establish
-cold process/network behavior. Timeout samples are censored, never successful
-calculations or Work/Storage failures. Never commit generated evidence.
-
-Frozen fixture files are JSON arrays of `{ Name, Json, Execution?, ReferenceResponse }`.
-`Json` is the exact serialized `CalculationInput` string; keep it byte-for-byte
-unchanged across revisions. `Execution` is absent/null for the finite direct
-worker path, or `interactive-exact-v1` for the UI's unlimited-work Exact path.
-`ReferenceResponse` is the complete baseline response, including typed failures.
-Generate references on the baseline; replay never replaces them with candidate
-results. Fractions, keys and integer fields must match exactly; the browser replay
-allows four machine-epsilon units of relative rounding for noninteger doubles.
-
-To export a baseline, set `YGO_AUDIT_OUTPUT=bin/frozen-inputs.json` and optionally
-`YGO_AUDIT_CASE` to a name filter (`tiny` selects the inexpensive controls), then
-run the explicit `PerformanceAuditBenchmark.Export` method. For native replay,
-set `YGO_AUDIT_INPUT` to that frozen file, `YGO_AUDIT_OUTPUT` to a different file,
-and optionally `YGO_AUDIT_TRIALS` (1–30 warm samples), then select `.Replay`.
-
-```sh
-dotnet test YGOProbabilityCalculatorBlazor.sln -c Release --no-build --no-restore --filter FullyQualifiedName=YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator.PerformanceAuditBenchmark.Export
-dotnet test YGOProbabilityCalculatorBlazor.sln -c Release --no-build --no-restore --filter FullyQualifiedName=YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator.PerformanceAuditBenchmark.Replay
-```
-
-```sh
-node scripts/background-calculation/measure-worker.cjs <optimized-wwwroot> <fixtures.json> bin/worker-measurements.json 3 60000
-node scripts/background-calculation/measure-worker-lifecycle.cjs <optimized-wwwroot> bin/ui-worker.json 3
-node scripts/card-search/measure-search.cjs <optimized-wwwroot> bin/search.json 3
-node scripts/workspace/measure-session-loading.cjs <optimized-wwwroot> bin/session-loading 5
-```
-
-Use the external Playwright installation and browser settings from the smoke
-instructions. Replay artifacts include exact request and published-asset hashes,
-first/warm samples, full replies and parity failures. UI tools record their own
-metric definitions, cache conditions, browser and failures. Search uses full-query
-input events and DOM/double-frame observations; `YGO_SEARCH_CPU_RATES=1,4` selects
-the optional Chromium CPU-throttle rates. Session loading keeps its deliberate
-gzip/Brotli server and measures acceptance before recovery-storage debounce.
-Double animation frames are scheduling observations, not paint guarantees.
-Allocation/working-set observations are not peak live browser memory, and WASM
-linear-memory capacity is not live managed heap.
-
-### Excavation workload measurements
-
-`ExcavationBenchmark.Measure` is an explicit Release test. Set
-`YGO_EXCAVATION_BENCHMARK` to a Git-ignored output JSON path; optionally set
-`YGO_EXCAVATION_TRIALS` (warm samples, default 3), `YGO_EXCAVATION_CASE`,
-`YGO_EXCAVATION_EXCLUDE`, and `YGO_EXCAVATION_MODE`. Use
-`DOTNET_TieredCompilation=0`. The export includes the exact worker input and full
-native reference response, and saves after each fixture/mode. Native first/warm
-timings and allocations are printed; use the generic native replay for structured
-sample evidence.
-
-The native export uses the common frozen fixture format above. Pass it to
-`measure-worker.cjs` against the clean production publish; no probe build is
-required. Its optional external cutoff is not a production calculation deadline.
-The routine integration smoke uses a small independent excavation control for
-browser correctness; the 40-card measurement fixture is not a UI requirement.
-
-#### Historical observations
+### Historical excavation observations
 
 These observations describe the 2026-11-01 acceptance harness and its fixtures.
 Measured on Windows with .NET 10.0.401 and Edge 156.0.4314.58 on 2026-11-01,
