@@ -1930,7 +1930,7 @@
   <data name="Help.Footer.Reading" xml:space="preserve"><value>Explore o {0}, o {1} e o {2}. A documentação acompanha a versão de desenvolvimento; o site estável pode diferir.</value></data>
   <data name="Help.Footer.Credits.Part0" xml:space="preserve"><value>SeyTi01</value></data>
   <data name="Help.Footer.Credits.Part1" xml:space="preserve"><value>YGOPRODeck</value></data>
-  <data name="Help.Footer.Credits" xml:space="preserve"><value>Criado por {0}. As ilustrações das cartas são fornecidas por {1} e mantidas na hospedagem do projeto. Ilustrações ausentes não afetam os cálculos; ilustrações de terceiros não são abrangidas pela licença do software.</value></data>
+  <data name="Help.Footer.Credits" xml:space="preserve"><value>Criado por {0}. As ilustrações das cartas são fornecidas por {1} e mantidas na hospedagem do projeto. Ilustrações de terceiros não são abrangidas pela licença do software.</value></data>
   <data name="Help.Footer.NameCompilation.Part0" xml:space="preserve"><value>YAML Yugi</value></data>
   <data name="Help.Footer.NameCompilation" xml:space="preserve"><value>Compilação dos dados de tradução: {0} e seus colaboradores de origem. O conteúdo das cartas permanece propriedade dos respectivos titulares dos direitos.</value></data>
   <data name="Accuracy.ExactRange" xml:space="preserve"><value>≈ {0}% (exato)</value></data>

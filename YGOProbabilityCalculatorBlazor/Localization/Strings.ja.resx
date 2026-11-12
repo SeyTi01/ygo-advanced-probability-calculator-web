@@ -2287,7 +2287,7 @@
     <value>YGOPRODeck</value>
   </data>
   <data name="Help.Footer.Credits" xml:space="preserve">
-    <value>{0}が作成。カード画像は{1}から提供され、プロジェクトのホスティングに保持されています。画像がなくても計算には影響しません。第三者の画像はソフトウェアライセンスの対象外です。</value>
+    <value>{0}が作成。カード画像は{1}から提供され、プロジェクトのホスティングに保持されています。第三者の画像はソフトウェアライセンスの対象外です。</value>
   </data>
   <data name="Help.Footer.NameCompilation.Part0" xml:space="preserve">
     <value>YAML Yugi</value>

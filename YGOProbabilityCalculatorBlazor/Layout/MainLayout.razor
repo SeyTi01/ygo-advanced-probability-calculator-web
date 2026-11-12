@@ -5,6 +5,7 @@
 @implements IDisposable
 
 <CascadingValue Value="_languageWorkspace" IsFixed="true">
+<CascadingValue Value="_workspaceState" IsFixed="true">
 <div class="page" inert="@_switching">
     <main>
         <div class="top-row">
@@ -82,6 +83,7 @@
     </main>
 </div>
 </CascadingValue>
+</CascadingValue>
 
 @code {
     private bool IsHelpPage => new Uri(NavigationManager.Uri).AbsolutePath.TrimEnd('/')
@@ -98,6 +100,7 @@
         _ => "Ui.System"
     });
     private readonly LanguageWorkspace _languageWorkspace = new();
+    private readonly WorkspaceState _workspaceState = new();
     private LanguageHandoff? _handoff;
     private string? _languageError;
     private bool _languageReady;

@@ -102,6 +102,7 @@ public sealed class CalculatorNavigationTest : CalculatorEditorTestBase {
 
     [Test]
     public async Task ExplicitExampleReplacesTheRetainedWorkspaceAndDoesNotReplayOnLaterVisits() {
+        context.JSInterop.Setup<bool>("confirm", _ => true).SetResult(true);
         SessionState example = new() { HandSize = 1, Cards = [new([], 1, "Chosen example", id: "example")] };
         _files.Setup(service => service.ReadAllTextAsync("sample-data/example_session_state.json"))
             .ReturnsAsync(Sessions.SerializeSession(example));
@@ -119,6 +120,24 @@ public sealed class CalculatorNavigationTest : CalculatorEditorTestBase {
         await Navigate(app, "/");
         Assert.That(Snapshot(app), Is.EqualTo(edited));
         _files.Verify(service => service.ReadAllTextAsync(It.IsAny<string>()), Times.Once);
+    }
+
+    [Test]
+    public async Task CancellingExampleReplacementKeepsTheRetainedWorkspaceAndDrafts() {
+        context.JSInterop.Setup<bool>("confirm", _ => true).SetResult(false);
+        IRenderedComponent<App> app = RenderApp(Session());
+        await app.Find("#quickCardName").InputAsync(new() { Value = "Unfinished card" });
+        string before = Snapshot(app);
+        await Navigate(app, "/help");
+
+        await app.Find(".example-session-action button").ClickAsync(new());
+
+        Assert.That(context.JSInterop.Invocations["confirm"], Has.Count.EqualTo(1));
+        Assert.That(new Uri(Navigation.Uri).AbsolutePath, Is.EqualTo("/help"));
+        _files.Verify(service => service.ReadAllTextAsync(It.IsAny<string>()), Times.Never);
+        await Navigate(app, "/");
+        Assert.That(Snapshot(app), Is.EqualTo(before));
+        Assert.That(app.Find("#quickCardName").GetAttribute("value"), Is.EqualTo("Unfinished card"));
     }
 
     [Test]
