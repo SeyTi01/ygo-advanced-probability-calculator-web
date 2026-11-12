@@ -1,8 +1,8 @@
 # Performance evidence
 
-Choose representative fixtures tied to the reported regression. Compare baseline and candidate in the same host, runtime, build mode, workload, input, cache/worker state and measurement harness. Record revisions and distinguish cold startup, warm calculation, allocations/state growth and cancellation responsiveness where relevant. Do not compare native timing to browser AOT as though they were equivalent.
+Choose representative fixtures tied to the reported regression or audit question. Compare baseline and candidate in the same host, runtime, build mode, workload, input, cache/worker state and measurement harness. Record revisions and distinguish cold startup, warm calculation, allocations/state growth and cancellation responsiveness where relevant. Do not compare native timing to browser AOT as though they were equivalent.
 
-Use existing tools described in `repo:scripts/background-calculation/README.md`, including worker, lifecycle, search and session-loading measurements as applicable. Inspect the harness before interpreting its output. Keep temporary probes and measurements out of production exports and commits unless a small reproducible regression check is part of the deliverable.
+When selecting, running or reviewing a native/WASM benchmark or UI timing audit, load [the benchmark procedure](benchmark-audit.md). Inspect the relevant harness before interpreting its output. Keep temporary probes and measurements out of production exports and commits unless a small reproducible regression check is part of the deliverable.
 
 Establish correctness independently of speed and compare result fractions, accuracy/scope and terminal outcomes on equivalent inputs. Preserve engine boundaries and public contracts while optimizing. Treat material regressions and unavailable historical fixtures explicitly; do not claim a missing baseline was matched.
 
