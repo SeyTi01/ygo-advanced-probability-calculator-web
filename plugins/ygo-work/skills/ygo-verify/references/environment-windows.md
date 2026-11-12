@@ -4,6 +4,8 @@ This repository's Windows Codex environment normally initializes through `repo:s
 
 In the known restricted Windows environment, request scoped approved execution from the outset for Git metadata writes (fetch/branch/checkout/staging/commit/rebase), setup, `dotnet --info`, restore/test/run, builds that restore, and all local preview-server launches. Do not repeat restricted attempts just to rediscover known failures. Ordinary source edits, read-only Git, privacy checks, SDK listing and `dotnet build --no-restore` can run restricted.
 
+For GitHub CLI, resolve `gh` on PATH first, then check `GitHub CLI/gh.exe` under Program Files before declaring it missing. An application started before installation can have a stale PATH; use the full executable path without changing global configuration. Reuse the existing credential-store login. GitHub network calls and credential-store verification can need approved execution here; retry a sandbox connection failure through that route before treating authentication as invalid. Never inspect or print stored tokens to diagnose access.
+
 Even `dotnet run --no-build --no-restore` needs approved execution here. A sandboxed server may report listening while host browsers time out. Restart it with approved execution on the same port and verify browser loading. This requirement applies to each launch. Reinvestigate when approved execution fails or the environment changes.
 
 Verify any additional worktree lies within writable permissions. Preserve global configuration, ACLs, permission profiles and existing publication hooks. If approval execution is unavailable, report that limitation rather than bypassing it.
