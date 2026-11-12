@@ -734,7 +734,7 @@
   <data name="Color.Teal" xml:space="preserve"><value>Blaugrün</value></data>
   <data name="Color.Magenta" xml:space="preserve"><value>Magenta</value></data>
   <data name="Help.Introduction.Overview" xml:space="preserve"><value>Berechne die Wahrscheinlichkeit, deine Kombos mit der Starthand zu erreichen – einschließlich unterstützter Zieh- und Sucheffekte. Beginne mit deinem eigenen Deck oder probiere das Beispiel aus.</value></data>
-  <data name="Help.Introduction.ReplaceWarning" xml:space="preserve"><value>Beim Laden wird dein aktueller Arbeitsbereich ersetzt. Speichere vorher eine Sitzung, um ihn zu behalten.</value></data>
+  <data name="Help.Introduction.ReplaceWarning" xml:space="preserve"><value>Beim Laden wird dein aktueller Arbeitsbereich ersetzt. Speichere vorher eine Sitzung, um sie zu behalten.</value></data>
   <data name="Help.GettingStarted.Question" xml:space="preserve"><value>Wie fange ich an?</value></data>
   <data name="Help.GettingStarted.AddDeck.Part0" xml:space="preserve"><value>Deck hinzufügen.</value></data>
   <data name="Help.GettingStarted.AddDeck.Part1" xml:space="preserve"><value>.ydk</value></data>
