@@ -3,6 +3,7 @@
 @using YGOProbabilityCalculatorBlazor.Services.Interface
 @using YGOProbabilityCalculatorBlazor.Constants
 @using YGOProbabilityCalculatorBlazor.Components.Shared
+@using YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator
 @using Microsoft.AspNetCore.Components.Routing
 @using System.Globalization
 @using System.Text.RegularExpressions
@@ -35,12 +36,11 @@
 </HeadContent>
 
 <div class="help-content mt-4">
-    <section class="mb-4">
+    <section class="help-introduction">
         <h1>@UiText.Get("Ui.YuGiOhAdvancedProbabilityCalculator") <small class="text-muted">@ProjectConstants.DisplayVersion</small></h1>
         <p>@UiText.Get("Help.Introduction.Overview")</p>
         <div class="example-session-action">
-            <p id="example-session-warning" class="small text-muted mb-2">@UiText.Get("Help.Introduction.ReplaceWarning")</p>
-            <button class="btn btn-primary" aria-describedby="example-session-warning" disabled="@_loadingExample" @onclick="LoadExampleSession">@UiText.Get("Help.TryExample")</button>
+            <button class="btn btn-primary" disabled="@_loadingExample" @onclick="LoadExampleSession">@UiText.Get("Help.TryExample")</button>
             <div class="example-session-status">
                 <SessionLoadingStatus RequestVersion="@(_loadingExample ? 1L : null)" />
             </div>
@@ -229,6 +229,7 @@
     private bool _disposed;
     private bool _revealFragment = true;
     private IJSObjectReference? _topicModule;
+    [CascadingParameter] public WorkspaceState? WorkspaceState { get; set; }
 
     protected override void OnInitialized() {
         NavigationManager.LocationChanged += LocationChanged;
@@ -267,6 +268,13 @@
 
         _loadingExample = true;
         try {
+            bool hasDrafts = await SessionLoadingJS.InvokeAsync<bool>("ygoLocale.hasPendingEdits");
+            if ((WorkspaceState?.IsModified == true || hasDrafts)
+                && !await SessionLoadingJS.InvokeAsync<bool>("confirm", UiText.Get("Help.Introduction.ReplaceWarning"))) {
+                return;
+            }
+
+            _errorMessage = null;
             await SessionLoadingJS.InvokeVoidAsync("sessionLoading.beforeWork");
             string? fileContent = await _fileService.ReadAllTextAsync("sample-data/example_session_state.json");
 

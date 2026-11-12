@@ -4,7 +4,8 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
+using CP = CardProbability;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -18,9 +19,9 @@ public sealed class PhysicalSearchTest {
         }
     }
 
+
     [Test]
     public void ExhaustiveExistingFixturesAllAgree() {
-        int supportedLoss = 0;
         foreach (SearchCertificateFixtures.Fixture fixture in SearchCertificateFixtures.Fixtures()) {
             SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, fixture.Priority);
             CalculationOptions options = new(fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority), Mode: CalculationModel.Exact);
@@ -28,11 +29,7 @@ public sealed class PhysicalSearchTest {
                 fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default, options);
             AssertRows(result, oracle.Wins[1], oracle.Outcomes);
             Assert.That(result.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact), fixture.Name);
-            if (result.Contract.SolverRoute == "SearchPhysicalCountState") {
-                supportedLoss++;
-            }
         }
-        Assert.That(supportedLoss, Is.GreaterThan(10));
     }
 
     [TestCase(1, false, false), TestCase(1, true, true)]
@@ -86,7 +83,6 @@ public sealed class PhysicalSearchTest {
         ProbabilityCalculationResult exact = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 2, groups,
             CalculationWorkPolicy.Default, new(new(DrawActivationMode.CustomPriority, priority), Mode: CalculationModel.Exact));
         AssertRows(exact, oracle.Wins[1], oracle.Outcomes);
-        Assert.That(exact.Contract!.SolverRoute, Is.EqualTo("SearchPhysicalCountState"));
     }
 
     [TestCase(false), TestCase(true)]
@@ -120,7 +116,6 @@ public sealed class PhysicalSearchTest {
             session.ComboGroups, CalculationWorkPolicy.Default, new(Mode: CalculationModel.Fast));
         ProbabilityCalculationResult exact = service.CalculateProbabilityResults(session.Cards, session.Combos, session.HandSize,
             session.ComboGroups, CalculationWorkPolicy.Default, new(Mode: CalculationModel.Exact));
-        Assert.That(exact.Contract!.SolverRoute, Is.EqualTo("SearchPhysicalCountState"));
         Assert.That(exact.SearchAvailability, Is.Null);
         ProbabilityFraction[] values = [exact.Contract.Fractions!.Total, .. exact.Contract.Fractions.Combos, .. exact.Contract.Fractions.Groups];
         SearchAvailabilityInterval[] bounds = [fast.SearchAvailability!.Total!, .. fast.SearchAvailability.Combos, .. fast.SearchAvailability.Groups];
@@ -135,10 +130,12 @@ public sealed class PhysicalSearchTest {
     public void PrimaryLimitsNeverPublishPartialPhysicalRows(bool storage) {
         List<Card> deck = ThreeCalculationModesTest.Counterexample("banish");
         List<ComboGroup> groups = storage ? Enumerable.Range(0, 32768).Select(index => new ComboGroup("g" + index, "Group")).ToList() : [];
-        WorkBudget complete = new(CalculationWorkPolicy.Default);
-        new DrawEffectCalculation(deck, 2, complete, physicalSearch: true).Calculate(ThreeCalculationModesTest.Combos, []);
+        CP.CalculationRequest request = new CalculationRequestAdapter(deck, true).Create(ThreeCalculationModesTest.Combos, 2, []);
+        CP.CalculationResult complete = CP.CalculationEngine.Calculate(request, new CP.CalculationOptions(CP.CalculationMode.Exact,
+            new CP.ExecutionPolicy(CalculationWorkPolicy.Default.WorkUnits)));
+        Assert.That(complete.Status, Is.EqualTo(CP.CalculationStatus.Completed));
         CalculationSnapshot snapshot = CalculationSnapshot.Capture(deck, ThreeCalculationModesTest.Combos, 2, groups,
-            storage ? CalculationWorkPolicy.Default : new(complete.Spent / 2), options: new(Mode: CalculationModel.Exact));
+            storage ? CalculationWorkPolicy.Default : new(complete.Metrics.WorkSpent / 2), options: new(Mode: CalculationModel.Exact));
         CalculationResponse response = JsonSerializer.Deserialize(CalculationWire.Execute(snapshot.Json), CalculationJsonContext.Default.CalculationResponse)!;
         Assert.That(response.Result, Is.Null);
         Assert.That(response.Contract!.Fractions, Is.Null);

@@ -3,8 +3,6 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -95,16 +93,13 @@ public class SolarRechargeTest {
     }
 
     [TestCase(1), TestCase(2)]
-    public void CapacityProofReusesFastPathAndGracefulSpecialist(int mill) {
+    public void CapacityTransitionsPreservePhysicalResults(int mill) {
         Card effect = new([], id: "effect", drawCount: 1, postDrawDeckMillCount: mill);
         List<Card> deck = [effect, new([A], id: "target"), new([], 4, id: "filler")];
         List<Combo> combos = [new([new(A, 1, 1)])];
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true).Path, Is.EqualTo(DrawExecutionPath.DrawCountState));
         Verify(deck, 1, combos);
         deck[0] = effect.WithDrawCount(2).WithPostDrawDiscardCount(1).WithDrawOncePerTurn(false);
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 1, true).Path, Is.EqualTo(DrawExecutionPath.ExchangeableConditional));
         Verify(deck, 1, combos);
-        Assert.That(DrawExecutionAssessment.Assess(deck, combos, 4, true).Path, Is.EqualTo(DrawExecutionPath.Ordinary));
         Verify(deck, 4, combos);
     }
 
@@ -123,14 +118,12 @@ public class SolarRechargeTest {
     private static void Verify(List<Card> deck, int handSize, List<Combo> combos, bool collapse = false) {
         List<ComboGroup> groups = [new("g", "Routes"), new("empty", "Empty")];
         DrawSequenceOracle.Counts expected = DrawSequenceOracle.Enumerate(deck, handSize, combos, groups, collapse);
-        foreach (ExactCalculationResult actual in new[] {
-            new PostDrawCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups),
-            new DrawEffectCalculation(deck, handSize, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups)
-        }) {
-            ExactProbability[] rows = [actual.Total, .. actual.Combos, .. actual.Groups];
-            for (int i = 0; i < rows.Length; i++) {
-                Assert.That(rows[i].Numerator * expected.Total, Is.EqualTo(expected.Wins[i] * rows[i].Denominator), $"row {i}");
-            }
+        ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+            deck, combos, handSize, groups, CalculationWorkPolicy.Interactive);
+        ApplicationResultFractions actual = ApplicationResultFractions.From(result);
+        ApplicationFraction[] rows = [actual.Total, .. actual.Combos, .. actual.Groups];
+        for (int i = 0; i < rows.Length; i++) {
+            Assert.That(rows[i].Numerator * expected.Total, Is.EqualTo(expected.Wins[i] * rows[i].Denominator), $"row {i}");
         }
     }
 }

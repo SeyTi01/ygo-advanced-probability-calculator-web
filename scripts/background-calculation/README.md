@@ -1,8 +1,8 @@
 # Background calculation verification
 
 The ordinary CI suite runs .NET tests and `node --test`; browser smokes are
-explicit local checks. Run the normal solution restore/build/test commands in
-the repository instructions first. `owner.test.mjs`, `transport.test.mjs`,
+explicit checks selected by [YGO Work verification](../../plugins/ygo-work/skills/ygo-verify/SKILL.md).
+`owner.test.mjs`, `transport.test.mjs`,
 `worker-policy.test.mjs`, and `fast-deadline.test.mjs` use fake workers, explicit
 messages and mocked timers for ownership, late responses, deadlines and recovery.
 The .NET component/service tests cover captured inputs, cancellation, drafts,
@@ -11,15 +11,8 @@ physical-card probability oracles.
 
 ## Small published-app smoke set
 
-Publish a clean optimized Release build with SDK-scoped `wasm-tools`, using
-the production AOT settings and no external measurement sources. Use the existing external Playwright
-installation through `NODE_PATH`. Set `YGO_BROWSER_EXECUTABLE` to an installed
-Chromium executable, or optionally set `YGO_BROWSER_CHANNEL`.
-
-```sh
-dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release
-node scripts/smoke.cjs YGOProbabilityCalculatorBlazor/bin/Release/net10.0/publish/wwwroot
-```
+Use [published browser checks](../../plugins/ygo-work/skills/ygo-verify/references/browser-checks.md)
+for runtime preparation and execution commands.
 
 The serial entrypoint fails on the first failed child and runs:
 
@@ -49,42 +42,25 @@ The serial entrypoint fails on the first failed child and runs:
   loading, numeric culture and real language reload/restoration. It uses the same
   production publish; pseudo-resource validation stays in the regular tests.
 
-For the distinct physical idle-owner lifecycle, run this optional check once;
-it intentionally waits for the unchanged production 60-second idle timer:
-
-```sh
-node scripts/background-calculation/lifecycle-smoke.cjs <published-wwwroot>
-```
-
-It observes worker-context reuse, expiry, recreation, Help deactivation and a
+The optional `lifecycle-smoke.cjs` observes worker-context reuse, expiry,
+recreation, Help deactivation and a
 successful calculation after returning to the retained workspace.
 Normal smoke cancellation also observes real closure, but held transport is not
 evidence of stopping a CPU-bound engine. Do not infer CPU shutdown from a button
 returning to idle or a call to `terminate()` alone.
 
-Run `scripts/verify-published-seo.sh` against the published directory as required
-by the existing publish verification workflow. Keep this responsibility separate
-from browser correctness and do not add expensive smoke matrices to every push.
-
 ## Frozen worker regression
 
-`cold-worker-regression.cjs` is a separate correctness gate for issue #295. Run it
-against clean non-AOT, retained-IL AOT and stripped AOT publishes; verify the
-publish flags/logs separately. It does not build, change production AOT settings,
-or run as part of the routine smoke/CI suite.
-
-```sh
-node scripts/background-calculation/cold-worker-regression.cjs <published-wwwroot> <frozen-worker-inputs.json> bin/cold-worker-results.json 4
-```
+`cold-worker-regression.cjs` is the separate correctness gate for issue #295.
+Its [execution procedure](../../plugins/ygo-work/skills/ygo-verify/references/frozen-worker.md)
+owns publish variants, invocation and browser selection; the input contract follows.
 
 The input must be the saved `mixed-vision-custom-fast-40` entry from the original
 capture, a raw captured input object, or the `mixed-reproduction.json` wrapper.
 The gate requires canonical SHA-256
 `73449cb0ea76fca01d2a61959caab7df770001c61f4c3364171b8348b7f91177`;
 regenerating `MixedDeferredBenchmark.ExportExamples` is not the same capture.
-Keep the input and generated evidence local. An optional fifth argument supplies
-a complete reference response JSON; the reproduction wrapper's `reference` is
-also accepted automatically. The eleven stored reference fractions are checked
+The eleven stored reference fractions are checked
 with integer arithmetic, alongside route/proof/completion metadata and row
 identities. These stored references are regression expectations, not an
 independent probability oracle.
@@ -95,95 +71,15 @@ The real page boots as in the original reproduction; its UI runtime is separate
 from the worker. The gate rejects any preliminary or additional page worker, and
 does not issue a dummy calculation. A failure exits nonzero and retains
 raw replies, request hashes and the worker/framework artifact manifest at the
-specified Git-ignored output path. Use external Playwright through `NODE_PATH`;
-Chromium defaults to Edge. Set `YGO_BROWSER_EXECUTABLE` or
-`YGO_BROWSER_CHANNEL` to override it, or `YGO_BROWSER_ENGINE=firefox` to use an
-installed Playwright Firefox. Worker-cold state is distinct from a fresh browser
-process or cold network cache; this gate makes no performance claims.
+specified output path. Its Chromium default is Edge; browser selection is
+configurable. This gate establishes correctness, not performance.
 
 ## Benchmark and measurement tools
 
-Keep a frozen request and its reference response when comparing revisions. The
-native and browser replays use the current public wire, so newer card fields and
-execution policies cannot disappear through hand-built model projections.
-The historical paired feature matrices, external probes and duplicate timing
-wrappers have been retired; Git history preserves those investigations.
-Explicit internal phase profiles, the full physical-hand oracle and frozen
-public-contract regressions remain separate from the timing tools.
+Use YGO Work's [measurement procedures](../../plugins/ygo-work/skills/ygo-diagnose/references/measurements.md)
+for tool selection, frozen replay and native/browser/UI measurements.
 
-| Purpose | Maintained entrypoint |
-| --- | --- |
-| Freeze representative current requests / replay natively | `PerformanceAuditBenchmark.Export` / `.Replay` |
-| Replay the same requests in optimized WASM | `measure-worker.cjs` |
-| Native excavation workloads and frozen requests | `ExcavationBenchmark.Measure` |
-| UI click to terminal result, bootstrap and request round trips | `measure-worker-lifecycle.cjs` |
-| First catalog query and warm search feedback | `../card-search/measure-search.cjs` |
-| File/example action to accepted session snapshot | `../workspace/measure-session-loading.cjs` |
-
-Build the solution in Release before invoking the explicit native benchmarks;
-use `--no-build --no-restore` so compilation is outside the measured process.
-Set `DOTNET_TieredCompilation=0` consistently for native comparisons. Run timing
-jobs alone, without builds, tests or other measurements. First request, warm
-requests and worker bootstrap are separate observations; they do not establish
-cold process/network behavior. Timeout samples are censored, never successful
-calculations or Work/Storage failures. Never commit generated evidence.
-
-Frozen fixture files are JSON arrays of `{ Name, Json, Execution?, ReferenceResponse }`.
-`Json` is the exact serialized `CalculationInput` string; keep it byte-for-byte
-unchanged across revisions. `Execution` is absent/null for the finite direct
-worker path, or `interactive-exact-v1` for the UI's unlimited-work Exact path.
-`ReferenceResponse` is the complete baseline response, including typed failures.
-Generate references on the baseline; replay never replaces them with candidate
-results. Fractions, keys and integer fields must match exactly; the browser replay
-allows four machine-epsilon units of relative rounding for noninteger doubles.
-
-To export a baseline, set `YGO_AUDIT_OUTPUT=bin/frozen-inputs.json` and optionally
-`YGO_AUDIT_CASE` to a name filter (`tiny` selects the inexpensive controls), then
-run the explicit `PerformanceAuditBenchmark.Export` method. For native replay,
-set `YGO_AUDIT_INPUT` to that frozen file, `YGO_AUDIT_OUTPUT` to a different file,
-and optionally `YGO_AUDIT_TRIALS` (1–30 warm samples), then select `.Replay`.
-
-```sh
-dotnet test YGOProbabilityCalculatorBlazor.sln -c Release --no-build --no-restore --filter FullyQualifiedName=YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator.PerformanceAuditBenchmark.Export
-dotnet test YGOProbabilityCalculatorBlazor.sln -c Release --no-build --no-restore --filter FullyQualifiedName=YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator.PerformanceAuditBenchmark.Replay
-```
-
-```sh
-node scripts/background-calculation/measure-worker.cjs <optimized-wwwroot> <fixtures.json> bin/worker-measurements.json 3 60000
-node scripts/background-calculation/measure-worker-lifecycle.cjs <optimized-wwwroot> bin/ui-worker.json 3
-node scripts/card-search/measure-search.cjs <optimized-wwwroot> bin/search.json 3
-node scripts/workspace/measure-session-loading.cjs <optimized-wwwroot> bin/session-loading 5
-```
-
-Use the external Playwright installation and browser settings from the smoke
-instructions. Replay artifacts include exact request and published-asset hashes,
-first/warm samples, full replies and parity failures. UI tools record their own
-metric definitions, cache conditions, browser and failures. Search uses full-query
-input events and DOM/double-frame observations; `YGO_SEARCH_CPU_RATES=1,4` selects
-the optional Chromium CPU-throttle rates. Session loading keeps its deliberate
-gzip/Brotli server and measures acceptance before recovery-storage debounce.
-Double animation frames are scheduling observations, not paint guarantees.
-Allocation/working-set observations are not peak live browser memory, and WASM
-linear-memory capacity is not live managed heap.
-
-### Excavation workload measurements
-
-`ExcavationBenchmark.Measure` is an explicit Release test. Set
-`YGO_EXCAVATION_BENCHMARK` to a Git-ignored output JSON path; optionally set
-`YGO_EXCAVATION_TRIALS` (warm samples, default 3), `YGO_EXCAVATION_CASE`,
-`YGO_EXCAVATION_EXCLUDE`, and `YGO_EXCAVATION_MODE`. Use
-`DOTNET_TieredCompilation=0`. The export includes the exact worker input and full
-native reference response, and saves after each fixture/mode. Native first/warm
-timings and allocations are printed; use the generic native replay for structured
-sample evidence.
-
-The native export uses the common frozen fixture format above. Pass it to
-`measure-worker.cjs` against the clean production publish; no probe build is
-required. Its optional external cutoff is not a production calculation deadline.
-The routine integration smoke uses a small independent excavation control for
-browser correctness; the 40-card measurement fixture is not a UI requirement.
-
-#### Historical observations
+### Historical excavation observations
 
 These observations describe the 2026-11-01 acceptance harness and its fixtures.
 Measured on Windows with .NET 10.0.401 and Edge 156.0.4314.58 on 2026-11-01,

@@ -1930,7 +1930,7 @@
   <data name="Help.Footer.Reading" xml:space="preserve"><value>Explore the {0}, {1} and {2}. Documentation follows the development branch; the stable site may differ.</value></data>
   <data name="Help.Footer.Credits.Part0" xml:space="preserve"><value>SeyTi01</value></data>
   <data name="Help.Footer.Credits.Part1" xml:space="preserve"><value>YGOPRODeck</value></data>
-  <data name="Help.Footer.Credits" xml:space="preserve"><value>Created by {0}. Card artwork is supplied by {1} and retained on project hosting. Missing artwork does not affect calculations; third-party artwork is outside the software license.</value></data>
+  <data name="Help.Footer.Credits" xml:space="preserve"><value>Created by {0}. Card artwork is supplied by {1} and retained on project hosting. Third-party artwork is outside the software license.</value></data>
   <data name="Help.Footer.NameCompilation.Part0" xml:space="preserve"><value>YAML Yugi</value></data>
   <data name="Help.Footer.NameCompilation" xml:space="preserve"><value>Translation data compilation: {0} and its upstream contributors. Card content remains the property of its respective rights holders.</value></data>
   <data name="Accuracy.ExactRange" xml:space="preserve"><value>≈ {0}% (exact)</value></data>
@@ -1992,4 +1992,7 @@
   <data name="Requirement.Groups" xml:space="preserve"><value>Requirement groups</value></data>
   <data name="Requirement.All" xml:space="preserve"><value>All</value></data>
   <data name="Requirement.Properties" xml:space="preserve"><value>Properties</value></data>
+  <data name="Card.Inactive" xml:space="preserve"><value>Inactive</value></data>
+  <data name="Requirement.None" xml:space="preserve"><value>None</value></data>
+  <data name="Search.NoTargets" xml:space="preserve"><value>None</value></data>
 </root>

@@ -51,7 +51,7 @@ Current per-structure limits are:
 | High | 65,536 | 524,288 |
 | VeryHigh | 131,072 | 1,048,576 |
 
-These checks include retained integer payload and relevant state structures; they are not a total browser-memory ceiling. Several live maps, temporary state and object overhead can coexist. The [storage policy](../YGOProbabilityCalculatorBlazor/Services/Interface/CalculationStoragePolicy.cs) defines the tiers and [WorkBudget](../YGOProbabilityCalculatorBlazor/Services/ProbabilityCalculator/Resources/WorkBudget.cs) applies accounting.
+These checks include retained integer payload and relevant state structures; they are not a total browser-memory ceiling. Several live maps, temporary state and object overhead can coexist. The [application storage policy](../YGOProbabilityCalculatorBlazor/Services/Interface/CalculationStoragePolicy.cs) defines the UI tiers and the engine's [WorkBudget](../YGOProbabilityCalculatorBlazor/Engine/Internal/Resources/WorkBudget.cs) applies per-calculation accounting.
 
 Mixed draws, ordered costs/removals, overlapping selectors, competing searches and hidden target losses can greatly increase state growth. No universal completion or elapsed-time promise follows from the deck size, combo count, chosen mode or highest Storage tier. A pre-calculation notice is guidance, not a feasibility proof. Use cancellation and compare simpler models deliberately; changing a cost or filter changes the modeled question.
 
@@ -59,7 +59,7 @@ Mixed draws, ordered costs/removals, overlapping selectors, competing searches a
 
 Current UI Progressive uses `runProgressive` and `finish` on one staged worker lease. The first response is validated before acceptance and the terminal response is validated before the lease is released. A slow initial Fast stage does not consume an automatic Exact deadline because this path has none. Worker startup has a separate **30-second guard**. After actual interruption of automatic work, the shared **2.5-second restart delay** still applies. These lifecycle guards are not calculation time budgets.
 
-The older standalone `CalculateAsync` / `run(json, true)` compatibility path retains a **seven-second opportunity**, **five-second upgrade maximum**, and remaining finite Work. This historical API contract is not the current Progressive UI contract. Native synchronous calls do not acquire browser deadlines. [Runtime notes](../scripts/background-calculation/README.md#automatic-exact-opportunity-in-fast) contain compatibility and measurement details.
+The older standalone `CalculateAsync` / `run(json, true)` compatibility path retains a **seven-second opportunity**, **five-second upgrade maximum**, and remaining finite Work. This historical API contract is not the current Progressive UI contract. Native synchronous calls do not acquire browser deadlines. [Runtime notes](../scripts/background-calculation/README.md#runtime-contracts) contain compatibility and measurement details.
 
 ## Evidence and implementation
 

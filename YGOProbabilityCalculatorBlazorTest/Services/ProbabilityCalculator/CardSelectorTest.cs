@@ -2,7 +2,6 @@ using System.Text.Json;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Compilation;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -19,9 +18,9 @@ public class CardSelectorTest {
         Assert.That(selector.GetHashCode(), Is.EqualTo(CardSelector.AnyOf([first.Identity, second.Identity]).GetHashCode()));
         Assert.That(CardSelector.AnyOf([first.Identity, first.Identity]), Is.EqualTo(CardSelector.For(first)));
         List<Card> cards = [new([first, second]), new([first]), new([new("Same")]), new([])];
-        Assert.That(CardSelectorCompiler.Compile(selector, cards, new(CalculationWorkPolicy.Interactive)), Is.EqualTo(new[] { true, true, false, false }));
-        Assert.That(CardSelectorCompiler.Compile(CardSelector.For(second), cards, new(CalculationWorkPolicy.Interactive)), Is.EqualTo(new[] { true, false, false, false }));
-        Assert.That(CardSelectorCompiler.Compile(CardSelector.Any, cards, new(CalculationWorkPolicy.Interactive)), Is.All.True);
+        Assert.That(cards.Select(selector.Matches).ToArray(), Is.EqualTo(new[] { true, true, false, false }));
+        Assert.That(cards.Select(CardSelector.For(second).Matches).ToArray(), Is.EqualTo(new[] { true, false, false, false }));
+        Assert.That(cards.Select(CardSelector.Any.Matches).ToArray(), Is.All.True);
         Assert.That(JsonSerializer.Deserialize<CardSelector>(JsonSerializer.Serialize(selector)), Is.EqualTo(selector));
     }
 
@@ -41,12 +40,7 @@ public class CardSelectorTest {
     }
 
     [Test]
-    public void PostDrawSelectorCompilationObeysRequestStorage() {
-        CardSelector selector = CardSelector.AnyOf(Enumerable.Range(0, CardSelector.MaximumCategoryReferences).Select(index => $"user:{index}"));
-        Card[] cards = Enumerable.Repeat(new Card([]), 32769).ToArray();
-        ProbabilityCalculationLimitException? error = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            CardSelectorCompiler.Compile(selector, cards, new(CalculationWorkPolicy.Interactive)));
-        Assert.That(error!.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
+    public void PostDrawSelectorFactoriesRejectInvalidInputs() {
         Assert.Throws<ArgumentException>(() => CardSelector.AnyOf([]));
         Assert.Throws<ArgumentOutOfRangeException>(() => new CardSelector((CardSelectorKind)99, []));
     }

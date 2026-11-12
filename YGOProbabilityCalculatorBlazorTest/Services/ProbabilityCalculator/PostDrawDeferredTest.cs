@@ -2,9 +2,8 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
+using CP = CardProbability;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -57,8 +56,7 @@ public class PostDrawDeferredTest {
         deck.RemoveAll(card => card.Categories.Contains(Dark));
         List<Combo> combos = [new([], cards: [new("light-ab", 1, 1)]), new([], cards: [new("light-b", 1, 1)])];
         DrawSequenceOracle.Counts oracle = AssertOracle(deck, 2, combos);
-        ExactCalculationResult routed = new DrawEffectCalculation(deck, 2, new(CalculationWorkPolicy.Interactive))
-            .Calculate(combos, [new("g", "Group"), new("empty", "Empty")]);
+        ApplicationResultFractions routed = Calculate(deck, 2, combos, [new("g", "Group"), new("empty", "Empty")]);
         AssertRows(routed, oracle);
         Assert.That(oracle.Failed > 0, Is.True);
         Assert.That(oracle.Wins[0] > 0, Is.True);
@@ -72,7 +70,7 @@ public class PostDrawDeferredTest {
         foreach (Card changed in new[] { source.WithPreDrawRemovalCount(1),
             source.WithEffect(source.EffectPlan with { FirstActivationOnly = true }, source.EffectProfile) }) {
             List<Card> deck = [.. original.Take(original.Count - 1), changed];
-            AssertOracle(deck, 2, Combos(), deferred: false);
+            AssertOracle(deck, 2, Combos());
         }
         original.Add(new([], name: source.Name, id: "source-two", drawCount: 2, drawOncePerTurn: true,
             postDrawDiscardCount: 1, postDrawSelector: CardSelector.For(Dark)));
@@ -110,7 +108,7 @@ public class PostDrawDeferredTest {
         AssertOracle(deck, 2, Combos());
     }
 
-    private static DrawSequenceOracle.Counts AssertOracle(List<Card> deck, int hand, List<Combo> combos, bool deferred = true) {
+    private static DrawSequenceOracle.Counts AssertOracle(List<Card> deck, int hand, List<Combo> combos) {
         List<ComboGroup> groups = [new("g", "Group"), new("empty", "Empty")];
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, hand, combos, groups, collapseIdenticalCopies: true);
         foreach (List<Card> ordered in new[] { deck, deck.AsEnumerable().Reverse().ToList() }) {
@@ -120,23 +118,21 @@ public class PostDrawDeferredTest {
                 DrawSequenceOracle.Counts expected = custom
                     ? DrawSequenceOracle.Enumerate(deck, hand, combos, groups, collapseIdenticalCopies: true, priorityIds: priority.CardIds)
                     : oracle;
-                PostDrawCalculation calculation = new(ordered, hand, new(CalculationWorkPolicy.Interactive), priority);
-                ExactCalculationResult result = calculation.Calculate(combos, groups);
-                Assert.That(calculation.DeferredRows > 0, Is.EqualTo(deferred));
-                AssertRows(result, expected);
-                ExactCalculationResult reference = new PostDrawCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), priority,
-                    deferIdentities: false).Calculate(combos, groups);
-                AssertRows(reference, expected);
-                ExactCalculationResult total = new PostDrawCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), priority)
-                    .Calculate(combos, groups, totalOnly: true);
-                Assert.That(total.Total.Numerator * expected.Total, Is.EqualTo(expected.Wins[0] * total.Total.Denominator));
+                AssertRows(Calculate(ordered, hand, combos, groups, priority), expected);
+                double total = new ProbabilityCalculatorService().CalculateProbabilityForCombos(ordered, combos, hand,
+                    CalculationWorkPolicy.Interactive, new(priority, Mode: CalculationModel.Exact));
+                Assert.That(total, Is.EqualTo((double)expected.Wins[0] / (double)expected.Total).Within(1e-14));
             }
         }
         return oracle;
     }
 
-    private static void AssertRows(ExactCalculationResult result, DrawSequenceOracle.Counts oracle) {
-        ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+    private static ApplicationResultFractions Calculate(List<Card> deck, int hand, List<Combo> combos, IReadOnlyList<ComboGroup> groups, DrawActivationPriority? priority = null) =>
+        ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            deck, combos, hand, groups, CalculationWorkPolicy.Interactive, new(priority, Mode: CalculationModel.Exact)));
+
+    private static void AssertRows(ApplicationResultFractions result, DrawSequenceOracle.Counts oracle) {
+        ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
         for (int i = 0; i < rows.Length; i++) {
             Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"row {i}");
         }
@@ -145,33 +141,34 @@ public class PostDrawDeferredTest {
     [TestCase(1), TestCase(3)]
     public async Task RealExampleCompletesAtStandardAndWireModesPreserveSnapshot(int copies) {
         SessionState session = await RealisticAllureFixture.Load(copies);
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        PostDrawCalculation calculation = new(session.Cards, 5, budget);
-        ExactCalculationResult exact = calculation.Calculate(session.Combos, session.ComboGroups);
-        Assert.Multiple(() => {
-            Assert.That(calculation.DeferredRows, Is.GreaterThan(1));
-            Assert.That(calculation.PeakCells, Is.LessThan(20_000));
-            Assert.That(budget.Spent, Is.LessThan(5_000_000));
-            Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, 5, true).Path,
-                Is.EqualTo(DrawExecutionPath.DeferredConditional));
-        });
+        ProbabilityCalculatorService service = new();
+        ProbabilityCalculationResult exact = Calculate(session.Cards, 5, session.Combos, session.ComboGroups).Public!;
+        Assert.That(exact.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
+        CP.CalculationRequest request = new CalculationRequestAdapter(session.Cards, true).Create(session.Combos, 5, session.ComboGroups);
+        CP.CalculationResult measured = CP.CalculationEngine.Calculate(request,
+            new(CP.CalculationMode.Exact, new(CalculationWorkPolicy.Interactive.WorkUnits)));
+        Assert.That(measured.Status, Is.EqualTo(CP.CalculationStatus.Completed), measured.Detail);
+        Assert.That(measured.Metrics.PeakCells, Is.LessThan(20_000));
+        Assert.That(measured.Metrics.WorkSpent, Is.LessThan(5_000_000));
         foreach ((bool enabled, bool configured) in new[] { (true, true), (true, false), (false, true) }) {
             List<Card> modeled = configured ? session.Cards : session.Cards.Select(card => card.WithPostDrawDiscardCount(0)).ToList();
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(modeled, session.Combos, 5, session.ComboGroups,
                 CalculationWorkPolicy.Interactive, enabled, options: new());
             ProbabilityCalculationResult result = CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json));
-            ExactCalculationResult expected = !enabled
-                ? new ProbabilityCalculation(session.Cards, 5, new WorkBudget(CalculationWorkPolicy.Interactive)).CalculateExactResults(session.Combos, session.ComboGroups)
-                : configured ? exact : new DrawEffectCalculation(modeled, 5, new(CalculationWorkPolicy.Interactive)).Calculate(session.Combos, session.ComboGroups);
-            ProbabilityCalculationResult reference = expected.ToPublic(session.Combos, session.ComboGroups, new(CalculationWorkPolicy.Interactive));
+            CalculationModel mode = enabled ? CalculationModel.Exact : CalculationModel.OpeningHand;
+            ProbabilityCalculationResult reference = configured && enabled ? exact
+                : service.CalculateProbabilityResults(modeled, session.Combos, 5, session.ComboGroups,
+                    CalculationWorkPolicy.Interactive, new(Mode: mode));
             Assert.That(result.TotalProbability, Is.EqualTo(reference.TotalProbability));
             Assert.That(result.ComboProbabilities.Select(row => row.Probability), Is.EqualTo(reference.ComboProbabilities.Select(row => row.Probability)));
             Assert.That(result.GroupProbabilities.Select(row => row.Probability), Is.EqualTo(reference.GroupProbabilities.Select(row => row.Probability)));
             Card beforeEdit = session.Cards[0];
             session.Cards[0] = beforeEdit.WithCopies(beforeEdit.Copies + 1);
-            session.Cards.Add(new([], 0, active: false, id: "inactive"));
+            Card added = new([], 0, active: false, id: "inactive");
+            session.Cards.Add(added);
             Assert.That(CalculationWire.ReadResult(CalculationWire.Execute(snapshot.Json)).TotalProbability, Is.EqualTo(result.TotalProbability));
             session.Cards[0] = beforeEdit;
+            session.Cards.Remove(added);
         }
         Assert.That(session.Cards.Single(card => card.Id == "benchmark-allure").PostDrawDiscardCount, Is.EqualTo(1));
     }

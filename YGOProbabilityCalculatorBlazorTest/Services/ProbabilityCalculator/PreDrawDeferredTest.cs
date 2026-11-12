@@ -3,9 +3,6 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -140,7 +137,7 @@ public class PreDrawDeferredTest {
         }) {
             List<Card> deck = Deck(2, mill: 1);
             deck[0] = unsafeSource;
-            AssertExact(deck, 2, deferred: false);
+            AssertExact(deck, 2);
         }
         List<Card> mixed = Deck(1);
         mixed.Add(new([], id: "other", drawCount: 1));
@@ -174,9 +171,7 @@ public class PreDrawDeferredTest {
     [TestCase(1), TestCase(3)]
     public async Task CompleteSolarExampleUsesDeferredRouteWithinStandardBudget(int copies) {
         SessionState session = await RealisticSolarFixture.Load(copies);
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        PostDrawCalculation calculation = new(session.Cards, session.HandSize, budget);
-        ExactCalculationResult result = calculation.Calculate(session.Combos, session.ComboGroups);
+        ApplicationResultFractions result = Calculate(session.Cards, session.HandSize, session.Combos, session.ComboGroups);
         Assert.Multiple(() => {
             Assert.That(session.Cards.Sum(card => card.Copies), Is.EqualTo(40));
             Assert.That(session.Combos, Has.Count.EqualTo(8));
@@ -185,13 +180,11 @@ public class PreDrawDeferredTest {
             Assert.That(result.Groups, Has.Length.EqualTo(2));
             Assert.That(result.Total.Numerator, Is.GreaterThan(BigInteger.Zero));
             Assert.That(result.Total.Numerator, Is.LessThan(result.Total.Denominator));
-            Assert.That(calculation.DeferredRows, Is.GreaterThan(1));
-            Assert.That(DrawExecutionAssessment.Assess(session.Cards, session.Combos, session.HandSize, true).Path,
-                Is.EqualTo(DrawExecutionPath.DeferredConditional));
+            Assert.That(result.Public!.Contract!.Accuracy, Is.EqualTo(CalculationAccuracy.Exact));
         });
     }
 
-    private static DrawSequenceOracle.Counts AssertExact(List<Card> deck, int hand, List<Combo>? combos = null, bool deferred = true) {
+    private static DrawSequenceOracle.Counts AssertExact(List<Card> deck, int hand, List<Combo>? combos = null) {
         combos ??= Combos();
         List<ComboGroup> groups = Groups();
         DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(deck, hand, combos, groups, collapseIdenticalCopies: true);
@@ -201,21 +194,20 @@ public class PreDrawDeferredTest {
                 ? new(DrawActivationMode.CustomPriority, ["other", "source"]) : DrawActivationPriority.Default;
             DrawSequenceOracle.Counts expected = reversed
                 ? DrawSequenceOracle.Enumerate(deck, hand, combos, groups, collapseIdenticalCopies: true, priorityIds: priority.CardIds) : oracle;
-            PostDrawCalculation calculation = new(ordered, hand, new(CalculationWorkPolicy.Interactive), priority);
-            AssertRows(calculation.Calculate(combos, groups), expected);
-            Assert.That(calculation.DeferredRows > 0, Is.EqualTo(deferred));
-            AssertRows(new PostDrawCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), priority,
-                deferIdentities: false).Calculate(combos, groups), expected);
-            ExactCalculationResult total = new PostDrawCalculation(ordered, hand, new(CalculationWorkPolicy.Interactive), priority)
-                .Calculate(combos, groups, totalOnly: true);
-            Assert.That(total.Total.Numerator * expected.Total, Is.EqualTo(expected.Wins[0] * total.Total.Denominator));
+            AssertRows(Calculate(ordered, hand, combos, groups, priority), expected);
+            double total = new ProbabilityCalculatorService().CalculateProbabilityForCombos(ordered, combos, hand,
+                CalculationWorkPolicy.Interactive, new(priority, Mode: CalculationModel.Exact));
+            Assert.That(total, Is.EqualTo((double)expected.Wins[0] / (double)expected.Total).Within(1e-14));
         }
-        AssertRows(new DrawEffectCalculation(deck, hand, new(CalculationWorkPolicy.Interactive)).Calculate(combos, groups), oracle);
         return oracle;
     }
 
-    private static void AssertRows(ExactCalculationResult result, DrawSequenceOracle.Counts oracle) {
-        ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+    private static ApplicationResultFractions Calculate(List<Card> deck, int hand, List<Combo> combos, IReadOnlyList<ComboGroup> groups, DrawActivationPriority? priority = null) =>
+        ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            deck, combos, hand, groups, CalculationWorkPolicy.Interactive, new(priority, Mode: CalculationModel.Exact)));
+
+    private static void AssertRows(ApplicationResultFractions result, DrawSequenceOracle.Counts oracle) {
+        ApplicationFraction[] rows = [result.Total, .. result.Combos, .. result.Groups];
         Assert.That(rows, Has.Length.EqualTo(oracle.Wins.Length));
         for (int i = 0; i < rows.Length; i++) {
             Assert.That(rows[i].Numerator * oracle.Total, Is.EqualTo(oracle.Wins[i] * rows[i].Denominator), $"exact row {i}");

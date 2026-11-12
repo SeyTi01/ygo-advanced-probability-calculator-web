@@ -11,6 +11,36 @@ using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
 public sealed class CalculatorEditorLocalizationTest : CalculatorEditorTestBase {
+    [TestCase("de", "Inaktiv", "Inaktiv", "Keine", "Keine Ziele", "Keiner")]
+    [TestCase("fr", "Inactive", "Inactif", "Aucune", "Aucune cible", "Aucun")]
+    [TestCase("pt", "Inativa", "Inativo", "Nenhuma", "Nenhum alvo", "Nenhum")]
+    public void LocalizedLabelsAgreeWithTheirCardComboAndEffectContext(
+        string language,
+        string inactiveCard,
+        string inactiveCombo,
+        string zeroCards,
+        string noTargets,
+        string noEffect
+    ) {
+        using PresentationLocale locale = new(language, production: true);
+        CategoryBase role = new("Authored role");
+        Card source = CardEffectRegistry.Default.RestoreBuiltIn(new([], 1, "Authored search", externalCardId: 32807846)).WithActive(false);
+        Combo combination = new([new(role, 0, 0)], "Authored combo", active: false);
+        IRenderedComponent<ProbabilityCalculatorComponent> cut = Render(new() {
+            Cards = [source], Categories = [role], Combos = [combination], HandSize = 1
+        });
+        IRenderedComponent<CardEditor> card = cut.FindComponent<CardEditor>();
+        IRenderedComponent<ComboEditor> combo = cut.FindComponent<ComboEditor>();
+
+        Assert.That(card.FindAll(".accordion-button .badge").Select(badge => badge.TextContent), Does.Contain(inactiveCard));
+        Assert.That(combo.Find(".accordion-button .badge.text-bg-secondary").TextContent, Is.EqualTo(inactiveCombo));
+        Assert.That(combo.Find(".combo-header-requirements").TextContent, Does.Contain($"({zeroCards})"));
+        card.Find(".accordion-button").Click();
+        Assert.That(card.Find(".simulation-targets [role=status]").TextContent.Trim(), Is.EqualTo(noTargets));
+        card.Find(".simulation-edit").Click();
+        Assert.That(card.Find("#cardDraw0 option[value='']").TextContent, Is.EqualTo(noEffect));
+    }
+
     [TestCaseSource(nameof(ProductionLocales))]
     public void OperatorControlsDescribeTheirMeaningWithoutReplacingTheirAction(string language) {
         using PresentationLocale locale = new(language, production: true);

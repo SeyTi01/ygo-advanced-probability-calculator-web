@@ -4,29 +4,28 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
+using YGOProbabilityCalculatorBlazor.Services.CalculationEngineAdapter;
+using CP = CardProbability;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
 [TestFixture, NonParallelizable]
 public sealed class PhysicalEnumerationTest {
-    [TestCase(false), TestCase(true)]
-    public void ForcedExplicitRouteAgreesWithIndependentLabeledOracleForAllFixtures(bool frontier) {
+    [Test]
+    public void ExactResultsAgreeWithIndependentLabeledOracleForAllFixtures() {
         int count = 0;
         foreach (SearchCertificateFixtures.Fixture fixture in SearchCertificateFixtures.Fixtures()) {
-            List<Card> cards = fixture.Deck.Where(card => card.Active && card.Copies > 0).ToList();
-            WorkBudget budget = new(CalculationWorkPolicy.Default);
             DrawActivationPriority? priority = fixture.Priority is null ? null : new(DrawActivationMode.CustomPriority, fixture.Priority);
-            PostDrawCalculation execution = new(cards, fixture.Hand, budget, priority);
-            ExactCalculationResult result = execution.CalculateSearch(fixture.Combos, fixture.Groups, false, new(cards, budget), physical: true,
-                method: frontier ? PhysicalEnumerationMethod.Frontier : PhysicalEnumerationMethod.Streaming);
+            ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+                fixture.Deck, fixture.Combos, fixture.Hand, fixture.Groups, CalculationWorkPolicy.Default,
+                new(priority, Mode: CalculationModel.Exact));
             SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(fixture.Deck, fixture.Hand, fixture.Combos, fixture.Groups, fixture.Priority);
-            ExactProbability[] rows = [result.Total, .. result.Combos, .. result.Groups];
+            ProbabilityFraction[] rows = [result.Contract!.Fractions!.Total, .. result.Contract.Fractions.Combos, .. result.Contract.Fractions.Groups];
             for (int row = 0; row < rows.Length; row++) {
-                Assert.That(rows[row].Numerator * oracle.Outcomes, Is.EqualTo(oracle.Wins[1][row] * rows[row].Denominator), $"{fixture.Name}/{row}");
-                Assert.That(rows[row].Numerator * oracle.Outcomes, Is.LessThanOrEqualTo(oracle.Wins[2][row] * rows[row].Denominator), $"{fixture.Name}/{row}/optimistic");
+                BigInteger numerator = BigInteger.Parse(rows[row].Numerator);
+                BigInteger denominator = BigInteger.Parse(rows[row].Denominator);
+                Assert.That(numerator * oracle.Outcomes, Is.EqualTo(oracle.Wins[1][row] * denominator), $"{fixture.Name}/{row}");
+                Assert.That(numerator * oracle.Outcomes, Is.LessThanOrEqualTo(oracle.Wins[2][row] * denominator), $"{fixture.Name}/{row}/optimistic");
             }
             count++;
         }
@@ -50,7 +49,6 @@ public sealed class PhysicalEnumerationTest {
         ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(deck, combos, 3, groups,
             CalculationWorkPolicy.Default, new(priority is null ? null : new(DrawActivationMode.CustomPriority, priority), Mode: CalculationModel.Exact));
         PhysicalSearchTest.AssertRows(result, oracle.Wins[1], oracle.Outcomes);
-        Assert.That(result.Contract!.SolverRoute, Is.EqualTo("SearchPhysicalFrontier"));
         TestContext.Out.WriteLine($"first={first} custom={custom}: [{string.Join(',', oracle.Wins[1])}]/{oracle.Outcomes}, failed={oracle.Failed}");
     }
 
@@ -74,15 +72,16 @@ public sealed class PhysicalEnumerationTest {
         List<Card> deck = Enumerable.Range(0, 38).Select(index => new Card([target], 1, id: "t" + index)).ToList();
         deck.Add(new([], 1, id: "s", search: new(CardSelector.For(target), false)));
         deck.Add(new([], 1, id: "d", drawCount: 1, postDrawDiscardCount: 1));
-        WorkBudget budget = new(CalculationWorkPolicy.Default);
-        DrawEffectCalculation execution = new(deck, 5, budget, physicalSearch: true);
-        ExactCalculationResult result = execution.Calculate([new([new(target, 1, 6)], "Target")], []);
+        List<Combo> combos = [new([new(target, 1, 6)], "Target")];
+        CP.CalculationRequest request = new CalculationRequestAdapter(deck, true).Create(combos, 5, []);
+        CP.CalculationResult result = CP.CalculationEngine.Calculate(request, new CP.CalculationOptions(CP.CalculationMode.Exact,
+            new CP.ExecutionPolicy(CalculationWorkPolicy.Default.WorkUnits)));
         // Every five-card opening contains at least three targets. The only
-        // draw can remove at most one; declining the optional search preserves
-        // a target. This bound is independent of the row quotient.
-        Assert.That(result.Total.ToFraction(), Is.EqualTo(new ProbabilityFraction("1", "1")));
-        Assert.That(result.Combos.Single().ToFraction(), Is.EqualTo(result.Total.ToFraction()));
-        Assert.That(budget.Spent, Is.LessThan(CalculationWorkPolicy.Default.WorkUnits));
-        Assert.That(budget.PeakCells, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.CellLimit));
+        // draw can remove at most one; declining the optional search preserves a target.
+        Assert.That(result.Status, Is.EqualTo(CP.CalculationStatus.Completed));
+        Assert.That(result.Total!.Primary, Is.EqualTo(new CP.RationalProbability("1", "1")));
+        Assert.That(result.Goals.Single().Value.Primary, Is.EqualTo(result.Total.Primary));
+        Assert.That(result.Metrics.WorkSpent, Is.LessThan(CalculationWorkPolicy.Default.WorkUnits));
+        Assert.That(result.Metrics.PeakCells, Is.LessThanOrEqualTo(CalculationStoragePolicy.Standard.CellLimit));
     }
 }

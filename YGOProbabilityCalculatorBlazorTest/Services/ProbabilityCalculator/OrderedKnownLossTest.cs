@@ -2,10 +2,6 @@ using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazor.Services.Session;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.DrawResolution;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 
 namespace YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
 
@@ -82,25 +78,6 @@ public sealed class OrderedKnownLossTest {
         Check([draw, payment, filler, search], 2, combos, [], null);
     }
 
-    [Test]
-    public void LossTableTakesWorstCompatibleHistoryAndChargesLimits() {
-        CategoryBase target = new("Target");
-        CategoryBase material = new("Material");
-        List<Card> cards = [new([], 1, id: "known", drawCount: 1, preDrawRemovalCount: 1,
-                preDrawSelector: CardSelector.For(material)),
-            new([], 1, id: "unknown", drawCount: 1, postDrawDeckMillCount: 1),
-            new([material], 1, id: "payment"), new([target], 2, id: "target"),
-            new([], 1, id: "search", search: new(CardSelector.For(target), false))];
-        int[] loss = OrderedSearchLossBudget.Create(cards, new(CalculationWorkPolicy.Default));
-        Assert.That(loss[2], Is.EqualTo(1), "Either source explains D=2; never select only the known-payment history.");
-        Assert.That(loss[4], Is.EqualTo(1));
-        Assert.That(loss[1], Is.EqualTo(1), "Unexplained totals retain the scalar fallback.");
-        Assert.Throws<ProbabilityCalculationLimitException>(() => OrderedSearchLossBudget.Create(cards, new(new(1))));
-        List<Card> oversized = [new([], 40_000, id: "large")];
-        ProbabilityCalculationLimitException exception = Assert.Throws<ProbabilityCalculationLimitException>(() =>
-            OrderedSearchLossBudget.Create(oversized, new(CalculationWorkPolicy.Default)))!;
-        Assert.That(exception.Reason, Is.EqualTo(ProbabilityCalculationLimitReason.Storage));
-    }
 
     [Test]
     public async Task FrozenSourceTightensAllRowsWithIdenticalUpperAndTerminalDistribution() {
@@ -108,43 +85,38 @@ public sealed class OrderedKnownLossTest {
         List<Card> searches = state.Cards.Where(card => card.Search is not null).ToList();
         Assert.That(state.Cards.Where(card => card.DrawCount is not null)
             .Any(source => searches.Any(search => search.Search!.Matches(source))), Is.False);
-        int[] loss = OrderedSearchLossBudget.Create(state.Cards, new(CalculationWorkPolicy.Interactive));
-        Assert.That(loss[2], Is.Zero, "The source/payment-only outcomes have no searchable loss.");
-        Assert.That(loss[13], Is.EqualTo(10), "Hidden banishment remains uncertain after source/payment consumption.");
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        PostDrawCalculation execution = new(state.Cards, state.HandSize, budget, state.DrawActivationPriority);
-        ExactCalculationResult upper = execution.CalculateSearch(state.Combos, state.ComboGroups, false, new(state.Cards, budget));
-        int terminals = execution.TerminalStates;
-        ExactCalculationResult old = execution.CalculateSearchLower(state.Combos, state.ComboGroups, false, useKnownLoss: false);
-        ExactCalculationResult refined = execution.CalculateSearchLower(state.Combos, state.ComboGroups, false);
-        Assert.That(old.Total.ToFraction(), Is.EqualTo(new ProbabilityFraction("61232447131", "68906597760")));
-        Assert.That(refined.Total.ToFraction(), Is.EqualTo(new ProbabilityFraction("61422732523", "68906597760")));
-        Assert.That(upper.Total.ToFraction(), Is.EqualTo(new ProbabilityFraction("63931285207", "68906597760")));
-        Assert.That(execution.TerminalStates, Is.EqualTo(terminals));
-        for (int row = 0; row < Rows(old).Length; row++) {
-            LessOrEqual(Rows(old)[row], Rows(refined)[row], $"source row {row}");
-        }
-        TestContext.Out.WriteLine($"Terminals={terminals}; reduced={execution.ReducedRows}; deferred={execution.DeferredRows}");
+        ProbabilityCalculationResult result = new ProbabilityCalculatorService().CalculateProbabilityResults(
+            state.Cards, state.Combos, state.HandSize, state.ComboGroups, CalculationWorkPolicy.Interactive,
+            new(state.DrawActivationPriority, true));
+        Assert.That(result.SearchAvailability!.Total!.Lower, Is.EqualTo(new ProbabilityFraction("61422732523", "68906597760")));
+        Assert.That(result.Contract!.Fractions!.Total, Is.EqualTo(new ProbabilityFraction("63931285207", "68906597760")));
+        Assert.That(result.SearchAvailability.Combos, Has.Length.EqualTo(state.Combos.Count));
+        Assert.That(result.SearchAvailability.Groups, Has.Length.EqualTo(state.ComboGroups.Count));
     }
 
     private static void Check(List<Card> cards, int hand, List<Combo> combos, List<ComboGroup> groups, string[]? order) {
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
         DrawActivationPriority? priority = order is null ? null : new(DrawActivationMode.CustomPriority, order);
-        PostDrawCalculation execution = new(cards, hand, budget, priority);
-        ExactCalculationResult upper = execution.CalculateSearch(combos, groups, false, new(cards, budget));
-        ExactCalculationResult old = execution.CalculateSearchLower(combos, groups, false, useKnownLoss: false);
-        ExactCalculationResult refined = execution.CalculateSearchLower(combos, groups, false);
+        ProbabilityCalculationResult projected = new ProbabilityCalculatorService().CalculateProbabilityResults(
+            cards, combos, hand, groups, CalculationWorkPolicy.Interactive, new(priority, true));
+        ApplicationResultFractions primary = ApplicationResultFractions.From(projected);
+        SearchAvailabilityCertificate certificate = projected.SearchAvailability!;
+        SearchAvailabilityInterval[] bounds = [certificate.Total!, .. certificate.Combos, .. certificate.Groups];
         SearchCertificateOracle.Counts oracle = SearchCertificateOracle.Enumerate(cards, hand, combos, groups, order);
-        for (int row = 0; row < Rows(upper).Length; row++) {
-            ExactProbability physical = new(oracle.Wins[1][row], oracle.Outcomes);
-            LessOrEqual(Rows(old)[row], Rows(refined)[row], $"old <= new {row}");
-            LessOrEqual(Rows(refined)[row], physical, $"new <= physical {row}");
-            LessOrEqual(physical, Rows(upper)[row], $"physical <= upper {row}");
+        for (int row = 0; row < bounds.Length; row++) {
+            ApplicationFraction physical = new(oracle.Wins[1][row], oracle.Outcomes);
+            ApplicationFraction elementary = new(oracle.Wins[0][row], oracle.Outcomes);
+            ApplicationFraction lower = ApplicationFraction.From(bounds[row].Lower);
+            ApplicationFraction upper = ApplicationFraction.From(bounds[row].Upper);
+            LessOrEqual(elementary, lower, $"elementary <= refined {row}");
+            LessOrEqual(lower, physical, $"refined <= physical {row}");
+            LessOrEqual(physical, upper, $"physical <= upper {row}");
+            Assert.That(Rows(primary)[row].Numerator * oracle.Outcomes,
+                Is.EqualTo(oracle.Wins[2][row] * Rows(primary)[row].Denominator));
         }
     }
 
-    private static void LessOrEqual(ExactProbability left, ExactProbability right, string label) =>
+    private static void LessOrEqual(ApplicationFraction left, ApplicationFraction right, string label) =>
         Assert.That(left.Numerator * right.Denominator, Is.LessThanOrEqualTo(right.Numerator * left.Denominator), label);
 
-    private static ExactProbability[] Rows(ExactCalculationResult result) => [result.Total, .. result.Combos, .. result.Groups];
+    private static ApplicationFraction[] Rows(ApplicationResultFractions result) => [result.Total, .. result.Combos, .. result.Groups];
 }

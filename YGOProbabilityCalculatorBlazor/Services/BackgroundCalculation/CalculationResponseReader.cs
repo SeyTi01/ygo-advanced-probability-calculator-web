@@ -52,7 +52,7 @@ internal static class CalculationResponseReader {
         }
 
         if (response.FailureKind == CalculationFailureKind.Unsupported) {
-            if (response.Contract is not { Completion: CalculationCompletion.Unsupported, RequestedMode: CalculationModel.Exact, Accuracy: null, Fractions: null } contract) {
+            if (response.Contract is not { Completion: CalculationCompletion.Unsupported, RequestedMode: CalculationModel.Fast or CalculationModel.Exact, Accuracy: null, Fractions: null } contract) {
                 throw CalculationProtocolException.InvalidUnsupportedResponse();
             }
 

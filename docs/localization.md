@@ -1,4 +1,4 @@
-# Localization contributors
+# Localization contracts
 
 English, Deutsch (`de`), 日本語 (`ja`), Français (`fr`), Italiano (`it`) and Português (`pt`) are production locales. Presentation uses the platform's
 `ResourceManager` and keyed `.resx` satellites in `Localization/Strings.resx`.
@@ -36,15 +36,11 @@ during startup is supported while retaining the browser's numeric culture.
 
 ## Adding a locale
 
-1. Add `Localization/Strings.<locale>.resx` with the same keys. Missing entries
-   intentionally fall back to English. Verify every translated placeholder.
-2. Add its deployable language ID and readable native name to
-   `wwwroot/localization/locales.json`. This single file is served to startup
-   JavaScript and embedded in .NET. Register only locales whose satellite ships.
-   At two production locales the global header selector appears automatically
-   on both routes. English alone keeps the existing header.
-3. Run the localization/editor tests, optimized publish, prerendered SEO checks,
-   and the published browser workflow described below.
+Use YGO Work's [localization workflow](../plugins/ygo-work/skills/ygo-implement/references/localization.md)
+for contributor steps and verification. `wwwroot/localization/locales.json` is
+served to startup JavaScript and embedded in .NET. At two production locales,
+the header selector appears automatically on both routes; English alone keeps
+the existing header.
 
 ## Website preference and startup
 
@@ -122,22 +118,12 @@ from normal explicit recovery and never changes session schema or worker bytes.
 
 ## Published integration check
 
-Run the JavaScript localization tests and the browser smoke against an optimized
-production publish:
-
-```sh
-node --test scripts/localization/locale.test.mjs
-dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release -o YGOProbabilityCalculatorBlazor/bin/language-publish
-node scripts/localization/browser-smoke.cjs YGOProbabilityCalculatorBlazor/bin/language-publish/wwwroot
-```
-
-Playwright and Chromium are external test dependencies; set
-`YGO_BROWSER_EXECUTABLE` or `YGO_BROWSER_CHANNEL` as for the other browser checks.
-The smoke checks production satellites, first visible language, on-demand localized
+The [browser workflow](../plugins/ygo-work/skills/ygo-verify/references/browser-checks.md)
+owns runtime setup and execution. The localization smoke checks production
+satellites, first visible language, on-demand localized
 card names, numeric culture, and real reload/restoration of accepted workspace and
 results. It also checks representative blocked edits and pending operations,
-protected recovery/share state, and storage failure. Run the regular .NET/JS
-suites and `PublishedOutputSeoTest` against the production publish as well.
+protected recovery/share state, and storage failure.
 
 The test project's `Localization/Strings.fr.resx` is an intentionally artificial
 pseudo locale with selected substitutions, omissions, and one invalid format.
@@ -174,8 +160,9 @@ names and aliases must not compile alternate membership rules. See the
 
 Optional name assets are loaded once per service and selected locale, only for
 search or verified saved-card display. Synchronous label reads never fetch.
-Failure falls back to English and is cached for the service lifetime. Register
-reviewed assets in `CardInfoService.LocalizedNameAssets`; tests inject a pseudo
+Failure falls back to English and is cached for the service lifetime.
+`CardInfoService.LocalizedNameAssets` derives reviewed assets from the shared
+locale registry; tests inject a pseudo
 asset map through the internal constructor without enabling a production locale.
 
 All nine Help FAQ sections use `Help.*` resources. Numbered placeholders insert
@@ -195,6 +182,44 @@ presentation/fallback; they never acquire translated curated notes by inference.
 No profiles/plans are mutated. Wording-only corrections need no semantic revision
 bump. Author each maintained card's translation explicitly; do not synthesize it
 from arbitrary selectors.
+
+## Translation review
+
+Review translations against the neutral message, its callers and the locale's
+terminology guide. Read complete Help messages with their actual `.PartN`
+fragments inserted. A matching placeholder set verifies structure, not meaning
+or grammar. [W3C's composite-message guidance](https://www.w3.org/International/articles/composite-messages/)
+explains why shared fragments can break word order and agreement.
+
+- Resolve pronouns to the intended noun, even across sentences. Repeat the noun
+  when a warning could refer to either the current workspace or an incoming session.
+- Check variable quantities at 0, 1 and several, including valid saved effect
+  plans. Prefer concise count labels such as `Copies: {0}` when a single message
+  must support every count; do not attach a fixed plural to an arbitrary number.
+- Check every caller before reusing a short adjective or `None`. Card and combo
+  badges use `Card.Inactive` and `Ui.Inactive`; zero-card requirements and empty
+  search targets use `Requirement.None` and `Search.NoTargets`. Their grammatical
+  contexts differ from the effect selector's `Ui.None`.
+- Preserve logical scope: at least/at most, inclusive OR, distinct physical copies,
+  phase order, and the strength of accuracy guarantees. Distinguish an effect
+  activated in the Graveyard from taking cards out of the Graveyard.
+- Treat arbitrary card/category names as opaque text. Give surrounding adjectives
+  an explicit noun rather than guessing agreement from a name.
+
+| Locale | Additional checks and language references |
+| --- | --- |
+| German | Pronoun antecedents, gender/case/number agreement and inflected quantities; see [IDS pronouns](https://grammis.ids-mannheim.de/sgt/2194). Keep the established informal `du` register. |
+| French | Gender and number after inserted labels, elision, and singular wording for zero/one; see [OQLF agreement](https://www.oqlf.gouv.qc.ca/francisation/ordres_prof/capsules-grammaticales/accord-groupe-nominal.aspx) and [zero](https://vitrinelinguistique.oqlf.gouv.qc.ca/23642/la-grammaire/le-nom/nombre-des-noms-dans-certains-emplois/cas-particuliers-du-nombre-du-nom/singulier-et-pluriel-du-nom-zero). Keep action labels in the infinitive. |
+| Italian | Gender/number of adjectives and participles, articles, and the subject of sentences containing action labels; see [Crusca on participle agreement](https://accademiadellacrusca.it/it/consulenza/accordo-del-participio-passato/23). Verify game terms against the [official card database](https://www.db.yugioh-card.com/yugiohdb/card_search.action?request_locale=it), rather than translating English literally. |
+| Brazilian Portuguese | `você` takes third-person verbs; check number agreement, ambiguous pronouns and preposition/article combinations (`crase`). See the Senado guides to [agreement](https://www12.senado.leg.br/manualdecomunicacao/estilos/concordancia-verbal) and [crase](https://www12.senado.leg.br/manualdecomunicacao/estilos/crase). Follow the documented Brazilian vocabulary. |
+| Japanese | Check omitted subjects, particles, counters, modifier scope and adjective endings. Quote verb-like action labels when inserting them into prose, for example `「セッションを保存」を選ぶ`; see the [Agency for Cultural Affairs writing guide](https://www.bunka.go.jp/seisaku/bunkashingikai/kokugo/hokoku/pdf/93651301_01.pdf). |
+
+AI-generated fluency is not evidence of correctness. Research on
+[document-context and pronoun translation](https://arxiv.org/abs/2410.14391) and
+[unfaithful LLM translations](https://aclanthology.org/2024.findings-acl.821/)
+supports reviewing context, omissions and unsupported additions explicitly.
+Those studies do not establish an error rate for this application or current
+models. Automated resource checks and agent review are not native-speaker review.
 
 ## Coverage and deferred English
 

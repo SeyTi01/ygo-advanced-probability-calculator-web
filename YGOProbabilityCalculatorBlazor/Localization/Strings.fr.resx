@@ -2,7 +2,7 @@
 <root>
   <data name="Ui.Excavate0" xml:space="preserve"><value>Excaver {0}</value></data>
   <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>Excavation configurée (désactivée)</value></data>
-  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Excaver {0} cartes ; en ajouter 1 à la main</value></data>
+  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Cartes à excaver : {0} ; en ajouter 1 à la main</value></data>
   <data name="Effect.NoPriorEffectDraw" xml:space="preserve"><value>Indisponible après une pioche par effet</value></data>
   <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>Après les pioches, une seule excavation autorisée s'active avant les recherches ; le nombre de cartes excavées le plus élevé est prioritaire.</value></data>
   <data name="Effects.98645731.Limitations" xml:space="preserve"><value></value></data>
@@ -11,13 +11,13 @@
   <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Excave toujours 6 cartes, en supposant que six cartes de l'Extra Deck sont disponibles. Ignoré après une pioche par effet.</value></data>
   <data name="Card.SearchPlaceholder" xml:space="preserve"><value>Rechercher des cartes ou saisir un nom</value></data>
   <data name="Combo.GroupLabel" xml:space="preserve"><value>Groupe : {0}</value></data>
-  <data name="Combo.MoreRequirements" xml:space="preserve"><value>+{0} autres</value></data>
+  <data name="Combo.MoreRequirements" xml:space="preserve"><value>Encore {0}</value></data>
   <data name="Combo.NoRequirements" xml:space="preserve"><value>(aucune condition)</value></data>
   <data name="Requirement.MaximumAny" xml:space="preserve"><value>Maximum : Sans limite</value></data>
   <data name="Requirement.MaximumCount" xml:space="preserve"><value>Maximum : {0}</value></data>
   <data name="Effect.Advanced" xml:space="preserve"><value>Avancé</value></data>
   <data name="Effect.UnavailableWithConfiguredDraws" xml:space="preserve"><value>{0} Appliqué uniquement avec les effets de pioche configurés.</value></data>
-  <data name="Effect.AdvancedWithBanish" xml:space="preserve"><value>Avancé · Bannir {0} cartes du Deck</value></data>
+  <data name="Effect.AdvancedWithBanish" xml:space="preserve"><value>Avancé · Cartes à bannir du Deck : {0}</value></data>
   <data name="Result.DetailedDrawWarning" xml:space="preserve"><value>Ce calcul peut prendre plus de temps ou dépasser les limites de ressources, car ses effets de pioche nécessitent un traitement détaillé.</value></data>
   <data name="Ui.Actions" xml:space="preserve">
     <value>Actions</value>
@@ -38,10 +38,10 @@
     <value>Propriétés de la carte ({0})</value>
   </data>
   <data xml:space="preserve" name="Category.ManyMatches">
-    <value>{0} entrées correspondantes ({1} exemplaires)</value>
+    <value>Entrées correspondantes : {0} (exemplaires : {1})</value>
   </data>
   <data xml:space="preserve" name="Category.OneMatch">
-    <value>{0} entrée correspondante ({1} exemplaires)</value>
+    <value>{0} entrée correspondante (exemplaires : {1})</value>
   </data>
   <data xml:space="preserve" name="Category.RuleHeading">
     <value>Propriétés de {0}</value>
@@ -80,13 +80,13 @@
     <value>Avant la recherche : retirer de la main</value>
   </data>
   <data xml:space="preserve" name="Effect.PreservedAllowance">
-    <value>Jusqu’à {0} activations par entrée. Cette limite est conservée à l’enregistrement.</value>
+    <value>Limite d’activations par entrée : {0}. Cette limite est conservée à l’enregistrement.</value>
   </data>
   <data xml:space="preserve" name="Effect.PreservedHandSize">
-    <value>Nécessite au moins {0} cartes en main avant l’activation. Cette condition est conservée à l’enregistrement.</value>
+    <value>Taille minimale de la main avant l’activation : {0}. Cette condition est conservée à l’enregistrement.</value>
   </data>
   <data xml:space="preserve" name="Effect.PreservedMill">
-    <value>Continue d’envoyer les {0} cartes du dessus du Deck au Cimetière après la pioche. Choisir Aucun supprime l’effet de pioche entier.</value>
+    <value>Nombre de cartes du dessus du Deck envoyées au Cimetière après la pioche : {0} (réglage conservé). Choisir Aucun supprime l’effet de pioche entier.</value>
   </data>
   <data xml:space="preserve" name="Effect.SavedRevision">
     <value>Révision intégrée enregistrée : {0}</value>
@@ -419,19 +419,19 @@
     <value>{0} ({1})</value>
   </data>
   <data xml:space="preserve" name="Result.ActiveCount">
-    <value>({0} actifs)</value>
+    <value>(combos actifs : {0})</value>
   </data>
   <data xml:space="preserve" name="Result.Mode">
     <value>Mode : {0}</value>
   </data>
   <data xml:space="preserve" name="Result.PerformanceContributors">
-    <value>Contributions possibles : {0}. Consulter leurs notes de modèle (Performances).</value>
+    <value>Effets pouvant contribuer au coût : {0}. Consulter leurs notes de modèle (Performances).</value>
   </data>
   <data xml:space="preserve" name="Selector.Except">
     <value>sauf {0}</value>
   </data>
   <data xml:space="preserve" name="Selector.Verified">
-    <value>{0} vérifié</value>
+    <value>filtre vérifié : {0}</value>
   </data>
   <data xml:space="preserve" name="Session.LastSaved">
     <value>Dernier enregistrement : {0}.</value>
@@ -440,7 +440,7 @@
     <value>- {0} : [{1}/{2}, {3}/{4}] ; largeur {5} ({6})</value>
   </data>
   <data xml:space="preserve" name="Ui.012Active">
-    <value>- **{0}** — {1} ({2} actifs)</value>
+    <value>- **{0}** — {1} (combos actifs : {2})</value>
   </data>
   <data xml:space="preserve" name="Ui.01PerEntry">
     <value>{0} : {1} par entrée</value>
@@ -452,7 +452,7 @@
     <value>{0}, combo {1} : {2}</value>
   </data>
   <data xml:space="preserve" name="Ui.0Custom1">
-    <value>{0} (personnalisé {1})</value>
+    <value>{0} (carte personnalisée {1})</value>
   </data>
   <data xml:space="preserve" name="Ui.0Entry1">
     <value>{0} (entrée {1})</value>
@@ -562,7 +562,7 @@
     <value>Ajouter une alternative de règle</value>
   </data>
   <data xml:space="preserve" name="Ui.Added0">
-    <value>{0} ajouté.</value>
+    <value>Carte ajoutée : {0}.</value>
   </data>
   <data xml:space="preserve" name="Ui.AllEligibilityRowsMatchTheSameCard">
     <value>Toutes les lignes d’éligibilité portent sur la même carte</value>
@@ -607,7 +607,7 @@
     <value>Au moins</value>
   </data>
   <data xml:space="preserve" name="Ui.AtLeast0CardsInHandBeforeActivation">
-    <value>au moins {0} cartes en main avant l’activation</value>
+    <value>taille minimale de la main avant l’activation : {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.AtMost">
     <value>Au plus</value>
@@ -625,7 +625,7 @@
     <value>Bannir {0} · {1}</value>
   </data>
   <data xml:space="preserve" name="Ui.Banish0UnseenDeckCards">
-    <value>Bannir {0} cartes inconnues du Deck</value>
+    <value>Cartes inconnues à bannir du Deck : {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.BanishFromDeck">
     <value>Bannir du Deck</value>
@@ -1084,7 +1084,7 @@
     <value>Taille de la main : {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.HandSize01Cards">
-    <value>Taille de la main {0} · {1} cartes</value>
+    <value>Taille de la main : {0} · Taille du Deck : {1}</value>
   </data>
   <data xml:space="preserve" name="Ui.HandSizeMustBeAtLeast1">
     <value>La taille de la main doit être d’au moins 1.</value>
@@ -1192,7 +1192,7 @@
     <value>Le maximum doit être un entier au moins égal au minimum.</value>
   </data>
   <data xml:space="preserve" name="Ui.Mill0">
-    <value> · Envoyer {0} cartes du dessus du Deck au Cimetière</value>
+    <value> · Envoi au Cimetière depuis le dessus du Deck : {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.Minimum0">
     <value>Minimum {0}</value>
@@ -1511,7 +1511,7 @@
     <value>Catégorie sélectionnée introuvable.</value>
   </data>
   <data xml:space="preserve" name="Ui.Send0UnseenTopDeckCardsToTheGY">
-    <value>envoyer {0} cartes inconnues du dessus du Deck au Cimetière</value>
+    <value>cartes inconnues du dessus du Deck à envoyer au Cimetière : {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.SeparateCardRequirements">
     <value>+ : conditions sur des cartes distinctes</value>
@@ -1571,7 +1571,7 @@
     <value>Le groupe ET dépasserait 16 propriétés. Retirer une propriété avant de combiner.</value>
   </data>
   <data xml:space="preserve" name="Ui.TheActiveDeckHas0CopiesFewerThanTheHandSizeOf1">
-    <value>Le Deck actif contient {0} exemplaires, soit moins que la taille de main de {1}.</value>
+    <value>Le nombre d’exemplaires dans le Deck actif ({0}) est inférieur à la taille de la main ({1}).</value>
   </data>
   <data xml:space="preserve" name="Ui.TheActiveDeckIsTooLargeToCalculateReduceTheNumberOfCopiesOrDeactivateCards">
     <value>Le Deck actif est trop grand pour le calcul. Réduire le nombre d’exemplaires ou désactiver des cartes.</value>
@@ -1682,7 +1682,7 @@
     <value>Version du format de lien partagé non prise en charge.</value>
   </data>
   <data xml:space="preserve" name="Ui.UpTo0ActivationsPerEntry">
-    <value>jusqu’à {0} activations par entrée</value>
+    <value>limite d’activations par entrée : {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.UpdateRequirement">
     <value>Mettre à jour la condition</value>
@@ -1853,7 +1853,7 @@
   <data name="Help.EffectResolution.DrawHeading" xml:space="preserve"><value>1. Effets de pioche</value></data>
   <data name="Help.EffectResolution.Draws" xml:space="preserve"><value>Les effets de pioche légaux s’activent automatiquement en consommant leur source. Chaque effet termine ses coûts, pioches et retraits avant que le suivant commence.</value></data>
   <data name="Help.EffectResolution.Restrictions.Part0" xml:space="preserve"><value>Une fois par tour</value></data>
-  <data name="Help.EffectResolution.Restrictions" xml:space="preserve"><value>{0} est partagé entre les exemplaires d’une même entrée de carte. Les coûts, les restrictions d’activation et le nombre suffisant de cartes restantes dans le Deck sont vérifiés avant l’activation. Un retrait obligatoire impossible compte comme une issue échouée.</value></data>
+  <data name="Help.EffectResolution.Restrictions" xml:space="preserve"><value>La limite « {0} » est partagée entre les exemplaires d’une même entrée de carte. Les coûts, les restrictions d’activation et le nombre suffisant de cartes restantes dans le Deck sont vérifiés avant l’activation. Un retrait obligatoire impossible compte comme un échec.</value></data>
   <data name="Help.EffectResolution.SearchHeading" xml:space="preserve"><value>2. Effets de recherche</value></data>
   <data name="Help.EffectResolution.Searches" xml:space="preserve"><value>Une fois les pioches terminées, les recherches optionnelles peuvent consommer les sources en main pour récupérer des cartes restantes éligibles. Elles partagent les exemplaires réellement restants et la capacité du Deck. Les effets récupérés ne s’activent pas et ne relancent aucune phase.</value></data>
   <data name="Help.EffectResolution.PriorityHeading" xml:space="preserve"><value>Priorité et sélection des cartes</value></data>
@@ -1876,7 +1876,7 @@
   <data name="Help.Modes.NoEffectsDescription" xml:space="preserve"><value>Évalue la main distribuée en ignorant les effets configurés. Les paramètres d’effets enregistrés restent inchangés.</value></data>
   <data name="Help.Modes.Cancel" xml:space="preserve"><value>Annuler le passage de Progressif à Exact conserve son résultat Rapide terminé.</value></data>
   <data name="Help.Modes.Limits.Part0" xml:space="preserve"><value>précision et performances</value></data>
-  <data name="Help.Modes.Limits" xml:space="preserve"><value>Exact n’a pas de délai de calcul, mais les limites de mémoire, les configurations non prises en charge ou les erreurs peuvent empêcher son achèvement. Consulter {0} pour les limites de ressources.</value></data>
+  <data name="Help.Modes.Limits" xml:space="preserve"><value>Le mode Exact n’impose aucune limite de durée au calcul, mais les limites de mémoire, les configurations non prises en charge ou les erreurs peuvent empêcher son achèvement. Consulter {0} pour les limites de ressources.</value></data>
   <data name="Help.Results.Question" xml:space="preserve"><value>Comment lire les résultats ?</value></data>
   <data name="Help.Results.Union.Part0" xml:space="preserve"><value>Au moins un combo</value></data>
   <data name="Help.Results.Union" xml:space="preserve"><value>Chaque combo est évalué indépendamment. {0} compte une réussite dans au moins un combo actif ; les totaux de groupes font de même pour leurs membres.</value></data>
@@ -1930,7 +1930,7 @@
   <data name="Help.Footer.Reading" xml:space="preserve"><value>Explorer le {0}, l’{1} et le {2}. La documentation suit la branche de développement ; le site stable peut différer.</value></data>
   <data name="Help.Footer.Credits.Part0" xml:space="preserve"><value>SeyTi01</value></data>
   <data name="Help.Footer.Credits.Part1" xml:space="preserve"><value>YGOPRODeck</value></data>
-  <data name="Help.Footer.Credits" xml:space="preserve"><value>Créé par {0}. Les illustrations de cartes sont fournies par {1} et conservées sur l’hébergement du projet. Les illustrations manquantes n’affectent pas les calculs ; les illustrations tierces sont hors de la licence du logiciel.</value></data>
+  <data name="Help.Footer.Credits" xml:space="preserve"><value>Créé par {0}. Les illustrations de cartes sont fournies par {1} et conservées sur l’hébergement du projet. Les illustrations tierces sont hors de la licence du logiciel.</value></data>
   <data name="Help.Footer.NameCompilation.Part0" xml:space="preserve"><value>YAML Yugi</value></data>
   <data name="Help.Footer.NameCompilation" xml:space="preserve"><value>Compilation des données de traduction : {0} et ses contributeurs en amont. Le contenu des cartes reste la propriété de ses ayants droit respectifs.</value></data>
   <data name="Accuracy.ExactRange" xml:space="preserve"><value>≈ {0}% (exact)</value></data>
@@ -2085,4 +2085,7 @@
   <data name="Requirement.Groups" xml:space="preserve"><value>Groupes de conditions</value></data>
   <data name="Requirement.All" xml:space="preserve"><value>Tout</value></data>
   <data name="Requirement.Properties" xml:space="preserve"><value>Propriétés</value></data>
+  <data name="Card.Inactive" xml:space="preserve"><value>Inactive</value></data>
+  <data name="Requirement.None" xml:space="preserve"><value>Aucune</value></data>
+  <data name="Search.NoTargets" xml:space="preserve"><value>Aucune cible</value></data>
 </root>

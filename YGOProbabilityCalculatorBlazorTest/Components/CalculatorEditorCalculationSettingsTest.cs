@@ -11,7 +11,6 @@ using YGOProbabilityCalculatorBlazor.Services.BackgroundCalculation;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
 using YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
 
 namespace YGOProbabilityCalculatorBlazorTest.Components;
 
@@ -133,7 +132,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
             List<Card> modeled = mode == CalculationModel.OpeningHand
                 ? session.Cards.Select(card => card.WithDrawCount(null)).ToList() : session.Cards;
             DrawSequenceOracle.Counts oracle = DrawSequenceOracle.Enumerate(modeled, 5, session.Combos, []);
-            double expected = new ExactProbability(oracle.Wins[0], oracle.Total).ToDouble(new(CalculationWorkPolicy.Interactive));
+            double expected = (double)oracle.Wins[0] / (double)oracle.Total;
             Assert.That(cut.Find(".probability-total-value").TextContent.Trim(), Is.EqualTo(expected.ToString("P2")));
             Assert.That(cut.Find(".result-model").TextContent, Does.StartWith("Hand size: 5").And.Not.Contain(new PinnedCalculationContext(0, 0, 0, mode).ModeDescription));
             Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo($"Mode: {new PinnedCalculationContext(0, 0, 0, mode).ModeDescription}"));

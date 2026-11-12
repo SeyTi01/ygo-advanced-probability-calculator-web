@@ -12,6 +12,7 @@ namespace YGOProbabilityCalculatorBlazor.Components.ProbabilityCalculator;
 // Every workspace replacement checks the same request, draft, and accepted-model boundary.
 public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     [Parameter] public bool Active { get; set; } = true;
+    [CascadingParameter] public WorkspaceState? WorkspaceState { get; set; }
 
     private int _autosaveReplacementVersion;
     private long _sessionLoadVersion;
@@ -20,6 +21,11 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     private long _workspaceEditVersion;
     private long? _loadingSessionVersion;
     private long? _pendingLanguageLoad;
+
+    public bool HasModifiedEditorState =>
+        _sessionService.SerializeSession(CaptureSession()) != _sessionService.SerializeSession(new SessionState { HandSize = 5 });
+
+    private bool HasWorkspaceChanges() => HasModifiedEditorState;
 
     private void ObserveWorkspaceEdit() {
         _workspaceEditVersion++;
@@ -222,6 +228,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
 
         SharingNavigation.LocationChanged -= SharingLocationChanged;
         if (LanguageWorkspace?.Capture?.Target == this) { LanguageWorkspace.Capture = null; }
+        if (WorkspaceState?.HasChanges?.Target == this) { WorkspaceState.HasChanges = null; }
         InvalidateSessionLoad();
         _disposed = true;
         _calculation.Stop();
@@ -359,6 +366,7 @@ public partial class ProbabilityCalculatorComponent : IAsyncDisposable {
     }
 
     protected override async Task OnInitializedAsync() {
+        if (WorkspaceState is not null) { WorkspaceState.HasChanges = HasWorkspaceChanges; }
         if (LanguageWorkspace is not null) { LanguageWorkspace.Capture = CaptureLanguageWorkspace; }
         InitializeSharing();
 

@@ -342,7 +342,6 @@ public class SessionLoadingTest {
         IRenderedComponent<Help> cut = _context.RenderComponent<Help>();
         Assert.That(cut.FindAll(".example-session-action button"), Has.Count.EqualTo(1));
         Assert.That(cut.Find(".help-content > section .example-session-action"), Is.Not.Null);
-        Assert.That(cut.Find("button").GetAttribute("aria-describedby"), Is.EqualTo("example-session-warning"));
         Assert.That(cut.FindAll("details.help-topic"), Has.Count.EqualTo(9));
         Assert.That(cut.FindAll("details[open]"), Is.Empty);
         Assert.That(cut.FindAll("details > summary > h2"), Has.Count.EqualTo(9));
@@ -360,6 +359,45 @@ public class SessionLoadingTest {
             Assert.That(cut.FindAll("#properties pseudo"), Is.Empty, "resource text stays encoded");
             Assert.That(cut.FindAll("#properties p:first-child strong").Select(element => element.TextContent),
                 Is.EqualTo(new[] { "categories", "properties" }), "semantic fragments follow translated argument order");
+        }
+    }
+
+    [Test]
+    public void EmptyWorkspaceLoadsExampleWithoutConfirmation() {
+        IRenderedComponent<ProbabilityCalculatorComponent> calculator = _context.RenderComponent<ProbabilityCalculatorComponent>();
+        Assert.That(calculator.Instance.HasModifiedEditorState, Is.False);
+        _files.Setup(service => service.ReadAllTextAsync(It.IsAny<string>())).ReturnsAsync(_sessions.SerializeSession(Session("Example")));
+        IRenderedComponent<Help> help = _context.RenderComponent<Help>(parameters => parameters
+            .AddCascadingValue(new WorkspaceState { HasChanges = () => calculator.Instance.HasModifiedEditorState }));
+
+        help.Find("button").Click();
+
+        Assert.That(Pending.PendingSession?.Cards[0].Name, Is.EqualTo("Example"));
+        Assert.That(_context.JSInterop.Invocations["confirm"], Is.Empty);
+    }
+
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public void ModifiedWorkspaceOrDraftRequiresConfirmationAndCancelKeepsWork(bool draftOnly, bool accept) {
+        IRenderedComponent<ProbabilityCalculatorComponent> calculator = draftOnly
+            ? _context.RenderComponent<ProbabilityCalculatorComponent>() : Mount();
+        Assert.That(calculator.Instance.HasModifiedEditorState, Is.EqualTo(!draftOnly));
+        _context.JSInterop.Setup<bool>("ygoLocale.hasPendingEdits").SetResult(draftOnly);
+        _context.JSInterop.Setup<bool>("confirm", _ => true).SetResult(accept);
+        _files.Setup(service => service.ReadAllTextAsync(It.IsAny<string>())).ReturnsAsync(_sessions.SerializeSession(Session("Example")));
+        IRenderedComponent<Help> help = _context.RenderComponent<Help>(parameters => parameters
+            .AddCascadingValue(new WorkspaceState { HasChanges = () => calculator.Instance.HasModifiedEditorState }));
+
+        help.Find("button").Click();
+
+        Assert.That(_context.JSInterop.Invocations["confirm"], Has.Count.EqualTo(1));
+        _files.Verify(service => service.ReadAllTextAsync(It.IsAny<string>()), accept ? Times.Once() : Times.Never());
+        Assert.That(Pending.PendingSession?.Cards[0].Name, Is.EqualTo(accept ? "Example" : null));
+        Assert.That(help.Find("button").HasAttribute("disabled"), Is.False);
+        if (!draftOnly) {
+            Assert.That(calculator.FindComponent<CardEditor>().Instance.Card.Name, Is.EqualTo("Initial"));
         }
     }
 

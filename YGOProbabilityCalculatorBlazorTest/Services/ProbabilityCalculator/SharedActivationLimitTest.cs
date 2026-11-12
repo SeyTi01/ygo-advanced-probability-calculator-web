@@ -18,7 +18,5 @@ public sealed partial class SearchEffectsTest {
         Card drawSecond = second.WithDrawCount(1);
         List<Card> drawDeck = [drawFirst, drawSecond, target, new([], 2, id: "blank")];
         Compare(drawDeck, AssignmentObjectives(target.Id), 2);
-        Assert.That(DrawExecutionAssessment.Assess(drawDeck, AssignmentObjectives(target.Id), 2, true).Path,
-            Is.EqualTo(DrawExecutionPath.DrawCountState), "Existing per-entry fast paths remain available.");
     }
 }

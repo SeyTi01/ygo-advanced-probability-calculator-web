@@ -1,12 +1,7 @@
-using System.Diagnostics;
-using System.Numerics;
 using YGOProbabilityCalculatorBlazor.Models;
 using YGOProbabilityCalculatorBlazor.Services.CardEffects;
 using YGOProbabilityCalculatorBlazor.Services.Interface;
 using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Counting;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Resources;
-using YGOProbabilityCalculatorBlazor.Services.ProbabilityCalculator.Search;
 using YGOProbabilityCalculatorBlazorTest.Fixtures;
 using static YGOProbabilityCalculatorBlazorTest.Fixtures.SearchCardFixtures;
 
@@ -88,16 +83,9 @@ public sealed partial class SearchEffectsTest {
         Card source = Preset(80181649, 2);
         List<Combo> combos = AssignmentObjectives(target.Id);
         Compare([source, target, new([B], id: "b"), new([], id: "blank")], combos, 2);
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult held = new SearchProbabilityCalculation([], 0, [source],
-            new([source, target], budget), 2, budget).Calculate([new([], cards: [new(target.Id, 2, 2)])], [], false);
-        AssertRatio(held.Total, 0, 1);
         Card rota = Rota(2);
         Card warrior = Warrior(2);
-        budget = new(CalculationWorkPolicy.Interactive);
-        held = new SearchProbabilityCalculation([], 0, [rota], new([rota, warrior], budget), 2, budget)
-            .Calculate([new([], cards: [new(warrior.Id, 2, 2)])], [], false);
-        AssertRatio(held.Total, 1, 1);
+        Compare([rota, warrior], [new([], cards: [new(warrior.Id, 2, 2)])], 2);
         Assert.That(rota.OncePerTurn, Is.False);
     }
 
@@ -112,10 +100,6 @@ public sealed partial class SearchEffectsTest {
         Card target = Element().WithCopies(2);
         List<Card> deck = [first, second, target, new([], id: "blank")];
         Compare(deck, AssignmentObjectives(target.Id), 2);
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult held = new SearchProbabilityCalculation([], 0, [first, second], new(deck, budget), 2, budget)
-            .Calculate([new([], cards: [new(target.Id, 2, 2)])], [], false);
-        AssertRatio(held.Total, 1, 1);
         deck.Reverse();
         Compare(deck, AssignmentObjectives(target.Id), 2);
     }
@@ -126,10 +110,6 @@ public sealed partial class SearchEffectsTest {
         Card second = Preset(92221402).WithSearch(first.Search);
         Card target = Element().WithCopies(2);
         Compare([first, second, target, new([], id: "blank")], AssignmentObjectives(target.Id), 2);
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive);
-        ExactCalculationResult held = new SearchProbabilityCalculation([], 0, [first, second], new([first, second, target], budget), 2, budget)
-            .Calculate([new([], cards: [new(target.Id, 2, 2)])], [], false);
-        AssertRatio(held.Total, 1, 1);
     }
 
     [Test]
@@ -188,19 +168,15 @@ public sealed partial class SearchEffectsTest {
             Assert.That(card.EffectPlan, Is.EqualTo(old.EffectPlan));
             Assert.That(card.Categories.Select(category => category.Identity), Is.EqualTo(old.Categories.Select(category => category.Identity)));
         }
-        WorkBudget budget = new(CalculationWorkPolicy.Interactive, CalculationStoragePolicy.Standard);
-        Stopwatch timer = Stopwatch.StartNew();
-        ExactCalculationResult result = new DrawEffectCalculation(session.Cards, 5, budget).Calculate(session.Combos, session.ComboGroups);
-        timer.Stop();
+        ApplicationResultFractions result = ApplicationResultFractions.From(new ProbabilityCalculatorService().CalculateProbabilityResults(
+            session.Cards, session.Combos, 5, session.ComboGroups, CalculationWorkPolicy.Interactive));
         long[] expected = [550033, 271496, 64470, 150480, 117819, 16446, 313972, 23346, 22091, 402929, 323132];
-        ExactProbability[] results = [result.Total, .. result.Combos, .. result.Groups];
+        ApplicationFraction[] results = [result.Total, .. result.Combos, .. result.Groups];
         for (int i = 0; i < results.Length; i++) {
             AssertRatio(results[i], expected[i], 658008);
         }
         long[] oracle = SearchExampleOracle.Count(session);
         Assert.That(oracle[0], Is.EqualTo(658008));
         Assert.That(oracle.Skip(1), Is.EqualTo(expected));
-        TestContext.Out.WriteLine($"Updated example: {timer.Elapsed.TotalMilliseconds:F2}ms, {budget.Spent} work, {budget.PeakCells} cells; "
-            + string.Join(", ", new[] { result.Total }.Concat(result.Combos).Concat(result.Groups).Select(p => $"{p.Numerator}/{p.Denominator}")));
     }
 }
