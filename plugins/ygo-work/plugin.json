@@ -1,0 +1,24 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ygo-work",
+  "version": "1.0.0",
+  "description": "Focused development workflows for the Yu-Gi-Oh! Advanced Probability Calculator.",
+  "author": { "name": "SeyTi01" },
+  "repository": "https://github.com/SeyTi01/ygo-advanced-probability-calculator-web",
+  "extensions": {
+    "com.openai": {
+      "apps": "./.app.json",
+      "interface": {
+        "displayName": "YGO Work",
+        "shortDescription": "Calculator development",
+        "longDescription": "Implement, plan, diagnose, verify and review calculator changes; create issues and PRs; resolve rebases; refine UI; and complete releases. Loads shared guidance only when relevant, with separate initialized Codex and web/cloud workflows.",
+        "developerName": "SeyTi01",
+        "category": "Developer Tools",
+        "capabilities": [],
+        "logo": "./assets/icon.svg",
+        "composerIcon": "./assets/icon.svg",
+        "defaultPrompt": "Use the appropriate YGO Work skill for this calculator repository task."
+      }
+    }
+  }
+}
