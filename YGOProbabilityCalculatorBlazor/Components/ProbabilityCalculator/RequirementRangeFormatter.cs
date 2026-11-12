@@ -11,7 +11,7 @@ internal static class RequirementRangeFormatter {
 
         // Handle the empty requirement before the generic exact-value case.
         if (minimum == 0 && maximum == 0) {
-            return UiText.Get("Ui.None");
+            return UiText.Get("Requirement.None");
         }
 
         if (minimum == maximum) {

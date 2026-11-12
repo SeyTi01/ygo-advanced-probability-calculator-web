@@ -1992,4 +1992,7 @@
   <data name="Requirement.Groups" xml:space="preserve"><value>Requirement groups</value></data>
   <data name="Requirement.All" xml:space="preserve"><value>All</value></data>
   <data name="Requirement.Properties" xml:space="preserve"><value>Properties</value></data>
+  <data name="Card.Inactive" xml:space="preserve"><value>Inactive</value></data>
+  <data name="Requirement.None" xml:space="preserve"><value>None</value></data>
+  <data name="Search.NoTargets" xml:space="preserve"><value>None</value></data>
 </root>

@@ -43,7 +43,7 @@
         <details class="simulation-targets small">
             <summary class="control-focus-ring control-focus-ring-spaced">@(UiText.Get("Ui.TargetsInThisDeck"))</summary>
             <div role="status" aria-label="@(UiText.Get("Ui.CurrentSearchTargets"))">
-                @(SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : UiText.Get("Ui.None"))
+                @(SearchTargets(search) is { Length: > 0 } targets ? string.Join(", ", targets) : UiText.Get("Search.NoTargets"))
             </div>
         </details>
     }

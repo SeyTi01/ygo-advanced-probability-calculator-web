@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <data name="Ui.Excavate0" xml:space="preserve"><value>Scava {0}</value></data>
-  <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>Scavo configurato (disattivato)</value></data>
-  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Scava {0} carte; aggiungine 1 alla mano</value></data>
+  <data name="Ui.Excavate0" xml:space="preserve"><value>Dissotterra {0}</value></data>
+  <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>Dissotterramento configurato (disattivato)</value></data>
+  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Dissotterra {0}; aggiungine 1 alla mano</value></data>
   <data name="Effect.NoPriorEffectDraw" xml:space="preserve"><value>Non disponibile dopo una pescata tramite effetto</value></data>
-  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>Dopo le pescate, si attiva un solo scavo consentito prima delle ricerche; ha priorità il numero di carte scavate più alto.</value></data>
+  <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>Dopo le pescate, si attiva un solo effetto di dissotterramento consentito prima delle ricerche; ha priorità quello che dissotterra più carte.</value></data>
   <data name="Effects.98645731.Limitations" xml:space="preserve"><value></value></data>
-  <data name="Effects.98645731.Summary" xml:space="preserve"><value>Scava 3 carte; aggiungine 1 alla mano; rimischia il resto nel Deck.</value></data>
-  <data name="Effects.84211599.Summary" xml:space="preserve"><value>Scava 6 carte; aggiungine 1 alla mano; metti il resto in fondo al Deck.</value></data>
-  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Scava sempre 6 carte, supponendo che siano disponibili sei carte nell'Extra Deck. Saltato dopo una pescata tramite effetto.</value></data>
+  <data name="Effects.98645731.Summary" xml:space="preserve"><value>Dissotterra 3 carte; aggiungine 1 alla mano; rimischia il resto nel Deck.</value></data>
+  <data name="Effects.84211599.Summary" xml:space="preserve"><value>Dissotterra 6 carte; aggiungine 1 alla mano; metti il resto in fondo al Deck.</value></data>
+  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Dissotterra sempre 6 carte, supponendo che siano disponibili sei carte nell'Extra Deck. Non si attiva dopo una pescata tramite effetto.</value></data>
   <data name="Card.SearchPlaceholder" xml:space="preserve">
     <value>Cerca carte o inserisci un nome</value>
   </data>
@@ -16,7 +16,7 @@
     <value>Gruppo: {0}</value>
   </data>
   <data name="Combo.MoreRequirements" xml:space="preserve">
-    <value>+{0} altri</value>
+    <value>Altri: {0}</value>
   </data>
   <data name="Combo.NoRequirements" xml:space="preserve">
     <value>(nessun requisito)</value>
@@ -58,10 +58,10 @@
     <value>Proprietà della carta ({0})</value>
   </data>
   <data xml:space="preserve" name="Category.ManyMatches">
-    <value>{0} voci corrispondenti ({1} copie)</value>
+    <value>{0} voci corrispondenti (copie: {1})</value>
   </data>
   <data xml:space="preserve" name="Category.OneMatch">
-    <value>{0} voce corrispondente ({1} copie)</value>
+    <value>{0} voce corrispondente (copie: {1})</value>
   </data>
   <data xml:space="preserve" name="Category.RuleHeading">
     <value>Proprietà di {0}</value>
@@ -100,13 +100,13 @@
     <value>Prima della ricerca: rimuovi dalla mano</value>
   </data>
   <data xml:space="preserve" name="Effect.PreservedAllowance">
-    <value>Fino a {0} attivazioni per voce. Questo limite viene mantenuto al salvataggio.</value>
+    <value>Limite di attivazioni per voce: {0}. Questo limite viene mantenuto al salvataggio.</value>
   </data>
   <data xml:space="preserve" name="Effect.PreservedHandSize">
-    <value>Richiede almeno {0} carte in mano prima dell'attivazione. Questo requisito viene mantenuto al salvataggio.</value>
+    <value>Numero minimo di carte in mano prima dell'attivazione: {0}. Questo requisito viene mantenuto al salvataggio.</value>
   </data>
   <data xml:space="preserve" name="Effect.PreservedMill">
-    <value>Continua a mandare al Cimitero le prime {0} carte del Deck dopo la pesca. Scegli Nessuno per rimuovere l'intero effetto di pesca.</value>
+    <value>Dopo la pesca, continua a mandare al Cimitero carte dalla cima del Deck (quantità: {0}). Scegli Nessuno per rimuovere l'intero effetto di pesca.</value>
   </data>
   <data xml:space="preserve" name="Effect.SavedRevision">
     <value>Revisione integrata salvata {0}</value>
@@ -133,7 +133,7 @@
     <value>Pesca 2, poi scarta 1 Magia Rapida o carta Radiant Typhoon idonea; una volta per turno.</value>
   </data>
   <data xml:space="preserve" name="Effects.24940422.Limitations">
-    <value>Presuppone che non ci siano Magie/Trappole nel Cimitero; l'altra restrizione sulle Magie/Trappole e l'effetto di nuova pesca dal Cimitero non sono modellati.</value>
+    <value>Presuppone che non ci siano Magie/Trappole nel Cimitero; l'altra restrizione sulle Magie/Trappole e l'effetto che si attiva nel Cimitero per pescare di nuovo non sono modellati.</value>
   </data>
   <data xml:space="preserve" name="Effects.24940422.Summary">
     <value>Pesca 2; una volta per turno.</value>
@@ -337,7 +337,7 @@
     <value>Cerca 1 mostro K9</value>
   </data>
   <data xml:space="preserve" name="Effects.80845034.Limitations">
-    <value>Modella solo la ricerca dal Main Deck; l'opzione di aggiungere dal Cimitero e l'effetto separato di pesca dal Cimitero non sono inclusi.</value>
+    <value>Modella solo la ricerca dal Main Deck; l'opzione di aggiungere dal Cimitero e l'effetto separato che si attiva nel Cimitero per pescare non sono inclusi.</value>
   </data>
   <data xml:space="preserve" name="Effects.80845034.Summary">
     <value>Cerca 1 mostro Diabellstar dal Main Deck</value>
@@ -439,7 +439,7 @@
     <value>{0} ({1})</value>
   </data>
   <data xml:space="preserve" name="Result.ActiveCount">
-    <value>({0} attive)</value>
+    <value>(combo attive: {0})</value>
   </data>
   <data xml:space="preserve" name="Result.Mode">
     <value>Modalità: {0}</value>
@@ -451,7 +451,7 @@
     <value>eccetto {0}</value>
   </data>
   <data xml:space="preserve" name="Selector.Verified">
-    <value>verificato {0}</value>
+    <value>filtro verificato: {0}</value>
   </data>
   <data xml:space="preserve" name="Session.LastSaved">
     <value>Ultimo salvataggio {0}.</value>
@@ -460,7 +460,7 @@
     <value>- {0}: [{1}/{2}, {3}/{4}]; ampiezza {5} ({6})</value>
   </data>
   <data xml:space="preserve" name="Ui.012Active">
-    <value>- **{0}** — {1} ({2} attive)</value>
+    <value>- **{0}** — {1} (combo attive: {2})</value>
   </data>
   <data xml:space="preserve" name="Ui.01PerEntry">
     <value>{0}: {1} per voce</value>
@@ -582,7 +582,7 @@
     <value>Aggiungi alternativa alla regola</value>
   </data>
   <data xml:space="preserve" name="Ui.Added0">
-    <value>Aggiunto {0}.</value>
+    <value>Carta aggiunta: {0}.</value>
   </data>
   <data xml:space="preserve" name="Ui.AllEligibilityRowsMatchTheSameCard">
     <value>Tutte le righe di idoneità devono corrispondere alla stessa carta</value>
@@ -597,7 +597,7 @@
     <value>Una combo attiva contiene un riferimento a una carta mancante. Correggilo o rimuovilo, oppure disattiva la combo.</value>
   </data>
   <data xml:space="preserve" name="Ui.AndOthers">
-    <value> e altri</value>
+    <value> e altre</value>
   </data>
   <data xml:space="preserve" name="Ui.AnotherPropertySameCard">
     <value>Un'altra proprietà · stessa carta</value>
@@ -627,13 +627,13 @@
     <value>Almeno</value>
   </data>
   <data xml:space="preserve" name="Ui.AtLeast0CardsInHandBeforeActivation">
-    <value>almeno {0} carte in mano prima dell'attivazione</value>
+    <value>carte in mano richieste prima dell'attivazione: almeno {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.AtMost">
     <value>Al massimo</value>
   </data>
   <data xml:space="preserve" name="Ui.Automatic">
-    <value>Automatico</value>
+    <value>Automatiche</value>
   </data>
   <data xml:space="preserve" name="Ui.Back">
     <value>Indietro</value>
@@ -645,7 +645,7 @@
     <value>Bandisci {0} · {1}</value>
   </data>
   <data xml:space="preserve" name="Ui.Banish0UnseenDeckCards">
-    <value>Bandisci {0} carte non viste dal Deck</value>
+    <value>Carte non viste da bandire dal Deck: {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.BanishFromDeck">
     <value>Bandisci dal Deck</value>
@@ -669,7 +669,7 @@
     <value>Calcola con al massimo {0} combo attive. Disattiva o rimuovi le combo in eccesso.</value>
   </data>
   <data xml:space="preserve" name="Ui.CalculatesPhysicalDeckSearchSurvivalExactlyWithoutAWorkCutoffSubjectToStorageLimitsAndCa">
-    <value>Calcola esattamente la sopravvivenza fisica dei bersagli di ricerca dal Deck senza un limite di Operazioni, soggetto ai limiti di Memoria e all'annullamento.</value>
+    <value>Calcola esattamente la sopravvivenza fisica dei bersagli di ricerca dal Deck senza un limite di Operazioni, rispettando i limiti di Memoria e consentendo l'annullamento.</value>
   </data>
   <data xml:space="preserve" name="Ui.CalculatesProbabilitiesQuicklyButResultsMayBeApproximate">
     <value>Calcola rapidamente le probabilità, ma i risultati possono essere approssimati.</value>
@@ -1014,7 +1014,7 @@
     <value>Effetti — rapido</value>
   </data>
   <data xml:space="preserve" name="Ui.Eligible">
-    <value>Idoneo</value>
+    <value>Carte idonee</value>
   </data>
   <data xml:space="preserve" name="Ui.Encounterorderdefault">
     <value>Ordine di incontro (predefinito)</value>
@@ -1104,7 +1104,7 @@
     <value>Carte in mano: {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.HandSize01Cards">
-    <value>Mano di {0} · {1} carte</value>
+    <value>Mano: {0} · carte: {1}</value>
   </data>
   <data xml:space="preserve" name="Ui.HandSizeMustBeAtLeast1">
     <value>La mano deve contenere almeno 1 carta.</value>
@@ -1134,7 +1134,7 @@
     <value>Importa YDKe</value>
   </data>
   <data xml:space="preserve" name="Ui.Inactive">
-    <value>Inattivo</value>
+    <value>Inattiva</value>
   </data>
   <data xml:space="preserve" name="Ui.IndividualCombos">
     <value>Singole combo</value>
@@ -1203,7 +1203,7 @@
     <value>· gestisci ruoli delle carte</value>
   </data>
   <data xml:space="preserve" name="Ui.Manual">
-    <value>Manuale</value>
+    <value>Manuali</value>
   </data>
   <data xml:space="preserve" name="Ui.Maximum0">
     <value>Massimo {0}</value>
@@ -1531,7 +1531,7 @@
     <value>Categoria selezionata non trovata.</value>
   </data>
   <data xml:space="preserve" name="Ui.Send0UnseenTopDeckCardsToTheGY">
-    <value>manda al Cimitero le prime {0} carte non viste del Deck</value>
+    <value>manda al Cimitero carte non viste dalla cima del Deck (quantità: {0})</value>
   </data>
   <data xml:space="preserve" name="Ui.SeparateCardRequirements">
     <value>+: requisiti di carte distinte</value>
@@ -1591,7 +1591,7 @@
     <value>Il gruppo E supererebbe 16 proprietà. Rimuovi una proprietà prima di combinare.</value>
   </data>
   <data xml:space="preserve" name="Ui.TheActiveDeckHas0CopiesFewerThanTheHandSizeOf1">
-    <value>Il Deck attivo contiene {0} copie, meno delle {1} carte della mano.</value>
+    <value>Il numero di copie nel Deck attivo ({0}) è inferiore al numero di carte richiesto per la mano ({1}).</value>
   </data>
   <data xml:space="preserve" name="Ui.TheActiveDeckIsTooLargeToCalculateReduceTheNumberOfCopiesOrDeactivateCards">
     <value>Il Deck attivo è troppo grande per il calcolo. Riduci il numero di copie o disattiva delle carte.</value>
@@ -1702,7 +1702,7 @@
     <value>Versione del formato del link condiviso non supportata.</value>
   </data>
   <data xml:space="preserve" name="Ui.UpTo0ActivationsPerEntry">
-    <value>fino a {0} attivazioni per voce</value>
+    <value>limite di attivazioni per voce: {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.UpdateRequirement">
     <value>Aggiorna requisito</value>
@@ -2026,7 +2026,7 @@
     <value>Nessuno</value>
   </data>
   <data name="Help.Simulations.Editing" xml:space="preserve">
-    <value>Scegli {0} o {1}, apporta le modifiche, poi {2}. {3} mantiene il piano precedente. Scegliere {4} considera la carta come ordinaria mantenendola nel Deck.</value>
+    <value>Scegli {0} o {1}, apporta le modifiche, poi {2}. {3} mantiene il piano precedente. Scegliendo {4}, la carta viene trattata come ordinaria e rimane nel Deck.</value>
   </data>
   <data name="Help.Simulations.Restore.Part0" xml:space="preserve">
     <value>Ripristina simulazione integrata</value>
@@ -2056,7 +2056,7 @@
     <value>Una volta per turno</value>
   </data>
   <data name="Help.EffectResolution.Restrictions" xml:space="preserve">
-    <value>{0} è condiviso tra le copie della stessa voce carta. Costi, restrizioni di attivazione e capacità residua sufficiente del Deck vengono controllati prima dell'attivazione. Una rimozione obbligatoria non riuscita conta come esito fallito.</value>
+    <value>Il limite {0} è condiviso tra le copie della stessa voce carta. Costi, restrizioni di attivazione e capacità residua sufficiente del Deck vengono controllati prima dell'attivazione. Una rimozione obbligatoria non riuscita conta come esito fallito.</value>
   </data>
   <data name="Help.EffectResolution.SearchHeading" xml:space="preserve">
     <value>2. Effetti di ricerca</value>
@@ -2709,4 +2709,7 @@
   <data name="Requirement.Groups" xml:space="preserve"><value>Gruppi di requisiti</value></data>
   <data name="Requirement.All" xml:space="preserve"><value>Tutti</value></data>
   <data name="Requirement.Properties" xml:space="preserve"><value>Proprietà</value></data>
+  <data name="Card.Inactive" xml:space="preserve"><value>Inattiva</value></data>
+  <data name="Requirement.None" xml:space="preserve"><value>Nessuna</value></data>
+  <data name="Search.NoTargets" xml:space="preserve"><value>Nessun bersaglio</value></data>
 </root>

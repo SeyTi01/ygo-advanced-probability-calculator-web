@@ -2,13 +2,13 @@
 <root>
   <data name="Ui.Excavate0" xml:space="preserve"><value>Escavar {0}</value></data>
   <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>Escavação configurada (desativada)</value></data>
-  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Escavar {0} cards; adicionar 1 à mão</value></data>
+  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Escavar {0}; adicionar 1 dessas cartas à mão</value></data>
   <data name="Effect.NoPriorEffectDraw" xml:space="preserve"><value>Indisponível após comprar por efeito</value></data>
   <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>Após as compras, apenas uma escavação permitida é ativada antes das buscas; a maior quantidade tem prioridade.</value></data>
   <data name="Effects.98645731.Limitations" xml:space="preserve"><value></value></data>
-  <data name="Effects.98645731.Summary" xml:space="preserve"><value>Escavar 3 cards; adicionar 1 à mão; embaralhar o restante de volta no Deck.</value></data>
-  <data name="Effects.84211599.Summary" xml:space="preserve"><value>Escavar 6 cards; adicionar 1 à mão; colocar o restante no fundo do Deck.</value></data>
-  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Sempre escava 6 cards, supondo que seis cards do Deck Adicional estejam disponíveis. Ignorado após comprar por efeito.</value></data>
+  <data name="Effects.98645731.Summary" xml:space="preserve"><value>Escavar 3 cartas; adicionar 1 à mão; embaralhar o restante de volta no Deck.</value></data>
+  <data name="Effects.84211599.Summary" xml:space="preserve"><value>Escavar 6 cartas; adicionar 1 à mão; colocar o restante no fundo do Deck.</value></data>
+  <data name="Effects.84211599.Limitations" xml:space="preserve"><value>Sempre escava 6 cartas, supondo que seis cartas do Deck Adicional estejam disponíveis. O efeito é ignorado após uma compra por efeito.</value></data>
   <data name="Card.SearchPlaceholder" xml:space="preserve"><value>Busque cartas ou digite um nome</value></data>
   <data name="Combo.GroupLabel" xml:space="preserve"><value>Grupo: {0}</value></data>
   <data name="Combo.MoreRequirements" xml:space="preserve"><value>+{0} mais</value></data>
@@ -38,10 +38,10 @@
     <value>Propriedades da carta ({0})</value>
   </data>
   <data xml:space="preserve" name="Category.ManyMatches">
-    <value>{0} entradas correspondentes ({1} cópias)</value>
+    <value>{0} entradas correspondentes (cópias: {1})</value>
   </data>
   <data xml:space="preserve" name="Category.OneMatch">
-    <value>{0} entrada correspondente ({1} cópias)</value>
+    <value>{0} entrada correspondente (cópias: {1})</value>
   </data>
   <data xml:space="preserve" name="Category.RuleHeading">
     <value>Propriedades de {0}</value>
@@ -80,13 +80,13 @@
     <value>Antes de buscar: remover da mão</value>
   </data>
   <data xml:space="preserve" name="Effect.PreservedAllowance">
-    <value>Até {0} ativações por entrada. Esse limite é preservado ao salvar.</value>
+    <value>Limite de ativações por entrada: {0}. Esse limite é preservado ao salvar.</value>
   </data>
   <data xml:space="preserve" name="Effect.PreservedHandSize">
-    <value>Exige pelo menos {0} cartas na mão antes da ativação. Esse requisito é preservado ao salvar.</value>
+    <value>Número mínimo de cartas na mão antes da ativação: {0}. Esse requisito é preservado ao salvar.</value>
   </data>
   <data xml:space="preserve" name="Effect.PreservedMill">
-    <value>Continua enviando as {0} cartas do topo do Deck para o Cemitério depois de comprar. Escolha Nenhum para remover todo o efeito de compra.</value>
+    <value>Mantém o envio de cartas do topo do Deck para o Cemitério após a compra (quantidade: {0}). Escolha Nenhum para remover todo o efeito de compra.</value>
   </data>
   <data xml:space="preserve" name="Effect.SavedRevision">
     <value>Revisão integrada salva {0}</value>
@@ -113,7 +113,7 @@
     <value>Compre 2 e, depois, descarte 1 Magia Rápida ou carta Radiant Typhoon elegível; uma vez por turno.</value>
   </data>
   <data xml:space="preserve" name="Effects.24940422.Limitations">
-    <value>Pressupõe que não há Magias/Armadilhas no Cemitério; sua outra restrição de Magias/Armadilhas e o efeito de comprar novamente do Cemitério não são modelados.</value>
+    <value>Pressupõe que não há Magias/Armadilhas no Cemitério; sua outra restrição de Magias/Armadilhas e o efeito de comprar novamente, ativado no Cemitério, não são modelados.</value>
   </data>
   <data xml:space="preserve" name="Effects.24940422.Summary">
     <value>Compre 2; uma vez por turno.</value>
@@ -299,7 +299,7 @@
     <value>Busque 1 monstro que mencione Sarcófago Brilhante</value>
   </data>
   <data xml:space="preserve" name="Effects.7925734.Limitations">
-    <value>Pressupõe que revelar o Deck Adicional permite comprar.</value>
+    <value>Pressupõe que a carta revelada do Deck Adicional permite comprar.</value>
   </data>
   <data xml:space="preserve" name="Effects.7925734.Summary">
     <value>Compre 1; uma vez por turno.</value>
@@ -419,7 +419,7 @@
     <value>{0} ({1})</value>
   </data>
   <data xml:space="preserve" name="Result.ActiveCount">
-    <value>({0} ativos)</value>
+    <value>(ativos: {0})</value>
   </data>
   <data xml:space="preserve" name="Result.Mode">
     <value>Modo: {0}</value>
@@ -431,7 +431,7 @@
     <value>exceto {0}</value>
   </data>
   <data xml:space="preserve" name="Selector.Verified">
-    <value>verificado {0}</value>
+    <value>filtro verificado: {0}</value>
   </data>
   <data xml:space="preserve" name="Session.LastSaved">
     <value>Último salvamento: {0}.</value>
@@ -440,7 +440,7 @@
     <value>- {0}: [{1}/{2}, {3}/{4}]; amplitude {5} ({6})</value>
   </data>
   <data xml:space="preserve" name="Ui.012Active">
-    <value>- **{0}** — {1} ({2} ativos)</value>
+    <value>- **{0}** — {1} (ativos: {2})</value>
   </data>
   <data xml:space="preserve" name="Ui.01PerEntry">
     <value>{0}: {1} por entrada</value>
@@ -452,7 +452,7 @@
     <value>{0}, combo {1}: {2}</value>
   </data>
   <data xml:space="preserve" name="Ui.0Custom1">
-    <value>{0} (personalizado {1})</value>
+    <value>{0} (carta personalizada {1})</value>
   </data>
   <data xml:space="preserve" name="Ui.0Entry1">
     <value>{0} (entrada {1})</value>
@@ -562,7 +562,7 @@
     <value>Adicionar alternativa de regra</value>
   </data>
   <data xml:space="preserve" name="Ui.Added0">
-    <value>{0} adicionado.</value>
+    <value>Carta adicionada: {0}.</value>
   </data>
   <data xml:space="preserve" name="Ui.AllEligibilityRowsMatchTheSameCard">
     <value>Todas as linhas de elegibilidade correspondem à mesma carta</value>
@@ -607,7 +607,7 @@
     <value>Pelo menos</value>
   </data>
   <data xml:space="preserve" name="Ui.AtLeast0CardsInHandBeforeActivation">
-    <value>pelo menos {0} cartas na mão antes da ativação</value>
+    <value>mínimo de cartas na mão antes da ativação: {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.AtMost">
     <value>No máximo</value>
@@ -625,7 +625,7 @@
     <value>Banir {0} · {1}</value>
   </data>
   <data xml:space="preserve" name="Ui.Banish0UnseenDeckCards">
-    <value>Banir {0} cartas desconhecidas do Deck</value>
+    <value>Banir cartas desconhecidas do Deck: {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.BanishFromDeck">
     <value>Banir do Deck</value>
@@ -868,7 +868,7 @@
     <value>O trabalho atual mudou durante o carregamento. Revise a sessão compartilhada e carregue-a novamente.</value>
   </data>
   <data xml:space="preserve" name="Ui.CurrentWorkChangedWhileLoadingTheExampleLoadTheExampleAgainToReplaceIt">
-    <value>O trabalho atual mudou durante o carregamento do exemplo. Carregue o exemplo novamente para substituí-lo.</value>
+    <value>O trabalho atual mudou durante o carregamento do exemplo. Carregue o exemplo novamente para substituir o trabalho atual.</value>
   </data>
   <data xml:space="preserve" name="Ui.CurrentWorkChangedWhileRestoringReviewTheDraftAndTryAgain">
     <value>O trabalho atual mudou durante a restauração. Revise o rascunho e tente novamente.</value>
@@ -1084,7 +1084,7 @@
     <value>Tamanho da mão: {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.HandSize01Cards">
-    <value>Tamanho da mão {0} · {1} cartas</value>
+    <value>Tamanho da mão {0} · cartas: {1}</value>
   </data>
   <data xml:space="preserve" name="Ui.HandSizeMustBeAtLeast1">
     <value>O tamanho da mão deve ser pelo menos 1.</value>
@@ -1511,7 +1511,7 @@
     <value>Categoria selecionada não encontrada.</value>
   </data>
   <data xml:space="preserve" name="Ui.Send0UnseenTopDeckCardsToTheGY">
-    <value>enviar {0} cartas desconhecidas do topo do Deck para o Cemitério</value>
+    <value>enviar cartas desconhecidas do topo do Deck para o Cemitério: {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.SeparateCardRequirements">
     <value>+: requisitos de cartas separadas</value>
@@ -1571,7 +1571,7 @@
     <value>O grupo E excederia 16 propriedades. Remova uma propriedade antes de combinar.</value>
   </data>
   <data xml:space="preserve" name="Ui.TheActiveDeckHas0CopiesFewerThanTheHandSizeOf1">
-    <value>O Deck ativo tem {0} cópias, menos que o tamanho da mão de {1}.</value>
+    <value>O total de cópias no Deck ativo é {0}, menor que o tamanho da mão de {1}.</value>
   </data>
   <data xml:space="preserve" name="Ui.TheActiveDeckIsTooLargeToCalculateReduceTheNumberOfCopiesOrDeactivateCards">
     <value>O Deck ativo é muito grande para calcular. Reduza o número de cópias ou desative cartas.</value>
@@ -1682,7 +1682,7 @@
     <value>Versão de formato de link compartilhado não suportada.</value>
   </data>
   <data xml:space="preserve" name="Ui.UpTo0ActivationsPerEntry">
-    <value>até {0} ativações por entrada</value>
+    <value>limite de ativações por entrada: {0}</value>
   </data>
   <data xml:space="preserve" name="Ui.UpdateRequirement">
     <value>Atualizar requisito</value>
@@ -1812,7 +1812,7 @@
   <data name="Help.Requirements.Expression" xml:space="preserve"><value>Expressão</value></data>
   <data name="Help.Requirements.Meaning" xml:space="preserve"><value>Significado</value></data>
   <data name="Help.Requirements.DistinctExample.Part0" xml:space="preserve"><value>Starter + FOGO</value></data>
-  <data name="Help.Requirements.DistinctCopies" xml:space="preserve"><value>Duas cópias distintas: uma Starter e uma carta de FOGO. Uma única carta que corresponda a ambas não pode preencher os dois requisitos.</value></data>
+  <data name="Help.Requirements.DistinctCopies" xml:space="preserve"><value>Duas cópias distintas: uma Starter e uma carta de FOGO. Uma única carta que satisfaça as duas condições não pode preencher os dois requisitos.</value></data>
   <data name="Help.Requirements.SameCardExample.Part0" xml:space="preserve"><value>FOGO E Guerreiro</value></data>
   <data name="Help.Requirements.SameCard" xml:space="preserve"><value>Cada carta correspondente deve ter ambas as propriedades.</value></data>
   <data name="Help.Requirements.AlternativesExample.Part0" xml:space="preserve"><value>Razen + (FOGO OU TREVAS)</value></data>
@@ -2085,4 +2085,7 @@
   <data name="Requirement.Groups" xml:space="preserve"><value>Grupos de requisitos</value></data>
   <data name="Requirement.All" xml:space="preserve"><value>Todos</value></data>
   <data name="Requirement.Properties" xml:space="preserve"><value>Propriedades</value></data>
+  <data name="Card.Inactive" xml:space="preserve"><value>Inativa</value></data>
+  <data name="Requirement.None" xml:space="preserve"><value>Nenhuma</value></data>
+  <data name="Search.NoTargets" xml:space="preserve"><value>Nenhum alvo</value></data>
 </root>
