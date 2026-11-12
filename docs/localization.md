@@ -183,6 +183,44 @@ No profiles/plans are mutated. Wording-only corrections need no semantic revisio
 bump. Author each maintained card's translation explicitly; do not synthesize it
 from arbitrary selectors.
 
+## Translation review
+
+Review translations against the neutral message, its callers and the locale's
+terminology guide. Read complete Help messages with their actual `.PartN`
+fragments inserted. A matching placeholder set verifies structure, not meaning
+or grammar. [W3C's composite-message guidance](https://www.w3.org/International/articles/composite-messages/)
+explains why shared fragments can break word order and agreement.
+
+- Resolve pronouns to the intended noun, even across sentences. Repeat the noun
+  when a warning could refer to either the current workspace or an incoming session.
+- Check variable quantities at 0, 1 and several, including valid saved effect
+  plans. Prefer concise count labels such as `Copies: {0}` when a single message
+  must support every count; do not attach a fixed plural to an arbitrary number.
+- Check every caller before reusing a short adjective or `None`. Card and combo
+  badges use `Card.Inactive` and `Ui.Inactive`; zero-card requirements and empty
+  search targets use `Requirement.None` and `Search.NoTargets`. Their grammatical
+  contexts differ from the effect selector's `Ui.None`.
+- Preserve logical scope: at least/at most, inclusive OR, distinct physical copies,
+  phase order, and the strength of accuracy guarantees. Distinguish an effect
+  activated in the Graveyard from taking cards out of the Graveyard.
+- Treat arbitrary card/category names as opaque text. Give surrounding adjectives
+  an explicit noun rather than guessing agreement from a name.
+
+| Locale | Additional checks and language references |
+| --- | --- |
+| German | Pronoun antecedents, gender/case/number agreement and inflected quantities; see [IDS pronouns](https://grammis.ids-mannheim.de/sgt/2194). Keep the established informal `du` register. |
+| French | Gender and number after inserted labels, elision, and singular wording for zero/one; see [OQLF agreement](https://www.oqlf.gouv.qc.ca/francisation/ordres_prof/capsules-grammaticales/accord-groupe-nominal.aspx) and [zero](https://vitrinelinguistique.oqlf.gouv.qc.ca/23642/la-grammaire/le-nom/nombre-des-noms-dans-certains-emplois/cas-particuliers-du-nombre-du-nom/singulier-et-pluriel-du-nom-zero). Keep action labels in the infinitive. |
+| Italian | Gender/number of adjectives and participles, articles, and the subject of sentences containing action labels; see [Crusca on participle agreement](https://accademiadellacrusca.it/it/consulenza/accordo-del-participio-passato/23). Verify game terms against the [official card database](https://www.db.yugioh-card.com/yugiohdb/card_search.action?request_locale=it), rather than translating English literally. |
+| Brazilian Portuguese | `você` takes third-person verbs; check number agreement, ambiguous pronouns and preposition/article combinations (`crase`). See the Senado guides to [agreement](https://www12.senado.leg.br/manualdecomunicacao/estilos/concordancia-verbal) and [crase](https://www12.senado.leg.br/manualdecomunicacao/estilos/crase). Follow the documented Brazilian vocabulary. |
+| Japanese | Check omitted subjects, particles, counters, modifier scope and adjective endings. Quote verb-like action labels when inserting them into prose, for example `「セッションを保存」を選ぶ`; see the [Agency for Cultural Affairs writing guide](https://www.bunka.go.jp/seisaku/bunkashingikai/kokugo/hokoku/pdf/93651301_01.pdf). |
+
+AI-generated fluency is not evidence of correctness. Research on
+[document-context and pronoun translation](https://arxiv.org/abs/2410.14391) and
+[unfaithful LLM translations](https://aclanthology.org/2024.findings-acl.821/)
+supports reviewing context, omissions and unsupported additions explicitly.
+Those studies do not establish an error rate for this application or current
+models. Automated resource checks and agent review are not native-speaker review.
+
 ## Coverage and deferred English
 
 Resources cover the calculator's card/category/combo editors, rule and effect

@@ -12,6 +12,15 @@
   <data name="Card.SearchPlaceholder" xml:space="preserve">
     <value>カードを検索、または名前を入力</value>
   </data>
+  <data name="Card.Inactive" xml:space="preserve">
+    <value>無効</value>
+  </data>
+  <data name="Requirement.None" xml:space="preserve">
+    <value>なし</value>
+  </data>
+  <data name="Search.NoTargets" xml:space="preserve">
+    <value>対象なし</value>
+  </data>
   <data name="Combo.GroupLabel" xml:space="preserve">
     <value>グループ: {0}</value>
   </data>
@@ -1149,7 +1158,7 @@
     <value>無効なセッションファイル形式</value>
   </data>
   <data xml:space="preserve" name="Ui.IsAnAbsoluteChangeOnThe0100ProbabilityScaleNotARelativePercentageBoundedValuesShowADispl">
-    <value>±は0%～100%の確率尺度での絶対的な変化であり、相対的な割合ではありません。範囲保証付きの値は、保証区間を覆うよう外向きに丸めた半径と表示用の中点を示します。区間内の特定の値がより起こりやすいとは限りません。統計的な信頼区間ではありません。</value>
+    <value>±は0%～100%の確率尺度での絶対的な変化であり、相対的な割合ではありません。範囲保証付きの値は、保証区間を覆うよう外向きに丸めた半径と表示用の中点を示します。区間内のどの値がより確からしいかを示すものではありません。統計的な信頼区間ではありません。</value>
   </data>
   <data xml:space="preserve" name="Ui.LeaveEmptyForAny">
     <value>指定しない場合は空欄</value>
@@ -1618,7 +1627,7 @@
     <value>ローカル下書きを復元できませんでした。現在の作業内容と保存済み下書きは保持されます。</value>
   </data>
   <data xml:space="preserve" name="Ui.TheLocalDraftIsInvalidOrFromAnUnsupportedSessionVersionItIsKeptUntilYouDiscardOrReplaceI">
-    <value>ローカル下書きが無効か、未対応のセッションバージョンです。破棄または置換するまで保持されます。</value>
+    <value>ローカル下書きが無効か、セッションのバージョンが未対応です。破棄または置換するまで保持されます。</value>
   </data>
   <data xml:space="preserve" name="Ui.TheORGroupWouldExceed16AlternativesRemoveAnAlternativeBeforeSplitting">
     <value>ORグループの選択肢が16件を超えます。分割する前に選択肢を取り除いてください。</value>
@@ -1627,7 +1636,7 @@
     <value>元の結果の入力情報を利用できません。</value>
   </data>
   <data xml:space="preserve" name="Ui.TheSharedSessionIsInvalidOrUsesAnUnsupportedSessionVersionYourWorkAndSavedDraftAreKept">
-    <value>共有セッションが無効か、未対応のセッションバージョンです。作業内容と保存済み下書きは保持されます。</value>
+    <value>共有セッションが無効か、セッションのバージョンが未対応です。作業内容と保存済み下書きは保持されます。</value>
   </data>
   <data xml:space="preserve" name="Ui.TheSharedSessionLinkIsInvalidOrCorrupted">
     <value>共有セッションのリンクが無効か破損しています。</value>
@@ -1714,7 +1723,7 @@
     <value>ユーザーカテゴリー</value>
   </data>
   <data xml:space="preserve" name="Ui.Veryhigh131072entries1048576cells">
-    <value>非常に高（131,072項目 / 1,048,576セル）</value>
+    <value>非常に高い（131,072項目 / 1,048,576セル）</value>
   </data>
   <data xml:space="preserve" name="Ui.WaitForTheCalculationToFinishBeforeCopyingResults">
     <value>結果をコピーする前に計算の完了を待ってください。</value>
@@ -1915,7 +1924,7 @@
     <value>0</value>
   </data>
   <data name="Help.Requirements.Create" xml:space="preserve">
-    <value>{0}を選び、対象と{1}を設定します。一致する枚数を制限するには{2}を使います。両方を{3}にすると、一致するカードを除く条件になります。</value>
+    <value>「{0}」を選び、対象と「{1}」を設定します。一致する枚数を制限するには「{2}」を使います。両方を{3}にすると、一致するカードを除く条件になります。</value>
   </data>
   <data name="Help.Requirements.FinalHand" xml:space="preserve">
     <value>効果の解決後の最終手札が、コンボ内のすべての条件を満たす必要があります。</value>
@@ -2026,13 +2035,13 @@
     <value>なし</value>
   </data>
   <data name="Help.Simulations.Editing" xml:space="preserve">
-    <value>{0}または{1}を選び、変更してから{2}します。{3}なら以前の手順を維持します。{4}を選ぶと、カードをデッキに残したまま通常のカードとして扱います。</value>
+    <value>「{0}」または「{1}」を選び、変更してから「{2}」を選びます。「{3}」なら以前の手順を維持します。「{4}」を選ぶと、カードをデッキに残したまま通常のカードとして扱います。</value>
   </data>
   <data name="Help.Simulations.Restore.Part0" xml:space="preserve">
     <value>組み込みシミュレーションに戻す</value>
   </data>
   <data name="Help.Simulations.Restore" xml:space="preserve">
-    <value>セッションは保存時の効果設定を保持します。{0}を選ぶと、その設定を現在の組み込みモデルに明示的に置き換えます。</value>
+    <value>セッションは保存時の効果設定を保持します。「{0}」を選ぶと、その設定を現在の組み込みモデルに明示的に置き換えます。</value>
   </data>
   <data name="Help.Simulations.Limitations.Part0" xml:space="preserve">
     <value>モデル注記</value>
@@ -2203,7 +2212,7 @@
     <value>セッションを保存</value>
   </data>
   <data name="Help.Sessions.Save" xml:space="preserve">
-    <value>{0}を選ぶと、デッキ、条件、グループ、効果設定、計算設定をダウンロードできます。編集中の変更は先に保存してください。未保存の下書き、結果、カード画像、テーマ設定は含まれません。</value>
+    <value>「{0}」を選ぶと、デッキ、条件、グループ、効果設定、計算設定をダウンロードできます。編集中の変更は先に保存してください。未保存の下書き、結果、カード画像、テーマ設定は含まれません。</value>
   </data>
   <data name="Help.Sessions.ShareHeading" xml:space="preserve">
     <value>設定を共有</value>
@@ -2212,7 +2221,7 @@
     <value>共有リンクをコピー</value>
   </data>
   <data name="Help.Sessions.Share" xml:space="preserve">
-    <value>{0}を選びます。リンクを開くと、作業内容を置き換える前に読み込むか選択できます。リンクを知る人は内容を読めます。大きい設定では、代わりにセッションファイルが必要な場合があります。</value>
+    <value>「{0}」を選びます。リンクを開くと、作業内容を置き換える前に読み込むか選択できます。リンクを知る人は内容を読めます。大きい設定では、代わりにセッションファイルが必要な場合があります。</value>
   </data>
   <data name="Help.Sessions.RecoveryHeading" xml:space="preserve">
     <value>ローカルの作業を復元</value>
