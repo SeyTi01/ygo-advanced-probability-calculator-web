@@ -2,7 +2,7 @@
 <root>
   <data name="Ui.Excavate0" xml:space="preserve"><value>Escavar {0}</value></data>
   <data name="Ui.ExcavationConfiguredOff" xml:space="preserve"><value>Escavação configurada (desativada)</value></data>
-  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Escavar {0}; adicionar 1 dessas cartas à mão</value></data>
+  <data name="Effect.Excavate0Add1" xml:space="preserve"><value>Escavar {0}; adicionar 1 carta escavada à mão</value></data>
   <data name="Effect.NoPriorEffectDraw" xml:space="preserve"><value>Indisponível após comprar por efeito</value></data>
   <data name="Effect.ExcavationPhaseRestriction" xml:space="preserve"><value>Após as compras, apenas uma escavação permitida é ativada antes das buscas; a maior quantidade tem prioridade.</value></data>
   <data name="Effects.98645731.Limitations" xml:space="preserve"><value></value></data>
