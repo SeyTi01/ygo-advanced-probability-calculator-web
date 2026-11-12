@@ -2287,7 +2287,7 @@
     <value>YGOPRODeck</value>
   </data>
   <data name="Help.Footer.Credits" xml:space="preserve">
-    <value>Creato da {0}. Le illustrazioni delle carte sono fornite da {1} e conservate sull'hosting del progetto. La mancanza di illustrazioni non influisce sui calcoli; le illustrazioni di terze parti non rientrano nella licenza del software.</value>
+    <value>Creato da {0}. Le illustrazioni delle carte sono fornite da {1} e conservate sull'hosting del progetto. Le illustrazioni di terze parti non rientrano nella licenza del software.</value>
   </data>
   <data name="Help.Footer.NameCompilation.Part0" xml:space="preserve">
     <value>YAML Yugi</value>
