@@ -779,7 +779,7 @@
   <data name="Help.Requirements.Maximum.Part1" xml:space="preserve"><value>Beliebig</value></data>
   <data name="Help.Requirements.Maximum" xml:space="preserve"><value>Ein Maximum zählt {0} in der endgültigen Hand. Ein leeres Maximum bedeutet {1}.</value></data>
   <data name="Help.Requirements.AlternativeCounts.Part0" xml:space="preserve"><value>FEUER (2–2) ODER FINSTERNIS (2–2)</value></data>
-  <data name="Help.Requirements.AlternativeCounts" xml:space="preserve"><value>Jede ODER-Alternative behält ihre eigenen Anzahlen. {0} verlangt entweder zwei Karten mit der einen oder zwei Karten mit der anderen Eigenschaft.</value></data>
+  <data name="Help.Requirements.AlternativeCounts" xml:space="preserve"><value>Jede ODER-Alternative behält ihre eigenen Anzahlen. {0} ist erfüllt, wenn mindestens eine der beiden Eigenschaften auf genau zwei Handkarten zutrifft.</value></data>
   <data name="Help.Requirements.RepeatedTarget.Part0" xml:space="preserve"><value>Mindestens</value></data>
   <data name="Help.Requirements.RepeatedTarget" xml:space="preserve"><value>Erhöhe {0}, wenn mehrere Exemplare benötigt werden. Bei mehrfacher Angabe desselben Ziels gilt die Schnittmenge der Grenzen.</value></data>
   <data name="Help.Requirements.Editing.Part0" xml:space="preserve"><value>Enter</value></data>
