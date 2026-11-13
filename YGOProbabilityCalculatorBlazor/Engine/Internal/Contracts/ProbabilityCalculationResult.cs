@@ -23,4 +23,5 @@ internal sealed record GroupProbabilityResult(string GroupId, string GroupName, 
 /// <param name="ComboIndex">Zero-based position in the supplied combo list.</param>
 /// <param name="ComboName">The combo's optional display name.</param>
 /// <param name="Probability">Probability that this combo succeeds on its own.</param>
+/// <param name="GroupId">Optional reporting group identity.</param>
 internal sealed record ComboProbabilityResult(int ComboIndex, string? ComboName, double Probability, string? GroupId = null);

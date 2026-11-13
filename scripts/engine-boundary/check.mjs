@@ -37,7 +37,9 @@ try {
     cpSync(file, destination);
   }
   cpSync(join(repository, 'LICENSE'), join(isolatedEngine, 'LICENSE'));
-  writeFileSync(join(isolatedEngine, 'Engine.csproj'), project('Library', '<AssemblyName>CardProbability.ClosureProof</AssemblyName>'));
+  writeFileSync(join(isolatedEngine, 'Engine.csproj'), project('Library',
+    '<AssemblyName>CardProbability.ClosureProof</AssemblyName><GenerateDocumentationFile>true</GenerateDocumentationFile>'
+    + '<WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1570;CS1572;CS1573;CS1574;CS1587</WarningsAsErrors>'));
   writeFileSync(join(consumer, 'Consumer.csproj'), project('Exe', '', '<ProjectReference Include="../Engine/Engine.csproj" />'));
   cpSync(join(here, 'Consumer.cs'), join(consumer, 'Program.cs'));
   // SDK reference packs supply all dependencies: no package feed is available.

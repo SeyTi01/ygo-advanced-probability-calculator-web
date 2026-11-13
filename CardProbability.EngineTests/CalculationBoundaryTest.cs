@@ -197,6 +197,49 @@ public class CalculationBoundaryTest {
             Assert.That(result.Total, Is.Null);
         });
     }
+
+    [TestCase("membership", "Membership 'role'", "entry")]
+    [TestCase("priority", "Activation priority", "entry")]
+    [TestCase("group", "Goal 'goal'", "group")]
+    [TestCase("requirement", "Goal 'goal'", "entry")]
+    [TestCase("alternative", "Goal 'goal'", "membership")]
+    [TestCase("search", "Entry 'source'", "membership")]
+    [TestCase("mode", "Entry 'source'", "membership")]
+    [TestCase("cost", "Entry 'source'", "membership")]
+    [TestCase("removal", "Entry 'source'", "membership")]
+    public void UnknownReferencesIdentifyTheTargetAndOwningContext(string location, string context, string kind) {
+        EffectPlan? effect = location switch {
+            "search" => new(Search: new(new("missing-id"))),
+            "mode" => new(Search: new(Eligibility.Any, [new(new("missing-id"))])),
+            "cost" => new(DrawCount: 1, HandCost: 1, HandCostEligibility: new("missing-id")),
+            "removal" => new(DrawCount: 1, RemovalCount: 1, RemovalEligibility: new("missing-id")),
+            _ => null
+        };
+        CalculationRequest request = new(
+            [new("source", 1, effect)],
+            1,
+            [new Goal(
+                "goal",
+                location == "requirement" ? [Requirement.OfEntry("missing-id")] : [],
+                location == "alternative" ? [new([Requirement.InMembership("missing-id")])] : [],
+                location == "group" ? "missing-id" : null
+            )],
+            location == "membership" ? [new("role", ["missing-id"])] : []
+        );
+        CalculationOptions options = new(
+            CalculationMode.OpeningHand,
+            priorityEntryIds: location == "priority" ? ["missing-id"] : []
+        );
+
+        CalculationResult result = CalculationEngine.Calculate(request, options);
+
+        Assert.Multiple(() => {
+            Assert.That(result.Status, Is.EqualTo(CalculationStatus.InvalidInput));
+            Assert.That(result.Total, Is.Null);
+            Assert.That(result.Detail, Does.Contain(context).And.Contain($"{kind} 'missing-id'"));
+        });
+    }
+
     private static CalculationRequest OverlappingRequest() => new(
         [new("overlap", 1), new("left", 1), new("other", 1)],
         2,
