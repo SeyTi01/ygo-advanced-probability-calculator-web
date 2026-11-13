@@ -21,6 +21,7 @@ Load only the applicable references:
 
 | Work | Instructions |
 | --- | --- |
+| Adding or changing tests | [Test guidance](../ygo-verify/references/testing.md) |
 | Locating owners or crossing architectural boundaries | [Source map](references/source-map.md) |
 | C# or Razor C# edits | [C# style](references/csharp.md) |
 | Calculation, engine API, effect or worker behavior | [Calculation contracts](references/calculation.md) |
