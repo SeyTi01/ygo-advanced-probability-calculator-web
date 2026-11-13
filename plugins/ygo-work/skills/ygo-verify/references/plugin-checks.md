@@ -10,8 +10,13 @@ node plugins/ygo-work/scripts/package.mjs /absolute/writable/path/ygo-work.tar.g
 
 The packager checks source, links and final archive. Run its tests when packaging code changes. Keep archives outside the plugin directory and out of commits. Validate realistic routing as well as syntax: initialized Windows, cloud publication, limited release requests and installed-package paths.
 
-For browser authorization edits, trace publication with missing connector/CLI capabilities and localhost debugging from verification, diagnosis and UI entry points. Confirm they reach the shared grant without a new permission question, while task scope, authentication, tool restrictions, host approvals and styling approval still apply. Use hypothetical scenarios; do not publish or mutate live resources to test authorization text.
+Check module boundaries: callers state concrete loading triggers; each selected module applies in full. Extract instructions with a different trigger into their own reference instead of linking to a section of a broader file. Keep shared rules in one owner and reuse loaded modules.
 
-For release-workflow edits, walk through a new complete release and retries after each completed stage. Check notes-only/preparation-only limits; missing CLI PATH versus unavailable authentication; pending/failed checks and changed heads; an existing matching or mismatched tag; a draft or already-published Release; concurrent `main`/latest changes; and a missing/failed production deployment. Verify that custom notes never gain an automatic changelog inventory, the predecessor never becomes the new release itself, and the weakest optional highlight is removed. Use read-only current state and hypothetical scenarios; do not create a real release to test instructions.
+Load additional checks by the changed behavior:
+
+| Trigger | Checks |
+| --- | --- |
+| Browser/computer authorization or routing changed | [Browser authorization checks](plugin-browser-checks.md) |
+| Release workflow or routing changed | [Release workflow checks](plugin-release-checks.md) |
 
 Publish the canonical source through Plugin Creator's update workflow; never edit an installed cache as another source of truth. Preserve stored identity, presentation, integrations and audience, synchronize manifest versions, and read back changed files after publication. Remove deleted packaged paths explicitly so old instructions do not survive an overlay update.
