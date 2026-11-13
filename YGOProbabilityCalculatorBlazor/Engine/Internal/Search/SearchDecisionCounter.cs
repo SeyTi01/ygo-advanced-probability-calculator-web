@@ -1,4 +1,5 @@
 using System.Numerics;
+using CardProbability.Internal.Contracts;
 using CardProbability.Internal.Model;
 using CardProbability.Internal.Compilation;
 using CardProbability.Internal.Resources;
@@ -20,6 +21,7 @@ internal sealed partial class SearchDecisionCounter {
     private readonly WorkBudget _budget;
     private readonly int _handSize;
     private readonly int _applyCapacity;
+    private readonly int _countCapacity;
     private readonly bool _singleSample;
     private readonly int[] _copies;
     private readonly int[] _suffix;
@@ -39,6 +41,7 @@ internal sealed partial class SearchDecisionCounter {
     internal SearchDecisionCounter(int[] domains, int domainLimit, WorkBudget budget, bool singleSample, int? applyCapacity = null) {
         _applyCapacity = applyCapacity ?? (singleSample ? 32768 : 16384);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(_applyCapacity);
+        _countCapacity = DefaultCountCapacity(budget);
         _budget = budget;
         _handSize = domainLimit;
         _singleSample = singleSample;
@@ -50,6 +53,18 @@ internal sealed partial class SearchDecisionCounter {
         }
         _nodes.Add(new(domains.Length, []));
         _nodes.Add(new(domains.Length, []));
+    }
+
+    private static int DefaultCountCapacity(WorkBudget budget) {
+        // Keep Standard at 2,048 entries. Larger numeric allowances permit
+        // 8,192 (High) / 16,384 (VeryHigh) weighted subproblems before we stop
+        // retaining results. Both limits must grow; custom policies are capped
+        // at VeryHigh's memo size. Payload is checked again at insertion.
+        long scale = Math.Clamp(Math.Min(
+            budget.StoragePolicy.EntryLimit / CalculationStoragePolicy.Standard.EntryLimit,
+            budget.StoragePolicy.CellLimit / CalculationStoragePolicy.Standard.CellLimit), 1, 4);
+
+        return 2048 * (int)(scale == 1 ? 1 : 2 * scale);
     }
 
     internal int Union(IEnumerable<CompiledEvent?> events) {
@@ -239,12 +254,21 @@ internal sealed partial class SearchDecisionCounter {
             }
         }
         // A saturated memo stops retaining results, never changes the count.
-        if (_counts.Count < 2048) {
-            _countCells += WorkBudget.IntegerCells(result) + 3;
-            _budget.CheckStorage(_counts.Count + 1, _countCells);
-            _counts.Add(key, result);
+        if (_counts.Count < _countCapacity) {
+            long cells = _countCells + WorkBudget.IntegerCells(result) + 3;
+            // Preserve Standard and smaller-policy failure behavior. Expanded
+            // optional retention stops before either Storage limit is reached.
+            if (_countCapacity == 2048 || (_counts.Count + 1L <= _budget.StoragePolicy.EntryLimit
+                && cells <= _budget.StoragePolicy.CellLimit)) {
+                _countCells = cells;
+                _budget.CheckStorage(_counts.Count + 1, _countCells);
+                _counts.Add(key, result);
+            }
+            else {
+                _budget.SearchDiagnostics?.Add("count storage saturated visits");
+            }
         }
-        if (_counts.Count == 2048) {
+        if (_counts.Count == _countCapacity) {
             _budget.SearchDiagnostics?.Add("count saturated visits");
         }
         return result;

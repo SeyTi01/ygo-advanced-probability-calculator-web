@@ -53,6 +53,8 @@ Current per-structure limits are:
 
 These checks include retained integer payload and relevant state structures; they are not a total browser-memory ceiling. Several live maps, temporary state and object overhead can coexist. The [application storage policy](../YGOProbabilityCalculatorBlazor/Services/Interface/CalculationStoragePolicy.cs) defines the UI tiers and the engine's [WorkBudget](../YGOProbabilityCalculatorBlazor/Engine/Internal/Resources/WorkBudget.cs) applies per-calculation accounting.
 
+Higher limits also allow the weighted search counter to retain more previously computed subproblems: 2,048 at Standard, 8,192 at High and 16,384 at VeryHigh. Expanded retention remains bounded by both entries and integer payload; a full optional cache stops retaining results without changing their counts. This can speed up search-heavy calculations that otherwise repeat work. It does not promise faster results for every deck or change the Work allowance.
+
 Mixed draws, ordered costs/removals, overlapping selectors, competing searches and hidden target losses can greatly increase state growth. No universal completion or elapsed-time promise follows from the deck size, combo count, chosen mode or highest Storage tier. A pre-calculation notice is guidance, not a feasibility proof. Use cancellation and compare simpler models deliberately; changing a cost or filter changes the modeled question.
 
 ## Worker lifecycle and compatibility APIs
