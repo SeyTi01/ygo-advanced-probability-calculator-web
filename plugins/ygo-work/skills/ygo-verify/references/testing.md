@@ -8,4 +8,6 @@ Editor behavior changes need bUnit interaction coverage in the relevant `Calcula
 
 Treat explanatory prose and incidental styling as editable. Assert selected data/source, accessible associations and consequential usability rather than complete help sentences, rejected wording, exact CSS lists or subpixel layout matrices.
 
-Await terminal results without requiring calculations to remain busy. Explicitly control completion for cancellation, stale replies and progressive transitions. Retain compact optimized-published-WASM integration coverage; mocked timing and a button returning idle do not prove CPU-bound worker shutdown. Keep opt-in measurements outside correctness gates.
+Await terminal results without requiring calculations to remain busy. Coordinate concurrency, cancellation, stale replies and progressive transitions with explicit start/completion barriers instead of fixed sleeps or event-loop turns. Fake sleeps register deadlines; only the test advances shared time, once for concurrent waiters. Await real I/O or hashing when completion is required, and exercise timeout/lease-expiry schedules separately. Assert outcomes and side effects; wall-clock timeouts are deadlock guards. Check timing fixes with deliberately delayed dependency completion.
+
+Retain compact optimized-published-WASM integration coverage; mocked timing and a button returning idle do not prove CPU-bound worker shutdown. Keep opt-in measurements outside correctness gates.
