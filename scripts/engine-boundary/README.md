@@ -17,10 +17,14 @@ The full check creates a unique system TEMP directory outside the checkout:
    into an SDK-only `net10.0`, C# 14 project, with implicit usings and
    `Nullable=annotations`. Package feeds are cleared for this engine and its
    consumer. No application build properties, resources or source files are used.
+   Generate XML documentation and reject missing public documentation, malformed
+   XML, mismatched/missing parameter docs, invalid references and misplaced docs.
 2. Compile and run `Consumer.cs` as a separate assembly using a normal project
    reference. It uses fictional opaque identities and independently counted
    fractions for overlapping goals/unions, distinct copies, zero maxima, a
-   seven-card opening hand, and draw/search/excavation effects. It also checks
+   seven-card opening hand, `(A OR B) AND C`, and draw/search/excavation effects.
+   It checks shared entry allowances and effect suppression with validation in
+   OpeningHand mode, as well as read-only runtime model metadata. It also checks
    snapshots, concurrent request reuse, terminal failures, exported namespace,
    BCL assembly references, absence of embedded resources and the sole approved
    neutral-test friend. The consumer has no friend access.

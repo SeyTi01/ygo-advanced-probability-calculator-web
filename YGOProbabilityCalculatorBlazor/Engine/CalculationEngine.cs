@@ -8,10 +8,21 @@ namespace CardProbability;
 
 /// <summary>Stateless synchronous entry point. Immutable requests may be reused concurrently.</summary>
 public static class CalculationEngine {
+    /// <summary>Calculates goal rows, reporting group unions and the total union under one shared keep/removal policy.</summary>
+    /// <param name="request">Immutable problem; references and effect plans are validated even in OpeningHand mode.</param>
+    /// <param name="options">Execution settings, or null for Exact with unlimited work and default storage limits.</param>
+    /// <param name="cancellationToken">Cooperative cancellation; cancellation returns a terminal outcome without rows.</param>
+    /// <returns>A terminal result. Only Completed contains probabilities; inspect Accuracy and Certified before interpreting a primary fraction physically.</returns>
     public static CalculationResult Calculate(CalculationRequest request, CalculationOptions? options = null, CancellationToken cancellationToken = default) =>
         CalculateCore(request, options, cancellationToken, false);
 
     /// <summary>Evaluates the same goal union and keep policy while omitting standalone goal/group rows and optional certificates.</summary>
+    /// <param name="request">The full goal set; removing goals can change the keep/removal policy.</param>
+    /// <param name="options">Execution settings, or null for the same defaults as Calculate.</param>
+    /// <param name="cancellationToken">Cooperative cancellation.</param>
+    /// <returns>A terminal result with empty Goals/Groups and a Total only on completion.</returns>
+    /// <remarks>Structural exact proof is retained, but Fast can have weaker Accuracy/Certified information than Calculate
+    /// because optional certification is skipped. Equality of primary fractions does not imply equal physical proof.</remarks>
     public static CalculationResult CalculateUnion(CalculationRequest request, CalculationOptions? options = null, CancellationToken cancellationToken = default) =>
         CalculateCore(request, options, cancellationToken, true);
 
@@ -100,6 +111,11 @@ public static class CalculationEngine {
         CalculationResult Failure(CalculationStatus status, string detail) => new(status, options.Mode, scope, detail, null, null, [], [], Metrics());
     }
 
+    /// <summary>Produces conservative structural risk guidance using a separate bounded assessment budget.</summary>
+    /// <param name="request">Problem to assess using the fixed-effect model.</param>
+    /// <returns>A warning flag, not validation or a prediction of completion, work units or elapsed time.</returns>
+    /// <remarks>ElevatedRisk = false means no warning was produced. Invalid, unsupported and assessment-budget-limited
+    /// inputs also return false. Always handle the terminal result from Calculate or CalculateUnion.</remarks>
     public static CalculationAssessment Assess(CalculationRequest request) {
         CalculationOptions options = new();
         WorkBudget budget = new(new C.CalculationWorkPolicy(100_000));

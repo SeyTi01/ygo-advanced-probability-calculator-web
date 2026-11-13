@@ -41,7 +41,7 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
         foreach (Membership membership in request.Memberships) {
             HashSet<string> members = Ids(membership.EntryIds, "membership entry");
             if (!members.IsSubsetOf(entries)) {
-                throw new ArgumentException("A membership references an unknown entry.");
+                throw new ArgumentException($"Membership '{membership.Id}' references unknown entry '{members.First(id => !entries.Contains(id))}'.");
             }
             eligible.Add(membership.Id, members);
             M.CategoryBase category = new(membership.Id);
@@ -56,13 +56,13 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
 
         HashSet<string> priority = Ids(options.PriorityEntryIds, "priority entry");
         if (!priority.IsSubsetOf(entries)) {
-            throw new ArgumentException("Activation priority references an unknown entry.");
+            throw new ArgumentException($"Activation priority references unknown entry '{priority.First(id => !entries.Contains(id))}'.");
         }
 
         List<M.Card> cards = new(request.Entries.Length);
         foreach (DeckEntry entry in request.Entries) {
             budget.Spend(1);
-            ValidateEffect(entry.Effect);
+            ValidateEffect(entry.Effect, entry.Id);
             M.DrawEffectPlan plan = options.Mode == CalculationMode.OpeningHand || entry.Effect is null
                 ? new(null, false, 0, M.CardSelector.Any, 0, 0, M.CardSelector.Any)
                 : Effect(entry.Effect);
@@ -73,12 +73,12 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
         foreach (Goal goal in request.Goals) {
             budget.Spend(1);
             if (goal.GroupId is not null && !groups.Contains(goal.GroupId)) {
-                throw new ArgumentException("A goal references an unknown group.");
+                throw new ArgumentException($"Goal '{goal.Id}' references unknown group '{goal.GroupId}'.");
             }
             List<M.ComboCategory> requiredMemberships = [];
             List<M.ComboCard> requiredEntries = [];
             foreach (Requirement requirement in goal.Requirements) {
-                M.ComboAlternative converted = ConvertRequirement(requirement);
+                M.ComboAlternative converted = ConvertRequirement(requirement, goal.Id);
                 if (converted.Category is { } category) {
                     requiredMemberships.Add(category);
                 }
@@ -91,7 +91,7 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
                 if (alternative is null || alternative.Choices.IsEmpty) {
                     throw new ArgumentException("An alternative group needs at least one requirement.");
                 }
-                alternatives.Add(new(alternative.Choices.Select(ConvertRequirement).ToArray()));
+                alternatives.Add(new(alternative.Choices.Select(requirement => ConvertRequirement(requirement, goal.Id)).ToArray()));
             }
             combos.Add(new(requiredMemberships, goal.Id, groupId: goal.GroupId, cards: requiredEntries, alternativeGroups: alternatives));
         }
@@ -110,19 +110,19 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
             return ids;
         }
 
-        M.CardSelector Filter(Eligibility? filter) {
+        M.CardSelector Filter(Eligibility? filter, string? entryId = null) {
             if (filter?.MembershipId is null) {
                 return M.CardSelector.Any;
             }
             if (!memberships.Contains(filter.MembershipId)) {
-                throw new ArgumentException("An effect references an unknown membership.");
+                throw new ArgumentException($"Entry '{entryId}' effect references unknown membership '{filter.MembershipId}'.");
             }
             return selectors[filter.MembershipId];
         }
 
         HashSet<string> Members(Eligibility filter) => filter.MembershipId is null ? entries : eligible[filter.MembershipId];
 
-        void ValidateEffect(EffectPlan? effect) {
+        void ValidateEffect(EffectPlan? effect, string entryId) {
             if (effect is null) {
                 return;
             }
@@ -134,8 +134,8 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
             if (operations != 1) {
                 throw new NotSupportedException("Each effect source must contain exactly one draw, search, or excavation operation.");
             }
-            Filter(effect.HandCostEligibility);
-            Filter(effect.RemovalEligibility);
+            Filter(effect.HandCostEligibility, entryId);
+            Filter(effect.RemovalEligibility, entryId);
             if ((effect.HandCost == 0 && effect.HandCostEligibility?.MembershipId is not null)
                 || (effect.RemovalCount == 0 && effect.RemovalEligibility?.MembershipId is not null)) {
                 throw new ArgumentException("Filtered hand operations require a positive count.");
@@ -155,7 +155,7 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
                 return;
             }
             ArgumentNullException.ThrowIfNull(search.Targets);
-            Filter(search.Targets);
+            Filter(search.Targets, entryId);
             if (!search.Modes.IsEmpty) {
                 HashSet<string> union = new(StringComparer.Ordinal);
                 foreach (SearchMode mode in search.Modes) {
@@ -163,7 +163,7 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
                     if (mode is null || mode.Targets is null || mode.ActivationLimit is <= 0) {
                         throw new ArgumentException("Search modes require targets and positive activation limits.");
                     }
-                    Filter(mode.Targets);
+                    Filter(mode.Targets, entryId);
                     union.UnionWith(Members(mode.Targets));
                     budget.CheckStorage(union.Count + search.Modes.Length, union.Count + search.Modes.Length);
                 }
@@ -199,14 +199,14 @@ internal sealed record PreparedCalculation(List<M.Card> Cards, List<M.Combo> Com
             );
         }
 
-        M.ComboAlternative ConvertRequirement(Requirement requirement) {
+        M.ComboAlternative ConvertRequirement(Requirement requirement, string goalId) {
             budget.Spend(1);
             if (requirement is null || !Enum.IsDefined(requirement.Kind) || requirement.Minimum < 0 || requirement.Maximum is < 0) {
                 throw new ArgumentException("A requirement needs a valid target and nonnegative bounds.");
             }
             HashSet<string> targets = requirement.Kind == RequirementTargetKind.Entry ? entries : memberships;
             if (!targets.Contains(requirement.Id)) {
-                throw new ArgumentException("A requirement references an unknown target.");
+                throw new ArgumentException($"Goal '{goalId}' requirement references unknown {requirement.Kind.ToString().ToLowerInvariant()} '{requirement.Id}'.");
             }
             M.RequirementMaximumMode maximumMode = requirement.Maximum is null ? M.RequirementMaximumMode.HandSize : M.RequirementMaximumMode.Fixed;
             return requirement.Kind == RequirementTargetKind.Entry
