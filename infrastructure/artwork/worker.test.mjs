@@ -26,17 +26,66 @@ class Bucket {
     return this.get(key);
   }
 }
+function deferred() {
+  let resolve;
+  const promise = new Promise(done => { resolve = done; });
+  return { promise, resolve };
+}
 async function setup(options = {}) {
   const bucket = new Bucket();
   await bucket.put("_control/manifest.json", JSON.stringify({ version: 1, variant: "small", ids: [1,2,3] }));
   let time = 100000, calls = [];
-  const handlerOptions = { now: () => time, sleep: async ms => { time += ms; await new Promise(r => setImmediate(r)); },
+  const sleepers = new Set();
+  let sleepQueued = deferred();
+  const handlerOptions = { now: () => time, sleep: ms => {
+      const pending = deferred();
+      sleepers.add({ due: time + ms, resolve: pending.resolve });
+      sleepQueued.resolve();
+      sleepQueued = deferred();
+      return pending.promise;
+    },
     fetchImage: async (url, opts) => { calls.push({ url, opts, time }); return new Response(jpeg, { headers: { "Content-Type": "image/jpeg" } }); },
     ...options };
   const handler = createHandler(handlerOptions);
   const request = (path = "/small/1.jpg", method = "GET", selected = handler) =>
     selected.fetch(new Request("https://art.example" + path, { method }), { ARTWORK: bucket }, { waitUntil: promise => promise });
-  return { bucket, calls, request, handlerOptions, advance: ms => time += ms };
+  return { bucket, calls, request, handlerOptions,
+    async waitForSleepers(count) {
+      while (sleepers.size < count) await sleepQueued.promise;
+      assert.equal(sleepers.size, count);
+    },
+    advance(ms) {
+      // Concurrent sleeps share elapsed time; asynchronous hashing cannot advance it.
+      time += ms;
+      let released = 0;
+      for (const pending of sleepers) if (pending.due <= time) {
+        sleepers.delete(pending);
+        pending.resolve();
+        released++;
+      }
+      return released;
+    }
+  };
+}
+
+async function concurrentColdMisses(t) {
+  const s = await setup();
+  const ownerStarted = deferred(), imageReady = deferred();
+  t.after(() => imageReady.resolve());
+  const requests = Array.from({ length: 5 }, (_, index) => s.request("/small/1.jpg", "GET", createHandler({
+    ...s.handlerOptions,
+    fetchImage: async (...args) => {
+      const response = s.handlerOptions.fetchImage(...args);
+      ownerStarted.resolve(index);
+      await imageReady.promise;
+      return response;
+    }
+  })));
+  const ownerIndex = await ownerStarted.promise;
+  await s.waitForSleepers(4);
+  assert.equal(s.calls.length, 1, "one owner fetches while four independent instances contend");
+  return { ...s, requests, owner: requests[ownerIndex],
+    contenders: requests.filter((_, index) => index !== ownerIndex), releaseImage: imageReady.resolve };
 }
 
 test("retained image survives new clients, handler restart and edge cache eviction", async () => {
@@ -52,16 +101,52 @@ test("retained image survives new clients, handler restart and edge cache evicti
   assert.match(cold.headers.get("Cache-Control"), /immutable/);
   assert.equal(cold.headers.get("Location"), null);
 });
-test("independent instances deduplicate concurrent cold misses with a persistent lease", async () => {
-  const s = await setup();
-  const results = await Promise.all(Array.from({length: 5}, () => s.request("/small/1.jpg", "GET", createHandler(s.handlerOptions))));
-  assert.ok(results.every(r => r.status === 200));
+test("independent instances deduplicate concurrent cold misses with a persistent lease", { timeout: 10000 }, async t => {
+  const s = await concurrentColdMisses(t);
+  const startedAt = s.handlerOptions.now();
+  s.releaseImage();
+  assert.equal((await s.owner).status, 200);
+  assert.ok(await s.bucket.get("small/1.jpg"));
+  assert.equal(s.handlerOptions.now(), startedAt);
+  // Wait for actual retention, including SHA-256, before waking all contenders together.
+  assert.equal(s.advance(1100), 4);
+  const results = await Promise.all(s.requests);
+  assert.deepEqual(results.map(response => response.status), [200, 200, 200, 200, 200]);
+  for (const response of results) assert.deepEqual(new Uint8Array(await response.arrayBuffer()), jpeg);
+  assert.equal(s.calls.length, 1);
+});
+test("contending instances time out without duplicate acquisition and can retry retained artwork", { timeout: 10000 }, async t => {
+  const s = await concurrentColdMisses(t);
+  const startedAt = s.handlerOptions.now();
+  for (let attempt = 0; attempt < 8; attempt++) {
+    await s.waitForSleepers(4);
+    assert.equal(s.advance(1100), 4);
+  }
+  const results = await Promise.all(s.contenders);
+  assert.deepEqual(results.map(response => response.status), [503, 503, 503, 503]);
+  for (const response of results) {
+    assert.equal(response.headers.get("Retry-After"), "2");
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+  }
+  assert.equal(s.handlerOptions.now() - startedAt, 8800);
+  assert.equal(await s.bucket.get("small/1.jpg"), null);
+  assert.equal(s.calls.length, 1);
+  s.releaseImage();
+  const owner = await s.owner;
+  assert.equal(owner.status, 200);
+  assert.deepEqual(new Uint8Array(await owner.arrayBuffer()), jpeg);
+  const retry = await s.request("/small/1.jpg", "GET", createHandler(s.handlerOptions));
+  assert.equal(retry.status, 200);
+  assert.deepEqual(new Uint8Array(await retry.arrayBuffer()), jpeg);
   assert.equal(s.calls.length, 1);
 });
 test("different cold IDs obey the durable global interval", async () => {
   const s = await setup();
   assert.equal((await s.request()).status, 200);
-  assert.equal((await s.request("/small/2.jpg")).status, 200);
+  const second = s.request("/small/2.jpg");
+  await s.waitForSleepers(1);
+  s.advance(1100);
+  assert.equal((await second).status, 200);
   assert.ok(s.calls[1].time - s.calls[0].time >= 1100);
 });
 test("unsafe URLs, unlisted IDs, control objects, queries and writes never acquire", async () => {
@@ -127,9 +212,14 @@ test("JPEG validation rejects malformed segments and truncated content", () => {
 test("a crashed owner's lease blocks briefly then permits recovery", async () => {
   const s = await setup();
   await s.bucket.put("_control/acquisition.json", JSON.stringify({owner:"crashed",leaseUntil:130000,nextAllowed:101100,failures:0}));
-  assert.equal((await s.request()).status, 503);
+  const blocked = s.request();
+  for (let attempt = 0; attempt < 8; attempt++) {
+    await s.waitForSleepers(1);
+    s.advance(1100);
+  }
+  assert.equal((await blocked).status, 503);
   assert.equal(s.calls.length, 0);
-  s.advance(30000);
+  s.advance(130000 - s.handlerOptions.now());
   assert.equal((await s.request()).status, 200);
   assert.equal(s.calls.length, 1);
 });
