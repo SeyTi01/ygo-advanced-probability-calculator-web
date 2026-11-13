@@ -79,6 +79,31 @@ configurable. This gate establishes correctness, not performance.
 Use YGO Work's [measurement procedures](../../plugins/ygo-work/skills/ygo-diagnose/references/measurements.md)
 for tool selection, frozen replay and native/browser/UI measurements.
 
+The opt-in `StorageTierBenchmark.Export` test captures the Storage comparison
+corpus through the production wire. Set `YGO_AUDIT_OUTPUT` to a new file and
+optionally `YGO_AUDIT_CASE` to a workload-name substring. `ExportRequests` lists
+the inputs without executing them. Names use `<workload>/<tier>/<Fast|Exact>`;
+Fast uses interactive finite Work and Exact uses `interactive-exact-v1`.
+Replay frozen responses with `PerformanceAuditBenchmark.Replay` and
+`measure-worker.cjs`. Interrupted exports retain completed cases in a
+`.partial.json` file, not under the completed output name.
+
+`measure-storage-progressive.cjs <wwwroot> <fixtures.json> <output.json> [warm=3]
+[cutoff-ms=60000]` pairs those Fast/Exact captures and exercises production staged
+worker leases. It measures first and terminal delivery separately from bootstrap,
+not UI rendering or cold network loading. `YGO_STORAGE_CASE` selects a name
+substring. External cutoffs are censored measurements, not engine failures.
+
+`CardProbability.EngineTests.StorageTierProfile.Profile` collects cache diagnostics
+separately from timings. `ProfilePublic` records public terminal results and
+allocations without diagnostic maps; `ProfileOrderedProjection` explicitly forces
+an internal projection and is not evidence for production solver routing.
+Configure `CARD_STORAGE_PROFILE_CASE`, `CARD_STORAGE_PROFILE_TIERS`,
+`CARD_STORAGE_PROFILE_MODES` and `CARD_STORAGE_PROFILE_OUTPUT` as needed. These
+diagnostic fixtures are not all identical to the wire corpus; compare matching
+inputs before attributing timing differences to their counters. Per-structure
+cell peaks and allocation totals do not measure peak live browser memory.
+
 ### Historical excavation observations
 
 These observations describe the 2026-11-01 acceptance harness and its fixtures.
