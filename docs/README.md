@@ -9,7 +9,7 @@ The [project overview](../README.md) introduces the calculator and the bundled e
 | [Probability engine](probability-engine.md) | Follow physical-copy counting, overlaps, draws and searches, with a small enumerable example. |
 | [Accuracy and performance](accuracy-and-performance.md) | Interpret Exact/Bounded/Uncertified results and distinguish Work, Storage and worker lifecycle limits. |
 | [Generic calculation API](generic-calculation-api.md) | Call the public neutral engine API, inspect terminal outcomes, and understand its operation model. |
-| [Engine extraction procedure](../plugins/ygo-work/skills/ygo-implement/references/engine-extraction.md) | Transfer the owned engine source, tests and dependencies into a standalone package. |
+| [Engine dependency maintenance](../plugins/ygo-work/skills/ygo-implement/references/engine-extraction.md) | Adopt a published engine version while preserving calculator contracts and verifying the public package boundary. |
 | [Localization contributions](localization.md) | Add presentation resources while preserving canonical identities, saved sessions and effect compatibility. |
 
 For a first visit, use Help, then read the model before treating a simulated effect as the printed card's complete behavior. [YGO Work](../plugins/ygo-work/skills/ygo-implement/SKILL.md) selects the relevant contracts and procedures for development.

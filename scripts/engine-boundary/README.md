@@ -1,51 +1,38 @@
-# Engine boundary proof
+# Engine package boundary
 
 [YGO Work's boundary verification](../../plugins/ygo-work/skills/ygo-verify/references/engine-boundary.md)
-owns setup and execution. The tool requires Node.js and the .NET 10 SDK;
-no project, package or deployment is published.
+owns setup and execution. The check requires Node.js and the .NET 10 SDK;
+it publishes nothing.
 
-The check first rejects application/host dependencies in the owned engine
-sources and production/application-test references to `CardProbability.Internal`.
-Engine friend access is allowed only for the neutral `CardProbability.EngineTests`
-assembly, in the exact `Engine/EngineTestVisibility.cs` declaration. Use
-`--guards-only` to run just these fast source guards. The guards are conservative
-tripwires; compiler checks establish actual dependency and accessibility closure.
+The source guards require a literal, pinned `CardProbability.Engine`
+`PackageReference` in the application. They reject embedded engine sources,
+namespace shims, internal engine references in application code/tests, linked
+engine dependencies, and the relocated neutral test project. `--guards-only`
+runs these fast checks; they also run in the ordinary JavaScript suite.
+These conservative tripwires complement normal compilation against the package,
+which enforces the public API for both the application and its tests.
 
-The full check creates a unique system TEMP directory outside the checkout:
+The full check creates a unique system TEMP directory outside the checkout and
+restores the application's pinned version from NuGet.org into a fresh package
+cache. It rejects a different resolved version or extra package/project
+dependencies, then compiles and runs `Consumer.cs` as a separate assembly with
+only that normal package reference. No engine source, application build
+properties, local feed or friend access supplies the consumer.
 
-1. Copy only `YGOProbabilityCalculatorBlazor/Engine/**/*.cs` and root `LICENSE`
-   into an SDK-only `net10.0`, C# 14 project, with implicit usings and
-   `Nullable=annotations`. Package feeds are cleared for this engine and its
-   consumer. No application build properties, resources or source files are used.
-   Generate XML documentation and reject missing public documentation, malformed
-   XML, mismatched/missing parameter docs, invalid references and misplaced docs.
-2. Compile and run `Consumer.cs` as a separate assembly using a normal project
-   reference. It uses fictional opaque identities and independently counted
-   fractions for overlapping goals/unions, distinct copies, zero maxima, a
-   seven-card opening hand, `(A OR B) AND C`, and draw/search/excavation effects.
-   It checks shared entry allowances and effect suppression with validation in
-   OpeningHand mode, as well as read-only runtime model metadata. It also checks
-   snapshots, concurrent request reuse, terminal failures, exported namespace,
-   BCL assembly references, absence of embedded resources and the sole approved
-   neutral-test friend. The consumer has no friend access.
-3. Copy the complete `CardProbability.EngineTests` source/fixture tree without
-   build outputs. Replace its application project reference with a reference to
-   the isolated engine, then build and run the entire neutral test suite. At
-   this point no application source exists in the temporary tree.
-4. Copy the production app without its engine sources or build outputs, with a
-   normal project reference to the isolated engine. Copy the complete application
-   test tree, preserving sibling paths so existing fixtures/resource links work,
-   then build the entire application test project and its app dependency. The
-   engine grants no friend access to either assembly, so the compiler rejects
-   internal engine access in production and application tests. These checks use
-   the projects' existing NuGet dependencies and do not run or publish the app.
-   The complete application test suite is built here; run it normally through
-   the solution for behavior verification.
+The consumer uses fictional opaque identities and independently counted
+fractions for overlapping goals/unions, distinct copies, zero maxima, a
+seven-card opening hand, `(A OR B) AND C`, and draw/search/excavation effects.
+It checks entry allowances, OpeningHand validation and effect suppression,
+runtime model metadata, immutable snapshots, concurrent reuse, terminal
+failures, assembly identity, public namespaces, BCL-only dependencies and the
+sole upstream neutral-test friend.
 
 The temporary directory is removed after success or failure. Add `--keep` to
-retain it for diagnosis. The proof creates no production library: the future
-package substitution still removes local `Engine/**/*.cs` compile inputs and
-replaces this temporary project reference with the package reference.
+retain it for diagnosis. The full proof runs in CI alongside the normal solution
+build/tests; those tests retain the calculator's adapters, independent oracles
+and worker integration coverage. Browser/AOT checks remain separate.
 
-This scoped check complements the repository's correctness, browser and AOT
-checks. It does not replace them or assert a public JSON serialization format.
+The engine implementation and white-box suite now belong to
+[card-probability-engine](https://github.com/SeyTi01/card-probability-engine).
+Package adoption and upgrade guidance lives in the
+[engine dependency procedure](../../plugins/ygo-work/skills/ygo-implement/references/engine-extraction.md).

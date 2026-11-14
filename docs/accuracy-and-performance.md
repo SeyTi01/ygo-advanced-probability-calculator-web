@@ -51,7 +51,7 @@ Current per-structure limits are:
 | High | 65,536 | 524,288 |
 | VeryHigh | 131,072 | 1,048,576 |
 
-These checks include retained integer payload and relevant state structures; they are not a total browser-memory ceiling. Several live maps, temporary state and object overhead can coexist. The [application storage policy](../YGOProbabilityCalculatorBlazor/Services/Interface/CalculationStoragePolicy.cs) defines the UI tiers and the engine's [WorkBudget](../YGOProbabilityCalculatorBlazor/Engine/Internal/Resources/WorkBudget.cs) applies per-calculation accounting.
+These checks include retained integer payload and relevant state structures; they are not a total browser-memory ceiling. Several live maps, temporary state and object overhead can coexist. The [application storage policy](../YGOProbabilityCalculatorBlazor/Services/Interface/CalculationStoragePolicy.cs) defines the UI tiers and the packaged engine's [WorkBudget](https://github.com/SeyTi01/card-probability-engine/blob/v1.0.0-preview.1/src/CardProbability/Internal/Resources/WorkBudget.cs) applies per-calculation accounting.
 
 Higher limits also allow the weighted search counter to retain more previously computed subproblems: 2,048 at Standard, 8,192 at High and 16,384 at VeryHigh. Expanded retention remains bounded by both entries and integer payload; a full optional cache stops retaining results without changing their counts. This can speed up search-heavy calculations that otherwise repeat work. It does not promise faster results for every deck or change the Work allowance.
 

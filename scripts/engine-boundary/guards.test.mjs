@@ -1,38 +1,44 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { inspectApplicationSource, inspectEngineSource } from './guards.mjs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { checkBoundary, enginePackage, inspectApplicationSource, inspectProject } from './guards.mjs';
 
-test('engine rejects application namespaces, resources, host dependencies and friend access', () => {
-  for (const dependency of [
-    'using YGOProbabilityCalculatorBlazor.Models;',
-    'using Microsoft.JSInterop;',
-    'using OtherLibrary;',
-    'using System.IO;',
-    '[assembly: InternalsVisibleTo("Consumer")]',
-    'Assembly.Load("App");',
-    'assembly.GetManifestResourceStream("App.asset");'
-  ]) {
-    assert.ok(inspectEngineSource(`namespace CardProbability;\n${dependency}`, 'engine.cs').length, dependency);
-  }
-});
-
-test('engine permits BCL and owned aliases; app rejects direct and aliased internal access', () => {
-  assert.deepEqual(inspectEngineSource('using System.Numerics;\nusing C = CardProbability.Internal.Contracts;\nnamespace CardProbability;', 'engine.cs'), []);
+test('application allows the public API but rejects internal access and local namespace shims', () => {
   assert.deepEqual(inspectApplicationSource('using CardProbability; CalculationEngine.Calculate(request);', 'app.cs'), []);
-  for (const code of ['using CardProbability.Internal;', 'using C = global::CardProbability.Internal.Contracts;', 'CardProbability.Internal.CalculationRuntime runtime;']) {
-    assert.equal(inspectApplicationSource(code, 'app.cs').length, 1);
-  }
+  for (const code of [
+    'using CardProbability.Internal;',
+    'using C = global::CardProbability.Internal.Contracts;',
+    'CardProbability.Internal.CalculationRuntime runtime;',
+    'namespace CardProbability; public class CalculationEngine {}',
+    'namespace CardProbability.Internal { }'
+  ]) assert.ok(inspectApplicationSource(code, 'app.cs').length, code);
 });
 
-test('only the neutral engine test assembly has friend access, in its one owned declaration file', () => {
-  const file = 'YGOProbabilityCalculatorBlazor/Engine/EngineTestVisibility.cs';
-  const header = 'using System.Runtime.CompilerServices;\nnamespace CardProbability;\n';
-  const approved = '[assembly: InternalsVisibleTo("CardProbability.EngineTests")]';
-  assert.deepEqual(inspectEngineSource(header + approved, file), []);
-  assert.ok(inspectEngineSource(header + approved, 'other.cs').length);
-  assert.ok(inspectEngineSource(header, file).length);
-  for (const friend of ['YGOProbabilityCalculatorBlazorTest', 'Consumer', 'CardProbability.EngineTests.Other']) {
-    assert.ok(inspectEngineSource(`${header}${approved}\n[assembly: InternalsVisibleTo("${friend}")]`, file).length, friend);
+test('dependency requires one fixed package version', () => {
+  const reference = version => '<PackageReference Include="CardProbability.Engine" Version="' + version + '" />';
+  assert.equal(enginePackage(reference('1.0.0-preview.1')).version, '1.0.0-preview.1');
+  for (const version of ['*', '1.*', '[1.0.0,2.0.0)', '$(EngineVersion)', '']) {
+    assert.throws(() => enginePackage(reference(version)), /pinned/);
   }
-  assert.ok(inspectEngineSource(`${header}${approved}\n${approved}`, file).length);
+  for (const xml of ['', reference('1.0.0') + reference('2.0.0'), '<!-- ' + reference('1.0.0') + ' -->']) {
+    assert.throws(() => enginePackage(xml), /exactly one/);
+  }
+  assert.throws(() => enginePackage('<PackageReference Include="CardProbability.Engine" Version="1.0.0" Condition="false" />'), /unconditional/);
+});
+
+test('project wiring rejects engine project/binary references and linked sources', () => {
+  for (const xml of [
+    '<ProjectReference Include="../CardProbability/Engine.csproj" />',
+    '<Reference Include="CardProbability"><HintPath>engine.dll</HintPath></Reference>',
+    '<Compile Include="../shared/CalculationEngine.cs" />',
+    '<Compile Include="Engine/**/*.cs" />',
+    '<Compile Include="D:\\library\\source.cs" />'
+  ]) assert.ok(inspectProject(xml, 'app.csproj').length, xml);
+  assert.deepEqual(inspectProject('<ProjectReference Include="../YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj" />', 'tests.csproj'), []);
+});
+
+test('calculator checkout uses only the package-owned engine boundary', () => {
+  const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+  assert.equal(checkBoundary(repository).id, 'CardProbability.Engine');
 });

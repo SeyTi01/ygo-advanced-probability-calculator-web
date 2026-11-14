@@ -94,8 +94,11 @@ worker leases. It measures first and terminal delivery separately from bootstrap
 not UI rendering or cold network loading. `YGO_STORAGE_CASE` selects a name
 substring. External cutoffs are censored measurements, not engine failures.
 
-`CardProbability.EngineTests.StorageTierProfile.Profile` collects cache diagnostics
-separately from timings. `ProfilePublic` records public terminal results and
+The library's [StorageTierProfile](https://github.com/SeyTi01/card-probability-engine/blob/v1.0.0-preview.1/tests/CardProbability.EngineTests/StorageTierProfile.cs)
+collects cache diagnostics separately from timings. Run its
+`CardProbability.EngineTests.StorageTierProfile.Profile` test in the library
+repository; the neutral test project is no longer part of the calculator solution.
+`ProfilePublic` records public terminal results and
 allocations without diagnostic maps; `ProfileOrderedProjection` explicitly forces
 an internal projection and is not evidence for production solver routing.
 Configure `CARD_STORAGE_PROFILE_CASE`, `CARD_STORAGE_PROFILE_TIERS`,

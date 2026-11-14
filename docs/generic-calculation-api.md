@@ -1,8 +1,10 @@
 # Generic calculation API
 
-[Documentation index](README.md) · [Calculation model](calculation-model.md) · [Extraction procedure](../plugins/ygo-work/skills/ygo-implement/references/engine-extraction.md)
+[Documentation index](README.md) · [Calculation model](calculation-model.md) · [Dependency maintenance](../plugins/ygo-work/skills/ygo-implement/references/engine-extraction.md)
 
 The `CardProbability` API describes a finite deck of physical copies, resolved set memberships, goals, and a closed set of optional operations. A host translates its domain into this model; the engine does not interpret card text, metadata, or catalog identities. It calculates synchronously and returns one terminal result.
+
+The calculator references the published [CardProbability.Engine 1.0.0-preview.1](https://www.nuget.org/packages/CardProbability.Engine/1.0.0-preview.1) package. The [library repository](https://github.com/SeyTi01/card-probability-engine/tree/v1.0.0-preview.1) owns its implementation and neutral tests; the calculator retains its adapters, application integration tests and independent probability oracles. The [release](https://github.com/SeyTi01/card-probability-engine/releases/tag/v1.0.0-preview.1) identifies source commit `2c6a86246fb28e401fc2a2426233959478ab3d3f` and carries the package-consumer, transfer and calculator rehearsal evidence. The application project pins the version used by this checkout.
 
 ## Run the public examples
 
@@ -12,7 +14,7 @@ From the repository root with Node.js and the .NET 10 SDK installed:
 node scripts/engine-boundary/check.mjs
 ```
 
-This compiles and runs [Consumer.cs](../scripts/engine-boundary/Consumer.cs) in a separate assembly with only the public `CardProbability` API. Its fictional fixtures independently check the examples below, runtime model metadata, terminal failures, collection ownership and concurrent reuse. The command also runs the [engine isolation proof](../scripts/engine-boundary/README.md). It does not create or publish a package. Each C# snippet below belongs in a console program referencing the engine, with `using CardProbability;` and standard implicit usings enabled.
+This restores the pinned package from NuGet.org and compiles and runs [Consumer.cs](../scripts/engine-boundary/Consumer.cs) in a separate assembly with only the public `CardProbability` API. Its fictional fixtures independently check the examples below, runtime model metadata, terminal failures, collection ownership and concurrent reuse. The command also runs the [dependency boundary checks](../scripts/engine-boundary/README.md). It does not create or publish a package. Each C# snippet below belongs in a console program with the same `PackageReference`, `using CardProbability;`, and standard implicit usings enabled.
 
 ## Basic calculation
 
@@ -233,6 +235,6 @@ The total physical-copy count may be at most `Int32.MaxValue`. Internal packed-c
 
 ## Runtime and compatibility
 
-The current source uses the .NET 10 BCL and targets `net10.0`, with C# 14, implicit usings, and nullable annotations. It has no engine-specific external package or embedded resource dependency. The eventual package should keep `CardProbability` as its public namespace and treat model meanings and public signatures as SemVer responsibilities. Intentional API or semantic changes require a package-version decision; model versioning remains distinct from application session and effect-plan revisions.
+The package targets `net10.0`, uses the .NET 10 BCL, and has no external runtime package or embedded resource dependencies. Its assembly and public namespace are `CardProbability`. Model meanings and public signatures are library SemVer responsibilities; intentional API or semantic changes require a package-version decision. Runtime `ModelVersion` remains distinct from package, application session and effect-plan versions.
 
-The application adapter remains responsible for resolving domain selectors and effect definitions into this neutral model, preserving saved plans and historical session behavior, and translating results into UI/worker contracts. The engine license is the repository's MIT license; that software license does not grant rights to bundled artwork or card/catalog data.
+The application adapter remains responsible for resolving domain selectors and effect definitions into this neutral model, preserving saved plans and historical session behavior, and translating results into UI/worker contracts. It also preserves the original sorted atomic category/direct-entry memberships in opaque `PolicyOrderKey` values, so package consumption retains the calculator's deterministic keep/removal behavior. UI, worker envelopes and JavaScript exports, Progressive coordination, leases, cancellation ownership and stale-result rejection remain in the calculator. The engine carries its own [MIT license](https://github.com/SeyTi01/card-probability-engine/blob/v1.0.0-preview.1/LICENSE); that software license does not grant rights to artwork or card/catalog data.
