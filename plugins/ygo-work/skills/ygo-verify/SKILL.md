@@ -12,7 +12,7 @@ Choose checks by the affected contract and load only their procedure:
 | Check | Procedure |
 | --- | --- |
 | Native or JavaScript behavior | [Application checks](references/app-checks.md) |
-| Engine isolation or package substitution | [Boundary proof](references/engine-boundary.md) |
+| Engine dependency or public adapter boundary | [Package boundary](references/engine-boundary.md) |
 | Published WASM or browser behavior | [Browser checks](references/browser-checks.md) |
 | Published HTML/SEO | [SEO checks](references/seo-checks.md) |
 | Issue #295 cold-worker regression | [Frozen worker regression](references/frozen-worker.md) |

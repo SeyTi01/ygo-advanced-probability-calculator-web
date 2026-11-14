@@ -2,7 +2,7 @@
 
 Keep a test when it catches a meaningful defect at the simplest reliable layer. Preserve independent probability oracles, compatibility, user state, accessibility and calculation ownership. Remove redundant tests and unused helpers rather than skipping them.
 
-Calculation changes need focused regression cases under `repo:YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/` or the appropriate neutral engine tests. Prefer existing `SmallDeckOracleTest.cs` independent physical-hand enumeration. Verify expected fractions/counts with exhaustive enumeration or an actual independent calculation, never intuition, memory or production output. Cover relevant overlap, distinct-copy collisions, union counting and boundary constraints.
+Calculator calculation changes need focused regression cases under `repo:YGOProbabilityCalculatorBlazorTest/Services/ProbabilityCalculator/`; neutral engine regressions belong in the library's test project. Prefer existing `SmallDeckOracleTest.cs` independent physical-hand enumeration for application coverage. Verify expected fractions/counts with exhaustive enumeration or an actual independent calculation, never intuition, memory or production output. Cover relevant overlap, distinct-copy collisions, union counting and boundary constraints. Keep application tests on the public engine API; do not restore transferred white-box tests or friend access here.
 
 Editor behavior changes need bUnit interaction coverage in the relevant `CalculatorEditor*` test under `repo:YGOProbabilityCalculatorBlazorTest/Components/`; other component changes need focused coverage where useful. Persistence/import changes need coverage at their own service boundary. Preserve numerical formatting and protocol/serialization assertions.
 

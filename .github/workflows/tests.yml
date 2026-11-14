@@ -51,6 +51,9 @@ jobs:
       - name: JavaScript tests
         run: node --test
 
+      - name: Published engine package boundary
+        run: node scripts/engine-boundary/check.mjs
+
   published-site:
     name: Published site verification
     runs-on: ubuntu-latest

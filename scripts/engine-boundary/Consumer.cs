@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using CardProbability;
 
 // Independent, fictional fixtures. This file is compiled in its own assembly,
-// with only a ProjectReference to the copied engine and no privileged access.
+// with only a PackageReference to the published engine and no privileged access.
 List<DeckEntry> entries = [new("prism", 1), new("ember", 1), new("tide", 1), new("blank", 2)];
 List<string> redEntries = ["prism", "ember"];
 List<Requirement> distinctRequirements = [Requirement.InMembership("red"), Requirement.InMembership("blue")];
@@ -125,13 +125,14 @@ Failure(CalculationEngine.Calculate(overlap, new(policy: new ExecutionPolicy(Ent
 Parallel.For(0, 8, _ => Fraction(Completed(overlap, CalculationMode.OpeningHand).Total!, 1, 2, "concurrent immutable request reuse"));
 
 Assembly engine = typeof(CalculationEngine).Assembly;
+Require(engine.GetName().Name == "CardProbability", "engine is the separate package assembly");
 PropertyInfo modelVersion = typeof(CalculationResult).GetProperty(nameof(CalculationResult.ModelVersion))!;
 Require(
     modelVersion is not null && modelVersion.GetMethod is { IsStatic: false } && modelVersion.SetMethod is null,
     "model version is runtime read-only instance metadata"
 );
 Require(engine.GetCustomAttributes<InternalsVisibleToAttribute>().Select(attribute => attribute.AssemblyName).SequenceEqual(["CardProbability.EngineTests"]), "only neutral engine tests have friend access; consumer and app tests do not");
-Require(engine.GetManifestResourceNames().Length == 0, "isolated engine has no embedded resource dependency");
+Require(engine.GetManifestResourceNames().Length == 0, "packaged engine has no embedded resource dependency");
 Require(engine.GetExportedTypes().All(type => type.Namespace == "CardProbability"), "only intentional public namespace is exported");
 Require(engine.GetReferencedAssemblies().All(name => name.Name == "System" || name.Name!.StartsWith("System.", StringComparison.Ordinal)), "only BCL assembly dependencies");
 Console.WriteLine("Public-only consumer passed: runtime version, independent fractions, overlap, alternatives, exclusions, hand seven, draw/search/excavation, allowances, snapshots, concurrency and terminal failures.");

@@ -7,4 +7,4 @@ Run from the repository root after [environment preparation](environment.md). Se
 
 For focused .NET tests, add `--filter "FullyQualifiedName~YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator"` or `--filter "FullyQualifiedName~YGOProbabilityCalculatorBlazorTest.Components.CalculatorEditor"`; prefer a narrower existing filter when appropriate. Coverage is opt-in with `--collect:"XPlat Code Coverage"`.
 
-Solution tests include `CardProbability.EngineTests`. For engine-boundary changes, also use [the isolation proof](engine-boundary.md).
+The solution runs calculator application and integration tests against the published engine dependency. Neutral `CardProbability.EngineTests` run in the library repository. For engine dependency or adapter-boundary changes, also use [package-boundary verification](engine-boundary.md).
