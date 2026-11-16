@@ -179,7 +179,7 @@ worker leases. It measures first and terminal delivery separately from bootstrap
 not UI rendering or cold network loading. `YGO_STORAGE_CASE` selects a name
 substring. External cutoffs are censored measurements, not engine failures.
 
-The library's [StorageTierProfile](https://github.com/SeyTi01/card-probability-engine/blob/v1.0.0-preview.1/tests/CardProbability.EngineTests/StorageTierProfile.cs)
+The library's [StorageTierProfile](https://github.com/SeyTi01/card-probability-engine/blob/v1.0.0/tests/CardProbability.EngineTests/StorageTierProfile.cs)
 collects cache diagnostics separately from timings. Run its
 `CardProbability.EngineTests.StorageTierProfile.Profile` test in the library
 repository; the neutral test project is no longer part of the calculator solution.
