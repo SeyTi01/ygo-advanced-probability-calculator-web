@@ -15,8 +15,7 @@ The publisher checks for an existing push or manual test run on the exact branch
 head before dispatching, including on a no-change retry after interrupted publication.
 Failed test runs remain visible for review rather than being retried automatically.
 Generation rejects a workflow/checkout definition mismatch before writing a bundle.
-YGO Work's [card-data maintenance](../../AGENTS.md)
-owns dispatch, retry, local replay, audit review and manual-refresh procedures.
+See [run or replay a refresh](#run-or-replay-a-refresh) for dispatch, retry and local commands, and the manual repair sections below for reviewed baseline changes.
 
 Acquisition downloads one full
 YGOPRODeck `misc=yes` response and candidate vocabulary, then resolves YAML Yugi
@@ -83,6 +82,24 @@ published data intact. A local I/O failure during file promotion can leave a
 partial working-tree bundle; the workflow never commits after a failed step.
 GitHub may delay schedules or disable them after 60 days of repository inactivity.
 
+### Run or replay a refresh
+
+In GitHub Actions, select **Monthly card data refresh**, choose **Run workflow** on `dev`, and optionally enter an earlier refresh run ID in `source_run_id`. Leave it blank for fresh acquisition. After changing workflow/code, start a new run: **Re-run jobs** keeps the original workflow definition. For a retry without code changes, **Re-run jobs** restores that run's completed source checkpoint.
+
+Retain `card-data-refresh-RUN_ID` artifacts before their 90-day expiry. An expired replay needs an explicit new acquisition; a current moving provider response cannot replace historical bytes. If GitHub has disabled the schedule for inactivity, re-enable it and run the manual trigger to catch up.
+
+For local work, choose a new nonexistent writable source directory outside the checkout. Acquisition contacts the providers; generation uses the retained bytes without network access. Run from the repository root:
+
+```sh
+python infrastructure/card-catalog/fetch-refresh.py --output <source-directory>
+node infrastructure/card-catalog/refresh-card-data.mjs <source-directory>
+node --test infrastructure/card-catalog/*.test.mjs
+```
+
+For an offline replay, restore the retained artifact to the source directory and run only generation/tests. Keep raw responses and archives outside app assets and commits. Review `infrastructure/card-catalog/snapshots/refresh/audit.json` for canonical/per-locale changes, hashes, candidate evidence, unresolved identities, membership changes/overlaps, provider conflicts and example coverage. Candidate evidence needs explicit review before editing `archetype-policy.json` or reviewed clauses; regenerate after those edits.
+
+Reconcile the automation branch before retrying after a changed base or failed push lease. After a local file-promotion I/O failure, discard only the generated refresh files and replay the retained source. Legitimate removals use a separately reviewed manual refresh with exact-ID removal files, not a lowered baseline. The resulting refresh PR remains a review change and does not publish an application release.
+
 ## Archetype source assessment (2026-11-01)
 
 The bounded evidence is retained in
@@ -119,8 +136,19 @@ review decisions; the monthly bot publishes evidence rather than adopting tags.
 
 `prepare-catalog.mjs` projects the YGOPRODeck full response into the compact `CardInfo` JSON asset used by local search. It keeps card identity, name, objective metadata, and numeric artwork IDs. Version 2 also contains offline-resolved `resolvedArchetypes`; it drops the provider's association tag, descriptions, prices, set data, and image URLs. It never fetches artwork. The asset URL remains `card-catalog.v1.json` for deployment compatibility; its internal format version is independent of session schema 5.
 
-The [manual catalog procedure](../../AGENTS.md)
-owns offline generation and source acquisition. The catalog is validated and serialized before the output is atomically replaced. The normal app build and test suite never call the provider. Identical saved source and checked-in policy produce byte-identical catalog and audit JSON, independently of response order.
+## Manual catalog repair
+
+Regenerate from a retained official response without network access, from the repository root:
+
+```sh
+node infrastructure/card-catalog/prepare-catalog.mjs --catalog <cardinfo.json> --output YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json --audit <membership-audit.json>
+```
+
+Omitting `--catalog` makes one full metadata request with `misc=yes`; `--save-source <cardinfo.json>` retains its exact bytes for replay. When writing to a different output path, supply `--previous <shipped-catalog>` so the shipped catalog remains the coverage baseline. `--allow-removals <file>` accepts only a reviewed JSON array of the exact canonical IDs being removed. A partial response must not be accepted by lowering the baseline.
+
+If candidate vocabulary changes, acquire that endpoint separately, review additions/removals and actual English-name references, then edit `archetype-policy.json` and regenerate. Review membership changes and overlaps across the full source: zero unresolved recognized declarations does not establish complete wording support or correct localization.
+
+The catalog is validated and serialized before the output is atomically replaced. Normal builds and tests never call the provider. Identical saved source and checked-in policy produce byte-identical catalog and audit JSON, independently of response order. Run the offline catalog tests shown above after generator or policy changes.
 
 ## Main Deck eligibility
 
@@ -198,8 +226,7 @@ All objective archetype properties consume resolved data. Catalog lookups suppor
 
 Session load, share acceptance and recovery reconcile only automatic archetype properties against the bundled catalog before optional legacy enrichment. Exact unique names are used only when there is no external ID. Unknown/ambiguous identities and unverified membership sets remain unchanged. Cards absent after eligibility trimming remain in saved sessions; import still attempts targeted metadata lookup and preserves an unresolved imported ID/copy count when lookup fails. User categories, unrelated metadata, explicit manual keys and saved simulation plans/provenance are preserved. If an old automatic membership previously absorbed a manual assignment, the missing provenance cannot be reconstructed: only explicitly stored override keys are preserved. An already-correct card retains its reference; reconciliation does not itself write browser storage or bump session schema.
 
-The same saved provider response can also supply the [artwork allowlist](../../AGENTS.md).
-Generator verification is part of [card-data maintenance](../../AGENTS.md).
+The same saved provider response can also supply the [artwork allowlist](../artwork/README.md#updating-the-allowlist). Catalog refresh alone does not require an artwork update. Generator verification uses `node --test infrastructure/card-catalog/*.test.mjs` from the repository root.
 
 ## German search names
 
@@ -273,8 +300,7 @@ establish complete official translations or native-speaker review.
 
 ### Offline generation and refresh
 
-The [localized-name procedure](../../AGENTS.md)
-owns historical reproduction, source refresh, coverage baselines and reviewed removals.
+The [manual localized-name procedure](#manual-localized-name-generation) covers historical reproduction, source refresh, coverage baselines and reviewed removals. Routine refreshes use the complete bundle workflow above.
 
 The generator never fetches the network. Builds, tests, publishing and startup
 make no translation-provider requests. The existing lazy loader requests just
@@ -290,6 +316,23 @@ umlauts and ß remain distinct, with no accent stripping or ß/ss conflation.
 Display labels require a verified external ID and an exact stored English name;
 custom labels stay verbatim. The data-label accessor accepts only verified
 catalog objects, and no localized fields are added to sessions.
+
+## Manual localized-name generation
+
+Use this path for a reviewed repair/source migration, historical reproduction or a new locale's first baseline. For a new name locale, first add its `cardNames.asset` entry to `YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json`; ship that registration and the reviewed baseline together because monthly refresh requires the baseline. UI satellites are covered by [adding a locale](../../docs/localization.md#adding-a-locale).
+
+The generator does not fetch the network. From the repository root:
+
+```sh
+node infrastructure/card-catalog/prepare-localized-names.mjs --locale <locale> --snapshot <name-projection.json> --catalog YGOProbabilityCalculatorBlazor/wwwroot/data/card-catalog.v1.json --example YGOProbabilityCalculatorBlazor/wwwroot/sample-data/example_session_state.json --output YGOProbabilityCalculatorBlazor/wwwroot/data/card-names.<locale>.v1.json --audit <audit.json>
+node --test infrastructure/card-catalog/*.test.mjs
+```
+
+For historical reproduction, select the retained dated projection under `infrastructure/card-catalog/snapshots/`: German uses `names.de.yaml-yugi.2026-10-31.*`; Japanese, French, Italian and Portuguese use `names.<locale>.yaml-yugi.2026-11-01.*`. These are historical inputs, not the latest monthly bundle.
+
+For a source refresh, acquire or reuse the pinned source bundle's `yaml-cards.json`. Read its immutable `revision` and `retrievedAt` from `sources.json`, verify the ID/name projection against that revision, and add `--provider <yaml-cards.json> --revision <commit-sha> --retrieved-at <timestamp>` to the command. Choose new dated snapshot/audit paths; the generator writes the retained projection to `--snapshot` as well as the runtime asset and audit.
+
+Keep the shipped asset as the coverage baseline, adding `--previous <shipped-asset>` when output moves. Only a new locale's first generation uses `--initial`; this rejects an existing output, a previous baseline or removal exemptions. `--allow-removals <file>` accepts a reviewed JSON array of exactly the canonical IDs being removed. Other removals must still fail. Review each locale's identity, normalization, missing-name and example coverage before committing the projections and assets. Keep compilation and rights-holder credits.
 
 ## Additional locales
 
@@ -326,7 +369,7 @@ The monthly workflow refreshes every registered translation locale automatically
 from that same pinned source, with individual coverage guards, projections and
 audits. The dated projections reproduce historical source snapshots; current
 monthly bundles have separately retained workflow inputs. All locales use the
-same [maintenance procedure](../../AGENTS.md).
+same [manual generation procedure](#manual-localized-name-generation).
 Compilation credit and rights-holder attribution apply to every language.
 
 ### French names (`fr`)
