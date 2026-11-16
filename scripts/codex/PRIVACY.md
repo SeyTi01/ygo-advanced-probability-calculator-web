@@ -1,10 +1,19 @@
 # Publication guard
 
-The guard verifies approved public attribution before commits and pushes. Agent procedures live in YGO Work: [publication identity](../../AGENTS.md), [missing guard setup](../../AGENTS.md) and [public-content review](../../AGENTS.md).
+The guard verifies approved public attribution before commits and pushes. It requires Git and Node.js 18 or newer.
 
 ## Installation and policy
 
-`setup.ps1` installs the guard before restoring .NET dependencies and accepts `-GitPublicName` and `-GitPublicEmail`. The portable installer writes project-local `user.name`, `user.email` and `user.useConfigOnly`; unrelated global defaults remain untouched. An unconfigured installation blocks commits and pushes.
+Choose your public Git name and the exact GitHub-issued noreply address from your account email settings. Contributors and forks use their own identity. From the repository root:
+
+```sh
+node scripts/codex/privacy-guard.mjs install --name PUBLIC_LOGIN --email ISSUED_NOREPLY_ADDRESS
+node scripts/codex/privacy-guard.mjs check
+```
+
+Replace both placeholders with the reviewed pair. Do not use a personal address merely to make a rejection pass. Reuse the installed policy for later commits; explicitly review additional contributor/bot identities before adding them.
+
+`scripts/codex/setup.ps1` installs the guard before restoring .NET dependencies and accepts `-GitPublicName` and `-GitPublicEmail`. The portable installer writes project-local `user.name`, `user.email` and `user.useConfigOnly`; unrelated global defaults remain untouched. An unconfigured installation blocks commits and pushes.
 
 The policy, installed validator, original hooks and private settings backup live in the shared Git directory, outside tracked files. Installation is idempotent and applies to linked worktrees using default shared hooks. Existing pre-commit, commit-msg and pre-push hooks are preserved as `.privacy-original` and chained with their original arguments and complete stdin. A custom `core.hooksPath` or hook manager stops installation without changing its configuration or hooks. Setup files alone do not install hooks until executed.
 

@@ -36,9 +36,12 @@ during startup is supported while retaining the browser's numeric culture.
 
 ## Adding a locale
 
-Use YGO Work's [localization workflow](../AGENTS.md)
-for contributor steps and verification. `wwwroot/localization/locales.json` is
-served to startup JavaScript and embedded in .NET. At two production locales,
+1. Add `YGOProbabilityCalculatorBlazor/Localization/Strings.<locale>.resx` using the neutral resource keys and the locale's terminology guide. Preserve every numbered placeholder; missing translations fall back to English.
+2. Add the deployable language ID and readable native name to `YGOProbabilityCalculatorBlazor/wwwroot/localization/locales.json`. Register a locale only when its satellite is included in the publish.
+3. If the locale also needs card-name data, create the registry's `cardNames.asset` entry and its reviewed baseline together using [localized-name generation](../infrastructure/card-catalog/README.md#manual-localized-name-generation). A UI-only locale needs no card-name asset.
+4. Run the regular [application tests](../README.md#documentation-and-development), the locale registry tests below and the published integration check. Review translated controls, complete Help messages and the relevant terminology guide for meaning and layout.
+
+The locale registry is served to startup JavaScript and embedded in .NET. At two production locales,
 the header selector appears automatically on both routes; English alone keeps
 the existing header.
 
@@ -118,8 +121,14 @@ from normal explicit recovery and never changes session schema or worker bytes.
 
 ## Published integration check
 
-The [browser workflow](../AGENTS.md)
-owns runtime setup and execution. The localization smoke checks production
+Prepare the [optimized publish and browser runtime](../scripts/background-calculation/README.md#publish-and-browser-setup), then run from the repository root:
+
+```sh
+node --test scripts/localization/locale.test.mjs
+node scripts/localization/browser-smoke.cjs <published-wwwroot>
+```
+
+Also run the [published HTML checks](../scripts/background-calculation/README.md#published-html-checks) against that output when locale registration, startup or loading changes. The localization smoke checks production
 satellites, first visible language, on-demand localized
 card names, numeric culture, and real reload/restoration of accepted workspace and
 results. It also checks representative blocked edits and pending operations,

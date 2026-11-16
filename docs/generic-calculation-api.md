@@ -1,6 +1,6 @@
 # Generic calculation API
 
-[Documentation index](README.md) · [Calculation model](calculation-model.md) · [Dependency maintenance](../AGENTS.md)
+[Documentation index](README.md) · [Calculation model](calculation-model.md) · [Dependency maintenance](../scripts/engine-boundary/README.md#adopt-or-upgrade-the-package)
 
 The `CardProbability` API describes a finite deck of physical copies, resolved set memberships, goals, and a closed set of optional operations. A host translates its domain into this model; the engine does not interpret card text, metadata, or catalog identities. It calculates synchronously and returns one terminal result.
 

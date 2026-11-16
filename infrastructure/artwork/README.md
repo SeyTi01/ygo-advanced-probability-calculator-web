@@ -22,7 +22,17 @@ These are conservative project limits, not a provider promise of a safe image ra
 
 ## Updating the allowlist
 
-YGO Work's [artwork operations](../../AGENTS.md) owns allowlist refresh, repaired-image recovery, deployment and verification procedures. `prepare-manifest.py` validates official metadata without fetching images. The authenticated dashboard was used for initial deployment; `wrangler.jsonc` records the dedicated bucket binding, enabled runtime cache and disabled persistent invocation logs.
+Reuse a retained official catalog response where possible. From the repository root:
+
+```sh
+python infrastructure/artwork/prepare-manifest.py --catalog <cardinfo.json> --output <manifest.json>
+```
+
+Omitting `--catalog` makes one official JSON metadata request; the generator never requests images. Review the generated count and storage bound, then upload the file to `_control/manifest.json` in `ygo-calculator-card-artwork` using authenticated R2 access. Existing Worker instances can take five minutes to see the new manifest. IDs outside the allowlist remain unavailable.
+
+Retained images survive refreshes, builds, deployments and metadata expiry. For a confirmed repaired provider 404, delete only its `_control/missing/{id}.json` marker. Do not clear unrelated negative records or the global cooldown.
+
+The authenticated Cloudflare dashboard was used for initial deployment. Subsequent Worker deployment uses `infrastructure/artwork/wrangler.jsonc`: preserve its dedicated `ARTWORK` bucket binding and enabled runtime cache, with persistent invocation logs disabled. Keep deployment credentials in the supported credential/secret store. The versioned configuration describes this Worker separately from the calculator's Pages deployment.
 
 ## Budget and verification
 
@@ -32,4 +42,12 @@ The enabled [Workers Cache](https://developers.cloudflare.com/workers/cache/) ru
 
 The initial allowlist contains 14,767 image IDs. The 256 KiB per-image limit gives a 3,871,080,448-byte upper bound for that catalog, not a measured catalog size. No bulk binary synchronization runs during CI, builds or ordinary imports. Storage totals can lag object listings. Account email usage alerts were configured at 8,000,000,000 stored bytes, 800,000 Class A operations and 8,000,000 Class B operations, with a separate $1 billing budget alert.
 
-The offline scheduler, Worker and manifest tests use fixtures without contacting the provider; live-delivery verification is a separate operation.
+Run the relevant offline fixture tests from the repository root:
+
+```sh
+node --test scripts/artwork/scheduler.test.mjs
+node --test infrastructure/artwork/worker.test.mjs
+python infrastructure/artwork/test_manifest.py
+```
+
+These tests do not contact the provider. For live verification, acquire only a few representative images and reuse them; inspect browser requests for the project artwork endpoint. Fixture success does not establish that the deployed Worker is serving images correctly.

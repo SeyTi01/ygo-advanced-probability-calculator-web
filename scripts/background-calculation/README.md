@@ -1,7 +1,6 @@
 # Background calculation verification
 
-The ordinary CI suite runs .NET tests and `node --test`; browser smokes are
-explicit checks selected by [YGO Work verification](../../AGENTS.md).
+The ordinary CI suite runs .NET tests and `node --test`. Browser smokes are separate checks against a published application, using the commands below.
 `owner.test.mjs`, `transport.test.mjs`,
 `worker-policy.test.mjs`, and `fast-deadline.test.mjs` use fake workers, explicit
 messages and mocked timers for ownership, late responses, deadlines and recovery.
@@ -9,10 +8,30 @@ The .NET component/service tests cover captured inputs, cancellation, drafts,
 session compatibility, mode routing, progressive fallback and independent
 physical-card probability oracles.
 
+## Publish and browser setup
+
+Use Node.js, a .NET 10 SDK, and the SDK-scoped `wasm-tools` workload. From the repository root:
+
+```sh
+dotnet workload install wasm-tools
+dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release
+```
+
+Install the workload only if it is missing for the selected SDK. The project enables AOT and stripped IL in Release. Use a clean output from the revision being checked; Debug output and builds containing temporary measurement probes are different artifacts. The default `<published-wwwroot>` is `YGOProbabilityCalculatorBlazor/bin/Release/net10.0/publish/wwwroot`; use the actual output location if publishing elsewhere.
+
+Browser scripts load Playwright through Node's module lookup. Reuse an external installation, or run `npm install playwright` and `npx playwright install chromium` in a tools directory outside this checkout. Set `NODE_PATH` to that directory's `node_modules` before returning here. For example, use `export NODE_PATH=/absolute/tools/node_modules` in a POSIX shell or `$env:NODE_PATH = 'C:\tools\node_modules'` in PowerShell.
+
+The normal smoke/replay helpers use Playwright's installed Chromium by default. Set `YGO_BROWSER_EXECUTABLE` to an installed Chromium executable, or `YGO_BROWSER_CHANNEL` to an installed channel such as `msedge`, when using a different installation. The frozen worker regression has its own Edge default, documented below. Each script serves the supplied files on loopback; no separate preview server is required.
+
 ## Small published-app smoke set
 
-Use [published browser checks](../../AGENTS.md)
-for runtime preparation and execution commands.
+Run from the repository root after the setup above:
+
+```sh
+node scripts/smoke.cjs <published-wwwroot>
+```
+
+For a focused check, invoke a child script listed below with the same `<published-wwwroot>` argument. The optional idle-owner check is `node scripts/background-calculation/lifecycle-smoke.cjs <published-wwwroot>`; it waits for the real 60-second idle timer.
 
 The serial entrypoint fails on the first failed child and runs:
 
@@ -49,11 +68,33 @@ Normal smoke cancellation also observes real closure, but held transport is not
 evidence of stopping a CPU-bound engine. Do not infer CPU shutdown from a button
 returning to idle or a call to `terminate()` alone.
 
+## Published HTML checks
+
+After the normal [solution build](../../README.md#documentation-and-development), set `YGO_PUBLISH_ROOT` to the absolute published `wwwroot` path in the active shell (`export YGO_PUBLISH_ROOT=...` in POSIX, `$env:YGO_PUBLISH_ROOT = '...'` in PowerShell), then run:
+
+```sh
+dotnet test YGOProbabilityCalculatorBlazorTest/YGOProbabilityCalculatorBlazorTest.csproj --no-build --no-restore --filter FullyQualifiedName~PublishedOutputSeoTest
+```
+
+The POSIX wrapper is `bash scripts/verify-published-seo.sh <published-wwwroot>`. Optional HTTP checks use `YGO_SEO_BASE_URL`, or the wrapper's second argument, to identify a local Pages server or matching preview. Static HTML checks require no browser installation.
+
 ## Frozen worker regression
 
-`cold-worker-regression.cjs` is the separate correctness gate for issue #295.
-Its [execution procedure](../../AGENTS.md)
-owns publish variants, invocation and browser selection; the input contract follows.
+`cold-worker-regression.cjs` is the separate correctness gate for issue #295. It does not publish the app. Prepare separate clean outputs for these opt-in configurations using `dotnet publish YGOProbabilityCalculatorBlazor/YGOProbabilityCalculatorBlazor.csproj -c Release -o <distinct-output>` and the indicated MSBuild properties:
+
+| Configuration | Properties |
+| --- | --- |
+| Non-AOT | `-p:RunAOTCompilation=false` |
+| AOT with retained IL | `-p:RunAOTCompilation=true -p:WasmStripILAfterAOT=false` |
+| Production AOT with stripped IL | `-p:RunAOTCompilation=true -p:WasmStripILAfterAOT=true` |
+
+Verify the actual flags/logs, then run once for each output:
+
+```sh
+node scripts/background-calculation/cold-worker-regression.cjs <published-wwwroot> <frozen-worker-inputs.json> bin/<distinct-results.json> 4
+```
+
+The results path must be Git-ignored in this checkout and must not overwrite the input. An optional fifth argument supplies a complete reference response; the reproduction wrapper's `reference` is accepted automatically. Chromium defaults to the installed `msedge` channel for this script. Override it with `YGO_BROWSER_EXECUTABLE` or `YGO_BROWSER_CHANNEL`, or set `YGO_BROWSER_ENGINE=firefox` for an installed Playwright Firefox. This matrix is not part of the routine smoke/CI set.
 
 The input must be the saved `mixed-vision-custom-fast-40` entry from the original
 capture, a raw captured input object, or the `mixed-reproduction.json` wrapper.
@@ -76,8 +117,52 @@ configurable. This gate establishes correctness, not performance.
 
 ## Benchmark and measurement tools
 
-Use YGO Work's [measurement procedures](../../AGENTS.md)
-for tool selection, frozen replay and native/browser/UI measurements.
+Compare baseline and candidate on the same host/runtime, build configuration, inputs, cache/worker state and harness. Record revisions and keep output paths separate. Run timing jobs without concurrent builds, tests or other measurements. Compare fractions, accuracy/scope and terminal outcomes before interpreting speed. First requests, warm requests, worker bootstrap, allocations and cancellation latency measure different things; timeouts are censored observations, not successful calculations or Work/Storage failures.
+
+### Frozen export and native replay
+
+Build the solution in Release before timing, and set `DOTNET_TieredCompilation=0` consistently on both revisions. Commands below run from the checkout root. Export baseline fixtures by setting `YGO_AUDIT_OUTPUT` to a new JSON file, optionally `YGO_AUDIT_CASE` to a name substring (`tiny` selects inexpensive controls), then run:
+
+```sh
+dotnet build YGOProbabilityCalculatorBlazor.sln -c Release
+dotnet test YGOProbabilityCalculatorBlazor.sln -c Release --no-build --no-restore --filter FullyQualifiedName=YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator.PerformanceAuditBenchmark.Export
+```
+
+Replay the unchanged baseline file by setting `YGO_AUDIT_INPUT` to it and `YGO_AUDIT_OUTPUT` to a different output for each revision. `YGO_AUDIT_TRIALS` selects 1–30 warm samples (default 3):
+
+```sh
+dotnet test YGOProbabilityCalculatorBlazor.sln -c Release --no-build --no-restore --filter FullyQualifiedName=YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator.PerformanceAuditBenchmark.Replay
+```
+
+The frozen file is a JSON array of `{ Name, Json, Execution?, ReferenceResponse }`. `Json` is the exact serialized production `CalculationInput`; preserve its bytes rather than constructing a reduced model. `Execution` is absent/null for the finite direct-worker path, or `interactive-exact-v1` for the UI's unlimited-work Exact path. `ReferenceResponse` is the complete baseline response, including typed failures; candidate replay must not replace it.
+
+### Browser replay and UI timing
+
+Using the browser setup above, replay that same frozen file against each revision's clean optimized output:
+
+```sh
+node scripts/background-calculation/measure-worker.cjs <published-wwwroot> <fixtures.json> <worker-output.json> 3 60000
+```
+
+The final arguments select warm samples (default 3) and an external cutoff in milliseconds (default 60000), not a production calculation deadline. Native replay compares the complete response; browser replay requires exact fractions, keys and integer fields, allowing four machine-epsilon units of relative rounding for noninteger doubles. Outputs record request hashes, native assembly/published-asset identity, replies and parity failures. Native timing does not substitute for optimized browser timing.
+
+| UI measurement | Command |
+| --- | --- |
+| Click to terminal result, bootstrap and request round trips | `node scripts/background-calculation/measure-worker-lifecycle.cjs <published-wwwroot> <ui-worker.json> 3` |
+| First catalog query and warm search feedback | `node scripts/card-search/measure-search.cjs <published-wwwroot> <search.json> 3` |
+| File/example action to accepted session | `node scripts/workspace/measure-session-loading.cjs <published-wwwroot> <session-output-directory> 5` |
+
+`YGO_SEARCH_CPU_RATES` selects Chromium CPU throttle rates (default `1,4`; each 1–20). Search measures full-query input and DOM/double-frame observations, which do not guarantee paint. Session loading serves gzip/Brotli and measures acceptance before recovery-storage debounce. Tools record metric definitions, browser/cache conditions and failures.
+
+### Excavation and Storage corpora
+
+For excavation export, use the native Release setup above and set `YGO_EXCAVATION_BENCHMARK` to an output JSON path. Optional controls are `YGO_EXCAVATION_TRIALS` (1–20 warm samples; default 3), `YGO_EXCAVATION_CASE`, `YGO_EXCAVATION_EXCLUDE`, and `YGO_EXCAVATION_MODE` (`Fast` or `Exact`):
+
+```sh
+dotnet test YGOProbabilityCalculatorBlazor.sln -c Release --no-build --no-restore --filter FullyQualifiedName=YGOProbabilityCalculatorBlazorTest.Services.ProbabilityCalculator.ExcavationBenchmark.Measure
+```
+
+This exports exact worker inputs and full native reference responses for replay. First/warm timings and allocations are printed. The routine browser smoke instead uses a small independent excavation control; a 40-card timing fixture is not a UI requirement.
 
 The opt-in `StorageTierBenchmark.Export` test captures the Storage comparison
 corpus through the production wire. Set `YGO_AUDIT_OUTPUT` to a new file and
