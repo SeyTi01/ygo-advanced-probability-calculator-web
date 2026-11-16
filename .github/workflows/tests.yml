@@ -96,7 +96,8 @@ jobs:
   test:
     name: Full test suite
     needs: [unit, published-site]
-    if: ${{ always() }}
+    # Superseded runs must not turn cancelled dependencies into a failed check.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
