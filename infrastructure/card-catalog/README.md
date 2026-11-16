@@ -15,7 +15,7 @@ The publisher checks for an existing push or manual test run on the exact branch
 head before dispatching, including on a no-change retry after interrupted publication.
 Failed test runs remain visible for review rather than being retried automatically.
 Generation rejects a workflow/checkout definition mismatch before writing a bundle.
-YGO Work's [card-data maintenance](../../plugins/ygo-work/skills/ygo-implement/references/card-data.md)
+YGO Work's [card-data maintenance](../../AGENTS.md)
 owns dispatch, retry, local replay, audit review and manual-refresh procedures.
 
 Acquisition downloads one full
@@ -119,7 +119,7 @@ review decisions; the monthly bot publishes evidence rather than adopting tags.
 
 `prepare-catalog.mjs` projects the YGOPRODeck full response into the compact `CardInfo` JSON asset used by local search. It keeps card identity, name, objective metadata, and numeric artwork IDs. Version 2 also contains offline-resolved `resolvedArchetypes`; it drops the provider's association tag, descriptions, prices, set data, and image URLs. It never fetches artwork. The asset URL remains `card-catalog.v1.json` for deployment compatibility; its internal format version is independent of session schema 5.
 
-The [manual catalog procedure](../../plugins/ygo-work/skills/ygo-implement/references/card-data.md#manual-canonical-catalog-repair)
+The [manual catalog procedure](../../AGENTS.md)
 owns offline generation and source acquisition. The catalog is validated and serialized before the output is atomically replaced. The normal app build and test suite never call the provider. Identical saved source and checked-in policy produce byte-identical catalog and audit JSON, independently of response order.
 
 ## Main Deck eligibility
@@ -198,8 +198,8 @@ All objective archetype properties consume resolved data. Catalog lookups suppor
 
 Session load, share acceptance and recovery reconcile only automatic archetype properties against the bundled catalog before optional legacy enrichment. Exact unique names are used only when there is no external ID. Unknown/ambiguous identities and unverified membership sets remain unchanged. Cards absent after eligibility trimming remain in saved sessions; import still attempts targeted metadata lookup and preserves an unresolved imported ID/copy count when lookup fails. User categories, unrelated metadata, explicit manual keys and saved simulation plans/provenance are preserved. If an old automatic membership previously absorbed a manual assignment, the missing provenance cannot be reconstructed: only explicitly stored override keys are preserved. An already-correct card retains its reference; reconciliation does not itself write browser storage or bump session schema.
 
-The same saved provider response can also supply the [artwork allowlist](../../plugins/ygo-work/skills/ygo-implement/references/artwork.md).
-Generator verification is part of [card-data maintenance](../../plugins/ygo-work/skills/ygo-implement/references/card-data.md#verification-and-related-artwork).
+The same saved provider response can also supply the [artwork allowlist](../../AGENTS.md).
+Generator verification is part of [card-data maintenance](../../AGENTS.md).
 
 ## German search names
 
@@ -273,7 +273,7 @@ establish complete official translations or native-speaker review.
 
 ### Offline generation and refresh
 
-The [localized-name procedure](../../plugins/ygo-work/skills/ygo-implement/references/card-data.md#manual-localized-name-repair-or-first-baseline)
+The [localized-name procedure](../../AGENTS.md)
 owns historical reproduction, source refresh, coverage baselines and reviewed removals.
 
 The generator never fetches the network. Builds, tests, publishing and startup
@@ -326,7 +326,7 @@ The monthly workflow refreshes every registered translation locale automatically
 from that same pinned source, with individual coverage guards, projections and
 audits. The dated projections reproduce historical source snapshots; current
 monthly bundles have separately retained workflow inputs. All locales use the
-same [maintenance procedure](../../plugins/ygo-work/skills/ygo-implement/references/card-data.md).
+same [maintenance procedure](../../AGENTS.md).
 Compilation credit and rights-holder attribution apply to every language.
 
 ### French names (`fr`)

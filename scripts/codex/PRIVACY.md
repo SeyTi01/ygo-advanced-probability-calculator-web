@@ -1,6 +1,6 @@
 # Publication guard
 
-The guard verifies approved public attribution before commits and pushes. Agent procedures live in YGO Work: [publication identity](../../plugins/ygo-work/skills/ygo-pr/references/publication-identity.md), [missing guard setup](../../plugins/ygo-work/skills/ygo-pr/references/git-identity-setup.md) and [public-content review](../../plugins/ygo-work/skills/ygo-pr/references/public-content.md).
+The guard verifies approved public attribution before commits and pushes. Agent procedures live in YGO Work: [publication identity](../../AGENTS.md), [missing guard setup](../../AGENTS.md) and [public-content review](../../AGENTS.md).
 
 ## Installation and policy
 

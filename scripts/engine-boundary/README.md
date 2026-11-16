@@ -1,6 +1,6 @@
 # Engine package boundary
 
-[YGO Work's boundary verification](../../plugins/ygo-work/skills/ygo-verify/references/engine-boundary.md)
+[YGO Work's boundary verification](../../AGENTS.md)
 owns setup and execution. The check requires Node.js and the .NET 10 SDK;
 it publishes nothing.
 
@@ -35,4 +35,4 @@ and worker integration coverage. Browser/AOT checks remain separate.
 The engine implementation and white-box suite now belong to
 [card-probability-engine](https://github.com/SeyTi01/card-probability-engine).
 Package adoption and upgrade guidance lives in the
-[engine dependency procedure](../../plugins/ygo-work/skills/ygo-implement/references/engine-extraction.md).
+[engine dependency procedure](../../AGENTS.md).

@@ -36,7 +36,7 @@ during startup is supported while retaining the browser's numeric culture.
 
 ## Adding a locale
 
-Use YGO Work's [localization workflow](../plugins/ygo-work/skills/ygo-implement/references/localization.md)
+Use YGO Work's [localization workflow](../AGENTS.md)
 for contributor steps and verification. `wwwroot/localization/locales.json` is
 served to startup JavaScript and embedded in .NET. At two production locales,
 the header selector appears automatically on both routes; English alone keeps
@@ -118,7 +118,7 @@ from normal explicit recovery and never changes session schema or worker bytes.
 
 ## Published integration check
 
-The [browser workflow](../plugins/ygo-work/skills/ygo-verify/references/browser-checks.md)
+The [browser workflow](../AGENTS.md)
 owns runtime setup and execution. The localization smoke checks production
 satellites, first visible language, on-demand localized
 card names, numeric culture, and real reload/restoration of accepted workspace and

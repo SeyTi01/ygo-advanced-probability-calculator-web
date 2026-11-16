@@ -22,7 +22,7 @@ These are conservative project limits, not a provider promise of a safe image ra
 
 ## Updating the allowlist
 
-YGO Work's [artwork operations](../../plugins/ygo-work/skills/ygo-implement/references/artwork.md) owns allowlist refresh, repaired-image recovery, deployment and verification procedures. `prepare-manifest.py` validates official metadata without fetching images. The authenticated dashboard was used for initial deployment; `wrangler.jsonc` records the dedicated bucket binding, enabled runtime cache and disabled persistent invocation logs.
+YGO Work's [artwork operations](../../AGENTS.md) owns allowlist refresh, repaired-image recovery, deployment and verification procedures. `prepare-manifest.py` validates official metadata without fetching images. The authenticated dashboard was used for initial deployment; `wrangler.jsonc` records the dedicated bucket binding, enabled runtime cache and disabled persistent invocation logs.
 
 ## Budget and verification
 
