@@ -1,7 +1,7 @@
 # Background calculation verification
 
 The ordinary CI suite runs .NET tests and `node --test`; browser smokes are
-explicit checks selected by [YGO Work verification](../../plugins/ygo-work/skills/ygo-verify/SKILL.md).
+explicit checks selected by [YGO Work verification](../../AGENTS.md).
 `owner.test.mjs`, `transport.test.mjs`,
 `worker-policy.test.mjs`, and `fast-deadline.test.mjs` use fake workers, explicit
 messages and mocked timers for ownership, late responses, deadlines and recovery.
@@ -11,7 +11,7 @@ physical-card probability oracles.
 
 ## Small published-app smoke set
 
-Use [published browser checks](../../plugins/ygo-work/skills/ygo-verify/references/browser-checks.md)
+Use [published browser checks](../../AGENTS.md)
 for runtime preparation and execution commands.
 
 The serial entrypoint fails on the first failed child and runs:
@@ -52,7 +52,7 @@ returning to idle or a call to `terminate()` alone.
 ## Frozen worker regression
 
 `cold-worker-regression.cjs` is the separate correctness gate for issue #295.
-Its [execution procedure](../../plugins/ygo-work/skills/ygo-verify/references/frozen-worker.md)
+Its [execution procedure](../../AGENTS.md)
 owns publish variants, invocation and browser selection; the input contract follows.
 
 The input must be the saved `mixed-vision-custom-fast-40` entry from the original
@@ -76,7 +76,7 @@ configurable. This gate establishes correctness, not performance.
 
 ## Benchmark and measurement tools
 
-Use YGO Work's [measurement procedures](../../plugins/ygo-work/skills/ygo-diagnose/references/measurements.md)
+Use YGO Work's [measurement procedures](../../AGENTS.md)
 for tool selection, frozen replay and native/browser/UI measurements.
 
 The opt-in `StorageTierBenchmark.Export` test captures the Storage comparison

@@ -1,6 +1,6 @@
 # Generic calculation API
 
-[Documentation index](README.md) · [Calculation model](calculation-model.md) · [Dependency maintenance](../plugins/ygo-work/skills/ygo-implement/references/engine-extraction.md)
+[Documentation index](README.md) · [Calculation model](calculation-model.md) · [Dependency maintenance](../AGENTS.md)
 
 The `CardProbability` API describes a finite deck of physical copies, resolved set memberships, goals, and a closed set of optional operations. A host translates its domain into this model; the engine does not interpret card text, metadata, or catalog identities. It calculates synchronously and returns one terminal result.
 
