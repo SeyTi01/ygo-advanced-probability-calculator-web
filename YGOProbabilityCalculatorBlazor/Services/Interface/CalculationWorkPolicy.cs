@@ -6,6 +6,7 @@ public sealed class CalculationWorkPolicy {
     // The complete 3 Trade-In + 3 Allure example charges 90.77M units at High
     // storage; retain finite headroom without promoting the selected storage tier.
     public static CalculationWorkPolicy Interactive { get; } = new(150_000_000);
+    public static CalculationWorkPolicy ProgressiveFast { get; } = new(600_000_000);
     public static CalculationWorkPolicy Unlimited { get; } = new();
     public bool IsUnlimited => _workUnits is null;
     // Finite wire contracts must explicitly reject Unlimited, never serialize a sentinel.

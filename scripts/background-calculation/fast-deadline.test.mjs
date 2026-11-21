@@ -53,15 +53,75 @@ for (const [kind, outcome] of [['work',2],['storage',3],['unsupported',4],['tran
     });
 }
 
-for (const kind of ['exact','initial-failure']) {
-    test(`progressive ${kind} has only a final stage`, async t => {
-        const s = setup(t, true); s.ready();
-        s.emit(kind === 'initial-failure' ? {Error:'limit',LimitReason:1} : success(0), '10');
-        const stage = await s.promise; assert.equal(stage.isPreliminary,false);
-        assert.equal(await s.job.finish(), stage.response);
-        assert.equal(s.worker.sent.length,1); s.job.release();
+test('progressive exact Fast result has only a final stage', async t => {
+    const s = setup(t, true); s.ready(); s.emit(success(0));
+    const stage = await s.promise; assert.equal(stage.isPreliminary, false);
+    assert.equal(await s.job.finish(), stage.response);
+    assert.equal(s.worker.sent.length, 1); s.job.release();
+});
+
+function failure(completion, reason) {
+    return { Result:null, Error:'failed', Contract:{Version:1, RequestedMode:0, ExecutedMode:0, Scope:1,
+        Completion:completion, Accuracy:null, Fractions:null}, ...reason };
+}
+
+for (const [name, initial] of [
+    ['Work', failure(2, {LimitReason:1})], ['Storage', failure(3, {LimitReason:2})],
+    ['Unsupported', failure(1, {FailureKind:3})]
+]) test(`progressive tries unlimited Exact after Fast ${name} with no preliminary rows`, async t => {
+    const s = setup(t, true); s.ready(); s.emit(initial, '0');
+    assert.deepEqual(s.worker.sent, [{id:1,json:'frozen',fastStage:'initial'},
+        {id:1,json:'frozen',fastStage:'progressive-exact-v1'}]);
+    s.tick(600000);
+    s.emit(success(0), '0');
+    const stage = await s.promise;
+    assert.equal(stage.isPreliminary, false);
+    assert.equal(JSON.parse(stage.response).Result.Contract.AutomaticExact, 0);
+    assert.equal(await s.job.finish(), stage.response);
+    s.job.release(); assert.equal(s.worker.terminated, 0);
+});
+
+test('Exact failure after Fast Work exhaustion is terminal and returns no rows', async t => {
+    const s = setup(t, true); s.ready(); s.emit(failure(2, {LimitReason:1}), '0');
+    const exact = failure(3, {LimitReason:2}); s.emit(exact, '0');
+    const stage = await s.promise;
+    assert.deepEqual(JSON.parse(stage.response), exact);
+    assert.equal(stage.isPreliminary, false); assert.equal(s.worker.sent.length, 2);
+    s.job.dispose(); assert.equal(s.worker.terminated, 1);
+});
+
+test('cancel during Exact after a failed Fast stage discards both deliveries', async t => {
+    const s = setup(t, true); s.ready(); s.emit(failure(2, {LimitReason:1}), '0');
+    assert.equal(s.worker.sent.length, 2);
+    const first = assert.rejects(s.promise, /cancelled/);
+    const final = assert.rejects(s.job.finish(), /cancelled/);
+    s.job.dispose(); await Promise.all([first, final]); assert.equal(s.worker.terminated, 1);
+});
+
+for (const [name, initial] of [
+    ['invalid input', {Error:'input', FailureKind:1}], ['cancellation', failure(6, {FailureKind:4})],
+    ['engine error', {Error:'error', FailureKind:2}], ['mismatched limit', failure(3, {LimitReason:1})]
+]) {
+    test(`progressive passes through ${name} without retry`, async t => {
+        const s = setup(t, true); s.ready(); s.emit(initial, '0');
+        const stage = await s.promise;
+        assert.deepEqual(JSON.parse(stage.response), initial);
+        assert.equal(s.worker.sent.length, 1); s.job.dispose();
     });
 }
+
+test('invalid Work metadata cannot trigger a Progressive Exact attempt', async t => {
+    const s = setup(t, true); s.ready(); s.emit(failure(2, {LimitReason:1}), 'invalid');
+    await assert.rejects(s.promise, /Invalid remaining calculation Work/);
+    assert.equal(s.worker.sent.length, 1); assert.equal(s.worker.terminated, 1);
+});
+
+test('Exact after a failed Fast stage must return an exact result', async t => {
+    const s = setup(t, true); s.ready(); s.emit(failure(2, {LimitReason:1}), '0');
+    s.emit(success(1));
+    await assert.rejects(s.promise, /invalid result/);
+    assert.equal(s.worker.sent.length, 2); assert.equal(s.worker.terminated, 1);
+});
 
 test('cancel after first delivery observes terminal rejection before finish is requested', async t => {
     const s = setup(t,true); s.ready(); s.emit(success()); await s.promise;

@@ -24,16 +24,30 @@ function compare(actual, expected, location) {
 }
 
 function verify(sample, fast, exact) {
-    compare(sample.First, fast.ReferenceResponse, `${fast.Name}: first`);
-    if (!sample.IsPreliminary) {
-        compare(sample.Final, sample.First, `${fast.Name}: immediate terminal`);
-        return;
+    const first = fast.ReferenceResponse;
+    const recovered = !first.Result && [1, 2, 3].includes(first.Contract?.Completion);
+    if (recovered) {
+        assert.equal(sample.IsPreliminary, false, 'a failed Fast stage has no preliminary rows');
+        compare(sample.First, sample.Final, `${fast.Name}: first delivery is the Exact outcome`);
+        if (!exact.ReferenceResponse.Result) {
+            const expected = structuredClone(exact.ReferenceResponse);
+            // Automatic Exact retains the requested Fast mode on the failure contract.
+            if (expected.Contract) expected.Contract.RequestedMode = expected.Contract.ExecutedMode = 0;
+            compare(sample.Final, expected, `${fast.Name}: Exact failure`);
+            return;
+        }
+    } else {
+        compare(sample.First, first, `${fast.Name}: first`);
+        if (!sample.IsPreliminary) {
+            compare(sample.Final, sample.First, `${fast.Name}: immediate terminal`);
+            return;
+        }
+        assert.equal(sample.First.Result.Contract.RequestedMode, 0);
+        assert.equal(sample.First.Result.Contract.Completion, 0);
+        assert([1, 2].includes(sample.First.Result.Contract.Accuracy));
     }
-    assert.equal(sample.First.Result.Contract.RequestedMode, 0);
-    assert.equal(sample.First.Result.Contract.Completion, 0);
-    assert([1, 2].includes(sample.First.Result.Contract.Accuracy));
     const contract = sample.Final.Result?.Contract;
-    assert(contract, 'Progressive must retain a completed first result on upgrade failure');
+    assert(contract, 'expected a completed Progressive result');
     assert.equal(contract.RequestedMode, 0);
     assert.equal(contract.ExecutedMode, 0);
     assert.equal(contract.Completion, 0);
