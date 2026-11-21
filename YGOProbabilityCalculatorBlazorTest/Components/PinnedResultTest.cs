@@ -223,7 +223,7 @@ public partial class PinnedResultTest {
     public async Task PinOwnsRequestContextAndCopiesMutableResultRows() {
         Task action = Start();
         CalculationInput input = System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Calls[0].Snapshot.Json)!;
-        Assert.That(input.WorkUnits, Is.EqualTo(CalculationWorkPolicy.Interactive.WorkUnits), "ordinary Calculate selects the interactive policy on its first request");
+        Assert.That(input.WorkUnits, Is.EqualTo(CalculationWorkPolicy.ProgressiveFast.WorkUnits));
         Assert.That(input.HandSize, Is.EqualTo(2));
         ProbabilityCalculationResult result = Result(0, .814);
         // An unannounced edit specifically verifies capture timing, independent of invalidation.
@@ -441,7 +441,7 @@ public partial class PinnedResultTest {
         await _cut.Find("[aria-label='Cancel calculation']").ClickAsync(new());
         await _cut.Find("#handSize").ChangeAsync(new() { Value = "6" });
         Task current = Start();
-        Assert.That(System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Calls[2].Snapshot.Json)!.WorkUnits, Is.EqualTo(CalculationWorkPolicy.Interactive.WorkUnits));
+        Assert.That(System.Text.Json.JsonSerializer.Deserialize<CalculationInput>(_worker.Calls[2].Snapshot.Json)!.WorkUnits, Is.EqualTo(CalculationWorkPolicy.ProgressiveFast.WorkUnits));
         if (limit) {
             _worker.Calls[1].Completion.SetException(new ProbabilityCalculationLimitException(ProbabilityCalculationLimitReason.Storage));
         }

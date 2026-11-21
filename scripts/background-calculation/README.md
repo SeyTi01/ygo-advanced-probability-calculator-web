@@ -236,10 +236,12 @@ success reuses the runtime; cancellation, invalid results, transport failures,
 limits and disposal retire it. Idle expiry is 60 seconds; continuous use recycles
 after 20 accepted requests. Initialization has its own 30-second timeout.
 
-Progressive presents completed Fast and attempts physical Exact on the same
-captured input/lease. Interactive Exact and Progressive's upgrade use unlimited
-Work with the selected Storage limit. Failed/cancelled upgrades keep accepted
-Fast. Fast only and no-effect UI requests retain their finite 150M Work policy;
+Progressive gives Fast 600M Work. A non-exact Fast result appears as Preliminary.
+Fast Work, Storage or Unsupported failures also start physical Exact on the same
+input and worker. In that case the first delivery is the Exact outcome.
+Interactive Exact and Progressive's upgrade use unlimited Work with the selected
+Storage limit. Failed or cancelled upgrades keep any accepted Fast result.
+Fast only and no-effect UI requests retain their finite 150M Work policy;
 bounded synchronous callers retain their existing default allowance. The legacy
 `run(json, true)` path alone retains its seven-second opportunity/five-second
 upgrade window. Session plans stay authoritative; no test harness should refresh

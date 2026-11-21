@@ -32,6 +32,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(requests, Has.Count.EqualTo(1));
         Assert.That(requests[0].AllowAutomaticExact, Is.False);
+        AssertWorkAllowance(requests[0].Json, 150_000_000);
         Assert.That(cut.Find(".result-accuracy").TextContent, Is.EqualTo("Mode: Fast only"));
         Assert.That(cut.FindAll(".probability-result-status"), Is.Empty);
         await cut.Find(".pin-result-action").ClickAsync(new());
@@ -44,6 +45,7 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         await cut.Find("#calculationModel").ChangeAsync(new() { Value = "Fast" });
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(requests[^1].AllowAutomaticExact, Is.True);
+        AssertWorkAllowance(requests[^1].Json, 600_000_000);
         Assert.That(cut.Find(".probability-results .result-accuracy").TextContent, Is.EqualTo("Mode: Progressive"));
         Assert.That(cut.Find(".pinned-result .result-accuracy").TextContent, Is.EqualTo("Mode: Fast only"));
     }
@@ -127,6 +129,8 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
             await cut.Find("#calculationModel").ChangeAsync(new() { Value = mode.ToString() });
             await Button(cut, "Calculate").ClickAsync(new());
             CalculationInput input = requests[^1];
+            Assert.That(input.WorkUnits, Is.EqualTo(mode == CalculationModel.Fast
+                ? CalculationWorkPolicy.ProgressiveFast.WorkUnits : CalculationWorkPolicy.Interactive.WorkUnits));
             Assert.That(input.Cards[0].DrawCount, Is.EqualTo(mode == CalculationModel.OpeningHand ? null : (int?)1));
             Assert.That(input.Cards[0].PostDrawDiscardCount, Is.EqualTo(mode == CalculationModel.OpeningHand ? 0 : 1));
             List<Card> modeled = mode == CalculationModel.OpeningHand
@@ -203,14 +207,14 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(snapshots, Has.Count.EqualTo(2));
         AssertTier(snapshots[1].Json, CalculationStorageTier.High);
-        AssertWorkAllowance(snapshots[1].Json);
+        AssertWorkAllowance(snapshots[1].Json, CalculationWorkPolicy.ProgressiveFast.WorkUnits);
 
         await cut.Find("#storageSafetyTier").ChangeAsync(new() { Value = "VeryHigh" });
         AssertPreviousResult(cut);
         await Button(cut, "Calculate").ClickAsync(new());
         Assert.That(snapshots, Has.Count.EqualTo(3));
         AssertTier(snapshots[2].Json, CalculationStorageTier.VeryHigh);
-        AssertWorkAllowance(snapshots[2].Json);
+        AssertWorkAllowance(snapshots[2].Json, CalculationWorkPolicy.ProgressiveFast.WorkUnits);
 
         string sharedJson = cut.FindComponent<SessionShareButton>().Instance.Snapshot;
         Assert.That(sharedJson, Does.Not.Contain("StorageTier"));
@@ -235,9 +239,9 @@ public class CalculatorEditorCalculationSettingsTest : CalculatorEditorTestBase 
         Assert.That(input[nameof(CalculationInput.StorageTier)]!.GetValue<int>(), Is.EqualTo((int)expected));
     }
 
-    private static void AssertWorkAllowance(string request) {
+    private static void AssertWorkAllowance(string request, long expected) {
         JsonObject input = JsonNode.Parse(request)!.AsObject();
         Assert.That(input[nameof(CalculationInput.WorkUnits)]!.GetValue<long>(),
-            Is.EqualTo(CalculationWorkPolicy.Interactive.WorkUnits));
+            Is.EqualTo(expected));
     }
 }
