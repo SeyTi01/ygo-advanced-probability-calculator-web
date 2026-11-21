@@ -85,6 +85,26 @@ export function createOwner() {
         else retire(state, message);
     }
 
+    function recoverableFastFailure(response) {
+        const contract = response.Contract;
+        if (response.Result != null || typeof response.Error !== 'string' || contract?.Version !== 1
+            || contract.RequestedMode !== 0 || contract.ExecutedMode !== 0 || contract.Scope !== 1 || contract.Accuracy != null
+            || contract.Fractions != null || contract.AutomaticExact != null) return false;
+        // Match the failure kind to its completion before starting a second solver.
+        if (response.LimitReason == null) return response.FailureKind === 3 && contract.Completion === 1; // Unsupported
+        if (response.FailureKind != null) return false;
+        return (response.LimitReason === 1 && contract.Completion === 2) // Work
+            || (response.LimitReason === 2 && contract.Completion === 3); // Storage
+    }
+
+    function startUpgrade(lease, remainingWork) {
+        lease.upgrading = true;
+        lease.state.worker.postMessage(lease.progressive
+            ? { id: lease.id, json: lease.json, fastStage: 'progressive-exact-v1' }
+            : { id: lease.id, json: lease.json, fastStage: 'upgrade', remainingWork });
+        lease.json = undefined;
+    }
+
     function automaticResponse(lease, data) {
         if (!lease.progressive && lease.fallback && performance.now() >= lease.deadline) return deadline(lease);
         const response = JSON.parse(data.response);
@@ -92,20 +112,26 @@ export function createOwner() {
         const success = response.Error == null && response.LimitReason == null && response.FailureKind == null
             && contract?.Version === 1 && contract.RequestedMode === 0 && contract.ExecutedMode === 0
             && contract.Completion === 0 && [0, 1, 2].includes(contract.Accuracy);
-        if (lease.fallback) {
+        if (lease.upgrading) {
             if (success && contract.Accuracy === 0) answer(lease, annotated(data.response, 0));
-            else fallback(lease, response.LimitReason === 1 ? 2 : response.LimitReason === 2 ? 3
+            else if (lease.fallback) fallback(lease, response.LimitReason === 1 ? 2 : response.LimitReason === 2 ? 3
                 : response.FailureKind === 3 ? 4 : 5);
+            else if (response.Result == null) answer(lease, data.response);
+            else failed(lease.state, 'Physical Exact returned an invalid result.');
             return;
         }
-        // A normal initial failure follows the existing typed-error path. Never
-        // invent a fallback, and never repeat already proven/no-search work.
+        // With no Fast rows to present, the first delivery is the Exact terminal.
+        const validRemainingWork = typeof data.remainingWork === 'string' && /^[0-9]+$/.test(data.remainingWork);
+        if (lease.progressive && recoverableFastFailure(response)) {
+            if (!validRemainingWork) return failed(lease.state, 'Invalid remaining calculation Work.');
+            return startUpgrade(lease);
+        }
         if (!success || contract.Accuracy === 0) return answer(lease, data.response);
         // Initial Fast is never timed out automatically. Its elapsed time only
         // consumes the opportunity to do additional physical counting.
         if (!lease.progressive && performance.now() >= lease.deadline) return answer(lease, annotated(data.response, 6));
         lease.fallback = data.response;
-        if (typeof data.remainingWork !== 'string' || !/^[0-9]+$/.test(data.remainingWork)) {
+        if (!validRemainingWork) {
             return fallback(lease, 5);
         }
         if (!lease.progressive && /^0+$/.test(data.remainingWork)) return fallback(lease, 2);
@@ -113,10 +139,7 @@ export function createOwner() {
             lease.deadline = Math.min(lease.deadline, performance.now() + upgradeMilliseconds);
             arm(lease);
         }
-        lease.state.worker.postMessage(lease.progressive
-            ? { id: lease.id, json: lease.json, fastStage: 'progressive-exact-v1' }
-            : { id: lease.id, json: lease.json, fastStage: 'upgrade', remainingWork: data.remainingWork });
-        lease.json = undefined;
+        startUpgrade(lease, data.remainingWork);
         // Only an actually dispatched upgrade has a presentation stage. The
         // terminal promise still owns the lease until C# validates and releases it.
         lease.first?.resolve({ response: data.response, isPreliminary: true });

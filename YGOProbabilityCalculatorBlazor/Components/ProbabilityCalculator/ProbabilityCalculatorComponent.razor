@@ -806,12 +806,14 @@
             _errorMessage = null;
             StateHasChanged();
 
+            // A one-off Exact retry keeps the original request's finite wire allowance.
+            bool progressiveSelected = SelectedModel == CalculationModel.Fast && _fastStrategy == FastExecutionStrategy.Progressive;
             CalculationSnapshot snapshot = CalculationSnapshot.Capture(
                 _cards,
                 _combos,
                 _handSize,
                 _comboGroups,
-                CalculationWorkPolicy.Interactive,
+                progressiveSelected ? CalculationWorkPolicy.ProgressiveFast : CalculationWorkPolicy.Interactive,
                 null,
                 CalculationStoragePolicy.ForTier(_storageTier),
                 new(_drawActivationPriority, Mode: model),

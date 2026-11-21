@@ -6,7 +6,7 @@
 
 | UI choice | Execution and accepted result |
 | --- | --- |
-| Progressive (default) | Complete Fast first. If already proven Exact, finish; otherwise present it as Preliminary and continue physical Exact on the same captured input. A validated completed upgrade replaces it. |
+| Progressive (default) | Start with Fast. A proven Exact result finishes immediately. Other completed Fast results appear as Preliminary while physical Exact runs. If Fast reaches its Work or Storage limit, or reports an unsupported calculation, start Exact on the same input and show its outcome when it finishes. |
 | Fast only | Complete Fast once; no automatic physical upgrade. It may be Exact, Bounded or Uncertified. |
 | Exact only | Physical counting under the saved rules and fixed policy; publish values only when the required physical proof completes. |
 | No effect simulation | Ignore configured effects on owned calculation copies and count the dealt hand. Saved effects remain unchanged. |
@@ -37,7 +37,7 @@ Hover or keyboard-focus a result value to inspect its primary fraction. Accuracy
 
 ## Work and Storage are independent
 
-Work is deterministic weighted accounting for engine operations, not wall-clock seconds. Ordinary UI Fast and No effect simulation use a request-local **150,000,000-unit** finite allowance. Native callers and bounded wire requests without an explicit allowance retain the **10,000,000-unit** default. Explicit finite policies remain supported.
+Work counts weighted engine operations deterministically. Progressive gives its Fast stage **600,000,000 units**. Fast only and No effect simulation use **150,000,000 units**. Native callers and bounded wire requests without an explicit allowance use **10,000,000 units**. Device speed affects how long the same work takes.
 
 **Interactive Exact and Progressive's physical Exact stage use unlimited Work**, even when the Fast stage has spent its remaining allowance. Neither has a calculation deadline. Unlimited Work removes that cutoff; it does not guarantee completion or a practical running time.
 
